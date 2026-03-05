@@ -26,7 +26,11 @@ export const caseFieldTypeEnum = pgEnum("case_field_type", [
   "multiline",
 ]);
 
+export const caseTemplateTypeEnum = pgEnum("case_template_type", ["steps_based", "exploratory"]);
+
 export const attachmentEntityEnum = pgEnum("attachment_entity", ["case", "result"]);
+
+export const issueLinkEntityEnum = pgEnum("issue_link_entity", ["case", "result"]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -146,6 +150,46 @@ export const caseFieldDefinitions = pgTable("case_field_definitions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const caseTemplates = pgTable("case_templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  templateType: caseTemplateTypeEnum("template_type").default("steps_based").notNull(),
+  defaultSteps: jsonb("default_steps").$type<{ content: string; expected: string | null; sortOrder: number }[]>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const datasets = pgTable("datasets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const datasetColumns = pgTable("dataset_columns", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  datasetId: uuid("dataset_id")
+    .notNull()
+    .references(() => datasets.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const datasetRows = pgTable("dataset_rows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  datasetId: uuid("dataset_id")
+    .notNull()
+    .references(() => datasets.id, { onDelete: "cascade" }),
+  data: jsonb("data").$type<Record<string, string>>().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const suites = pgTable("suites", {
   id: uuid("id").primaryKey().defaultRandom(),
   projectId: uuid("project_id")
@@ -171,6 +215,18 @@ export const sections = pgTable("sections", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const sharedSteps = pgTable("shared_steps", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  expected: text("expected"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const testCases = pgTable("test_cases", {
   id: uuid("id").primaryKey().defaultRandom(),
   sectionId: uuid("section_id")
@@ -180,6 +236,7 @@ export const testCases = pgTable("test_cases", {
   prerequisite: text("prerequisite"),
   caseTypeId: uuid("case_type_id").references(() => caseTypes.id, { onDelete: "set null" }),
   priorityId: uuid("priority_id").references(() => priorities.id, { onDelete: "set null" }),
+  datasetId: uuid("dataset_id").references(() => datasets.id, { onDelete: "set null" }),
   sortOrder: integer("sort_order").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -190,6 +247,7 @@ export const testSteps = pgTable("test_steps", {
   testCaseId: uuid("test_case_id")
     .notNull()
     .references(() => testCases.id, { onDelete: "cascade" }),
+  sharedStepId: uuid("shared_step_id").references(() => sharedSteps.id, { onDelete: "set null" }),
   content: text("content").notNull(),
   expected: text("expected"),
   sortOrder: integer("sort_order").default(0).notNull(),
@@ -214,22 +272,17 @@ export const runs = pgTable("runs", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const tests = pgTable(
-  "tests",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    runId: uuid("run_id")
-      .notNull()
-      .references(() => runs.id, { onDelete: "cascade" }),
-    testCaseId: uuid("test_case_id")
-      .notNull()
-      .references(() => testCases.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-  },
-  (t) => [
-    uniqueIndex("tests_run_case_idx").on(t.runId, t.testCaseId),
-  ]
-);
+export const tests = pgTable("tests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  runId: uuid("run_id")
+    .notNull()
+    .references(() => runs.id, { onDelete: "cascade" }),
+  testCaseId: uuid("test_case_id")
+    .notNull()
+    .references(() => testCases.id, { onDelete: "cascade" }),
+  datasetRowId: uuid("dataset_row_id").references(() => datasetRows.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export const results = pgTable("results", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -275,6 +328,35 @@ export const runConfigs = pgTable(
   },
   (t) => [uniqueIndex("run_configs_run_option_idx").on(t.runId, t.configOptionId)]
 );
+
+export const caseVersions = pgTable("case_versions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  testCaseId: uuid("test_case_id")
+    .notNull()
+    .references(() => testCases.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  prerequisite: text("prerequisite"),
+  caseTypeId: uuid("case_type_id").references(() => caseTypes.id, { onDelete: "set null" }),
+  priorityId: uuid("priority_id").references(() => priorities.id, { onDelete: "set null" }),
+  stepsSnapshot: jsonb("steps_snapshot").$type<{ content: string; expected: string | null; sortOrder: number; sharedStepId?: string }[]>(),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const issueLinks = pgTable("issue_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  entityType: issueLinkEntityEnum("entity_type").notNull(),
+  entityId: uuid("entity_id").notNull(),
+  url: text("url").notNull(),
+  externalId: text("external_id"),
+  title: text("title"),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export const attachments = pgTable("attachments", {
   id: uuid("id").primaryKey().defaultRandom(),
