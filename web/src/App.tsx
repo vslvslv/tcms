@@ -10,6 +10,9 @@ import CaseEditor from "./pages/CaseEditor";
 import SectionCases from "./pages/SectionCases";
 import RunView from "./pages/RunView";
 import CreateRun from "./pages/CreateRun";
+import MilestoneProgress from "./pages/MilestoneProgress";
+import PlanSummary from "./pages/PlanSummary";
+import ProjectSettings from "./pages/ProjectSettings";
 import "./App.css";
 
 function AppRoutes() {
@@ -30,6 +33,30 @@ function AppRoutes() {
         element={
           <RequireAuth>
             <ProjectDetail />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/projects/:projectId/settings"
+        element={
+          <RequireAuth>
+            <ProjectSettings />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/milestones/:milestoneId/progress"
+        element={
+          <RequireAuth>
+            <MilestoneProgress />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/plans/:planId/summary"
+        element={
+          <RequireAuth>
+            <PlanSummary />
           </RequireAuth>
         }
       />

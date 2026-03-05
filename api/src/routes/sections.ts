@@ -1,9 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
-import { projects, suites, sections } from "../db/schema.js";
+import { suites, sections } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsSuiteId = z.object({ suiteId: z.string().uuid() });
@@ -14,8 +15,7 @@ const updateSectionBody = z.object({ name: z.string().min(1) });
 async function assertSuiteAccess(db: Awaited<ReturnType<typeof getDb>>, suiteId: string, userId: string) {
   const [s] = await db.select().from(suites).where(eq(suites.id, suiteId)).limit(1);
   if (!s) return false;
-  const [p] = await db.select().from(projects).where(eq(projects.id, s.projectId)).limit(1);
-  return !!p && p.userId === userId;
+  return assertProjectAccess(db, s.projectId, userId);
 }
 
 export default async function sectionRoutes(app: FastifyInstance) {

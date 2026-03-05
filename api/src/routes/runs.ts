@@ -9,15 +9,22 @@ import {
   runs,
   tests,
   results,
+  runConfigs,
+  testPlans,
+  milestones,
 } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsSuiteId = z.object({ suiteId: z.string().uuid() });
 const createRunBody = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
+  planId: z.string().uuid().optional(),
+  milestoneId: z.string().uuid().optional(),
+  configOptionIds: z.array(z.string().uuid()).optional(),
 });
 const updateRunBody = z.object({
   name: z.string().min(1).optional(),
@@ -28,8 +35,7 @@ const updateRunBody = z.object({
 async function assertSuiteAccess(db: Awaited<ReturnType<typeof getDb>>, suiteId: string, userId: string) {
   const [s] = await db.select().from(suites).where(eq(suites.id, suiteId)).limit(1);
   if (!s) return false;
-  const [p] = await db.select().from(projects).where(eq(projects.id, s.projectId)).limit(1);
-  return !!p && p.userId === userId;
+  return assertProjectAccess(db, s.projectId, userId);
 }
 
 async function assertRunAccess(db: Awaited<ReturnType<typeof getDb>>, runId: string, userId: string) {
@@ -37,8 +43,7 @@ async function assertRunAccess(db: Awaited<ReturnType<typeof getDb>>, runId: str
   if (!r) return false;
   const [s] = await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1);
   if (!s) return false;
-  const [p] = await db.select().from(projects).where(eq(projects.id, s.projectId)).limit(1);
-  return !!p && p.userId === userId;
+  return assertProjectAccess(db, s.projectId, userId);
 }
 
 /** Collect all section IDs in suite (flat; includes children recursively via parent_id) */
@@ -72,16 +77,33 @@ export default async function runRoutes(app: FastifyInstance) {
     if (!(await assertSuiteAccess(db, paramsResult.data.suiteId, payload.sub))) {
       return replyError(reply, 404, "Suite not found", "NOT_FOUND");
     }
+    const [suite] = await db.select().from(suites).where(eq(suites.id, paramsResult.data.suiteId)).limit(1);
+    if (!suite) return replyError(reply, 404, "Suite not found", "NOT_FOUND");
+    if (bodyResult.data.planId) {
+      const [plan] = await db.select().from(testPlans).where(eq(testPlans.id, bodyResult.data.planId)).limit(1);
+      if (!plan || plan.projectId !== suite.projectId) return replyError(reply, 400, "Plan not found or wrong project", "VALIDATION_ERROR");
+    }
+    if (bodyResult.data.milestoneId) {
+      const [m] = await db.select().from(milestones).where(eq(milestones.id, bodyResult.data.milestoneId)).limit(1);
+      if (!m || m.projectId !== suite.projectId) return replyError(reply, 400, "Milestone not found or wrong project", "VALIDATION_ERROR");
+    }
     const caseIds = await caseIdsInSuite(db, paramsResult.data.suiteId);
     const [run] = await db
       .insert(runs)
       .values({
         suiteId: paramsResult.data.suiteId,
+        planId: bodyResult.data.planId ?? null,
+        milestoneId: bodyResult.data.milestoneId ?? null,
         name: bodyResult.data.name,
         description: bodyResult.data.description ?? null,
         createdBy: payload.sub,
       })
       .returning();
+    if (bodyResult.data.configOptionIds && bodyResult.data.configOptionIds.length > 0) {
+      await db.insert(runConfigs).values(
+        bodyResult.data.configOptionIds.map((configOptionId) => ({ runId: run.id, configOptionId }))
+      );
+    }
     if (caseIds.length > 0) {
       await db.insert(tests).values(
         caseIds.map((testCaseId) => ({

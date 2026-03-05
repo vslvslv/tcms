@@ -30,17 +30,38 @@ export type Project = { id: string; name: string; description: string | null; us
 export type Suite = { id: string; projectId: string; name: string; description: string | null; createdAt: string; updatedAt: string };
 export type Section = { id: string; suiteId: string; parentId: string | null; name: string; createdAt: string; updatedAt: string };
 export type TestStep = { id: string; testCaseId: string; content: string; expected: string | null; sortOrder: number };
-export type TestCase = { id: string; sectionId: string; title: string; prerequisite: string | null; sortOrder: number; steps?: TestStep[] };
+export type TestCase = {
+  id: string;
+  sectionId: string;
+  title: string;
+  prerequisite: string | null;
+  sortOrder: number;
+  caseTypeId?: string | null;
+  priorityId?: string | null;
+  steps?: TestStep[];
+  customFields?: { caseFieldId: string; value: string }[];
+};
 export type Run = {
   id: string;
   suiteId: string;
   name: string;
   description: string | null;
+  planId?: string | null;
+  milestoneId?: string | null;
   createdBy: string;
   isCompleted: boolean;
   tests?: RunTest[];
   summary?: { passed: number; failed: number; blocked: number; skipped: number; untested: number };
 };
+export type Milestone = { id: string; projectId: string; name: string; description: string | null; dueDate: string | null; createdAt: string; updatedAt: string };
+export type TestPlan = { id: string; projectId: string; milestoneId: string | null; name: string; description: string | null; createdBy: string; createdAt: string; updatedAt: string };
+export type CaseType = { id: string; projectId: string | null; name: string; sortOrder: number };
+export type Priority = { id: string; projectId: string | null; name: string; sortOrder: number };
+export type ConfigGroup = { id: string; projectId: string; name: string; options?: ConfigOption[] };
+export type ConfigOption = { id: string; configGroupId: string; name: string };
+export type CaseFieldDefinition = { id: string; projectId: string | null; name: string; fieldType: string; options: string[] | null; sortOrder: number };
+export type Role = { id: string; name: string };
+export type ProjectMember = { id: string; userId: string; projectId: string; roleId: string; user?: User; role?: Role };
 export type RunTest = {
   id: string;
   runId: string;
