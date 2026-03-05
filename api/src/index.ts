@@ -14,7 +14,7 @@ import resultRoutes from "./routes/results.js";
 const app = Fastify({ logger: true });
 
 await app.register(cors, {
-  origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+  origin: process.env.CORS_ORIGIN ?? "http://localhost:5001",
 });
 
 await app.register(jwt, {
@@ -48,7 +48,7 @@ app.get("/health", async () => {
   }
 });
 
-const port = Number(process.env.PORT ?? 3000);
+const port = Number(process.env.PORT ?? 3001);
 const host = process.env.HOST ?? "0.0.0.0";
 
 try {

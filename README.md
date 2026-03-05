@@ -11,7 +11,7 @@ See **[docs/setup.md](docs/setup.md)** for database setup, env vars, and running
 cd api && npm install && npm run db:migrate && npm run db:seed && npm run dev
 cd web && npm install && npm run dev
 ```
-Then open http://localhost:5173 and log in as `admin@tcms.local` / `password123`, or register a new user.
+Then open http://localhost:5001 and log in as `admin@tcms.local` / `password123`, or register a new user.
 
 ## Project docs
 
