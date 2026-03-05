@@ -1,9 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
-import { projects, suites } from "../db/schema.js";
+import { suites } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
@@ -16,12 +17,6 @@ const updateSuiteBody = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
 });
-
-async function assertProjectAccess(db: Awaited<ReturnType<typeof getDb>>, projectId: string, userId: string) {
-  const [p] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-  if (!p || p.userId !== userId) return false;
-  return true;
-}
 
 async function assertSuiteAccess(db: Awaited<ReturnType<typeof getDb>>, suiteId: string, userId: string) {
   const [s] = await db.select().from(suites).where(eq(suites.id, suiteId)).limit(1);

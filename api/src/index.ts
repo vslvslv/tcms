@@ -10,6 +10,13 @@ import sectionRoutes from "./routes/sections.js";
 import caseRoutes from "./routes/cases.js";
 import runRoutes from "./routes/runs.js";
 import resultRoutes from "./routes/results.js";
+import milestoneRoutes from "./routes/milestones.js";
+import planRoutes from "./routes/plans.js";
+import caseTypeRoutes from "./routes/caseTypes.js";
+import priorityRoutes from "./routes/priorities.js";
+import configRoutes from "./routes/configs.js";
+import caseFieldRoutes from "./routes/caseFields.js";
+import projectMemberRoutes from "./routes/projectMembers.js";
 
 const app = Fastify({ logger: true });
 
@@ -36,6 +43,13 @@ await app.register(sectionRoutes);
 await app.register(caseRoutes);
 await app.register(runRoutes);
 await app.register(resultRoutes);
+await app.register(milestoneRoutes);
+await app.register(planRoutes);
+await app.register(caseTypeRoutes);
+await app.register(priorityRoutes);
+await app.register(configRoutes);
+await app.register(caseFieldRoutes);
+await app.register(projectMemberRoutes);
 
 app.get("/health", async () => {
   try {

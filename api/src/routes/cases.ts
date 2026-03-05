@@ -1,9 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
-import { projects, suites, sections, testCases, testSteps } from "../db/schema.js";
+import { projects, suites, sections, testCases, testSteps, caseFieldValues } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsSectionId = z.object({ sectionId: z.string().uuid() });
@@ -12,17 +13,24 @@ const stepSchema = z.object({
   expected: z.string().optional(),
   sortOrder: z.number().int().min(0).optional(),
 });
+const customFieldSchema = z.object({ caseFieldId: z.string().uuid(), value: z.string() });
 const createCaseBody = z.object({
   title: z.string().min(1),
   prerequisite: z.string().optional(),
   sortOrder: z.number().int().min(0).optional(),
+  caseTypeId: z.string().uuid().optional().nullable(),
+  priorityId: z.string().uuid().optional().nullable(),
   steps: z.array(stepSchema).optional(),
+  customFields: z.array(customFieldSchema).optional(),
 });
 const updateCaseBody = z.object({
   title: z.string().min(1).optional(),
   prerequisite: z.string().optional(),
   sortOrder: z.number().int().min(0).optional(),
+  caseTypeId: z.string().uuid().optional().nullable(),
+  priorityId: z.string().uuid().optional().nullable(),
   steps: z.array(stepSchema).optional(),
+  customFields: z.array(customFieldSchema).optional(),
 });
 
 async function assertSectionAccess(db: Awaited<ReturnType<typeof getDb>>, sectionId: string, userId: string) {
@@ -30,8 +38,7 @@ async function assertSectionAccess(db: Awaited<ReturnType<typeof getDb>>, sectio
   if (!sec) return false;
   const [s] = await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1);
   if (!s) return false;
-  const [p] = await db.select().from(projects).where(eq(projects.id, s.projectId)).limit(1);
-  return !!p && p.userId === userId;
+  return assertProjectAccess(db, s.projectId, userId);
 }
 
 async function assertCaseAccess(db: Awaited<ReturnType<typeof getDb>>, caseId: string, userId: string) {
@@ -66,9 +73,16 @@ export default async function caseRoutes(app: FastifyInstance) {
       if (!stepsByCase.has(step.testCaseId)) stepsByCase.set(step.testCaseId, []);
       stepsByCase.get(step.testCaseId)!.push(step);
     }
+    const cfValuesList = caseIds.length === 0 ? [] : await db.select().from(caseFieldValues).where(inArray(caseFieldValues.testCaseId, caseIds));
+    const cfByCase = new Map<string, { caseFieldId: string; value: string }[]>();
+    for (const v of cfValuesList) {
+      if (!cfByCase.has(v.testCaseId)) cfByCase.set(v.testCaseId, []);
+      cfByCase.get(v.testCaseId)!.push({ caseFieldId: v.caseFieldId, value: v.value });
+    }
     const result = casesList.map((c) => ({
       ...c,
       steps: (stepsByCase.get(c.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
+      customFields: cfByCase.get(c.id) ?? [],
     }));
     return reply.send(result);
   });
@@ -90,6 +104,8 @@ export default async function caseRoutes(app: FastifyInstance) {
         sectionId: paramsResult.data.sectionId,
         title: bodyResult.data.title,
         prerequisite: bodyResult.data.prerequisite ?? null,
+        caseTypeId: bodyResult.data.caseTypeId ?? null,
+        priorityId: bodyResult.data.priorityId ?? null,
         sortOrder: bodyResult.data.sortOrder ?? 0,
       })
       .returning();
@@ -103,11 +119,25 @@ export default async function caseRoutes(app: FastifyInstance) {
         }))
       );
     }
+    if (bodyResult.data.customFields && bodyResult.data.customFields.length > 0) {
+      await db.insert(caseFieldValues).values(
+        bodyResult.data.customFields.map((f) => ({
+          testCaseId: inserted.id,
+          caseFieldId: f.caseFieldId,
+          value: f.value,
+        }))
+      );
+    }
     const steps = await db
       .select()
       .from(testSteps)
       .where(eq(testSteps.testCaseId, inserted.id));
-    return reply.status(201).send({ ...inserted, steps: steps.sort((a, b) => a.sortOrder - b.sortOrder) });
+    const cfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, inserted.id));
+    return reply.status(201).send({
+      ...inserted,
+      steps: steps.sort((a, b) => a.sortOrder - b.sortOrder),
+      customFields: cfValues.map((v) => ({ caseFieldId: v.caseFieldId, value: v.value })),
+    });
   });
 
   app.get("/api/cases/:id", async (req: FastifyRequest, reply: FastifyReply) => {
@@ -125,7 +155,12 @@ export default async function caseRoutes(app: FastifyInstance) {
       .select()
       .from(testSteps)
       .where(eq(testSteps.testCaseId, parsed.data.id));
-    return reply.send({ ...c, steps: steps.sort((a, b) => a.sortOrder - b.sortOrder) });
+    const cfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, parsed.data.id));
+    return reply.send({
+      ...c,
+      steps: steps.sort((a, b) => a.sortOrder - b.sortOrder),
+      customFields: cfValues.map((v) => ({ caseFieldId: v.caseFieldId, value: v.value })),
+    });
   });
 
   app.patch("/api/cases/:id", async (req: FastifyRequest, reply: FastifyReply) => {
@@ -145,6 +180,8 @@ export default async function caseRoutes(app: FastifyInstance) {
     if (bodyResult.data.title !== undefined) updatePayload.title = bodyResult.data.title;
     if (bodyResult.data.prerequisite !== undefined) updatePayload.prerequisite = bodyResult.data.prerequisite;
     if (bodyResult.data.sortOrder !== undefined) updatePayload.sortOrder = bodyResult.data.sortOrder;
+    if (bodyResult.data.caseTypeId !== undefined) updatePayload.caseTypeId = bodyResult.data.caseTypeId;
+    if (bodyResult.data.priorityId !== undefined) updatePayload.priorityId = bodyResult.data.priorityId;
     await db.update(testCases).set(updatePayload).where(eq(testCases.id, paramsResult.data.id));
     if (bodyResult.data.steps !== undefined) {
       await db.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
@@ -159,12 +196,29 @@ export default async function caseRoutes(app: FastifyInstance) {
         );
       }
     }
+    if (bodyResult.data.customFields !== undefined) {
+      await db.delete(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
+      if (bodyResult.data.customFields.length > 0) {
+        await db.insert(caseFieldValues).values(
+          bodyResult.data.customFields.map((f) => ({
+            testCaseId: paramsResult.data.id,
+            caseFieldId: f.caseFieldId,
+            value: f.value,
+          }))
+        );
+      }
+    }
     const [c] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
     const steps = await db
       .select()
       .from(testSteps)
       .where(eq(testSteps.testCaseId, paramsResult.data.id));
-    return reply.send({ ...c, steps: steps.sort((a, b) => a.sortOrder - b.sortOrder) });
+    const cfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
+    return reply.send({
+      ...c,
+      steps: steps.sort((a, b) => a.sortOrder - b.sortOrder),
+      customFields: cfValues.map((v) => ({ caseFieldId: v.caseFieldId, value: v.value })),
+    });
   });
 
   app.delete("/api/cases/:id", async (req: FastifyRequest, reply: FastifyReply) => {
