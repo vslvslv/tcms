@@ -35,7 +35,7 @@ npm run db:seed
 npm run dev
 ```
 
-API runs at http://localhost:3000. Health: http://localhost:3000/health.
+API runs at http://localhost:3001. Health: http://localhost:3001/health.
 
 **Seeded user:** `admin@tcms.local` / `password123`
 
@@ -44,13 +44,13 @@ API runs at http://localhost:3000. Health: http://localhost:3000/health.
 ```bash
 cd web
 cp .env.example .env
-# Set VITE_API_URL=http://localhost:3000 if needed
+# Set VITE_API_URL=http://localhost:3001 if needed
 
 npm install
 npm run dev
 ```
 
-Web runs at http://localhost:5173.
+Web runs at http://localhost:5001.
 
 ## Env reference
 
@@ -58,6 +58,6 @@ Web runs at http://localhost:5173.
 |----------------|-------|-------------|
 | DATABASE_URL   | api   | PostgreSQL connection string |
 | JWT_SECRET     | api   | Secret for signing JWTs |
-| PORT           | api   | API port (default 3000) |
-| CORS_ORIGIN    | api   | Allowed origin for CORS (default http://localhost:5173) |
-| VITE_API_URL   | web   | API base URL for fetch (default http://localhost:3000) |
+| PORT           | api   | API port (default 3001) |
+| CORS_ORIGIN    | api   | Allowed origin for CORS (default http://localhost:5001) |
+| VITE_API_URL   | web   | API base URL for fetch (default http://localhost:3001) |

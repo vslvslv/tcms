@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const baseUrl = import.meta.env.VITE_API_URL ?? "http://localhost:3001";
 
 export function getToken(): string | null {
   return localStorage.getItem("tcms_token");
