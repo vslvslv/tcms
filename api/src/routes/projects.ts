@@ -4,7 +4,7 @@ import { getDb } from "../db/index.js";
 import { projects, projectMembers } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
-import { assertProjectAccess } from "../lib/projectAccess.js";
+import { assertProjectAccess, assertProjectRole, getProjectRole } from "../lib/projectAccess.js";
 
 const createBody = z.object({
   name: z.string().min(1),
@@ -32,6 +32,17 @@ export default async function projectRoutes(app: FastifyInstance) {
     const memberProjectIds = memberRows.map((r) => r.projectId).filter((id) => !owned.some((p) => p.id === id));
     const memberProjects = memberProjectIds.length === 0 ? [] : await db.select().from(projects).where(inArray(projects.id, memberProjectIds));
     return reply.send([...owned, ...memberProjects]);
+  });
+
+  app.get("/api/projects/:id/my-role", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    const role = await getProjectRole(db, parsed.data.id, payload.sub);
+    if (!role) return replyError(reply, 404, "Project not found", "NOT_FOUND");
+    return reply.send({ role });
   });
 
   app.post("/api/projects", async (req: FastifyRequest, reply: FastifyReply) => {
@@ -124,6 +135,9 @@ export default async function projectRoutes(app: FastifyInstance) {
     if (!existing) return replyError(reply, 404, "Project not found", "NOT_FOUND");
     if (!(await assertProjectAccess(db, existing.id, payload.sub))) {
       return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+    if (!(await assertProjectRole(db, existing.id, payload.sub, ["admin", "lead"]))) {
+      return replyError(reply, 403, "Only admin or lead can delete project", "FORBIDDEN");
     }
     await db.delete(projects).where(eq(projects.id, parsed.data.id));
     return reply.status(204).send();

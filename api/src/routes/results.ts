@@ -4,6 +4,8 @@ import { getDb } from "../db/index.js";
 import { projects, suites, runs, tests, results } from "../db/schema.js";
 import { eq, desc } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
+import { writeAuditLog } from "../lib/auditLog.js";
+import { dispatchWebhooks } from "../lib/webhooks.js";
 
 const paramsTestId = z.object({ id: z.string().uuid() });
 const paramsResultId = z.object({ id: z.string().uuid() });
@@ -90,6 +92,19 @@ export default async function resultRoutes(app: FastifyInstance) {
         createdBy: payload.sub,
       })
       .returning();
+    const [t] = await db.select().from(tests).where(eq(tests.id, paramsResult.data.id)).limit(1);
+    const [r] = t ? await db.select().from(runs).where(eq(runs.id, t.runId)).limit(1) : [null];
+    const [s] = r ? await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1) : [null];
+    await writeAuditLog(db, payload.sub, "result.created", "result", result.id, s?.projectId ?? null);
+    if (s?.projectId) {
+      dispatchWebhooks(s.projectId, "result.created", {
+        event: "result.created",
+        entityType: "result",
+        entityId: result.id,
+        projectId: s.projectId,
+        timestamp: new Date().toISOString(),
+      }).catch(() => {});
+    }
     return reply.status(201).send(result);
   });
 
@@ -113,6 +128,11 @@ export default async function resultRoutes(app: FastifyInstance) {
       .set(setPayload)
       .where(eq(results.id, paramsResult.data.id))
       .returning();
+    const [res] = await db.select().from(results).where(eq(results.id, paramsResult.data.id)).limit(1);
+    const [t] = res ? await db.select().from(tests).where(eq(tests.id, res.testId)).limit(1) : [null];
+    const [r] = t ? await db.select().from(runs).where(eq(runs.id, t.runId)).limit(1) : [null];
+    const [s] = r ? await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1) : [null];
+    await writeAuditLog(db, payload.sub, "result.updated", "result", paramsResult.data.id, s?.projectId ?? null);
     return reply.send(updated);
   });
 }

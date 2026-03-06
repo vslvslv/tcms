@@ -16,7 +16,9 @@ import {
 } from "../db/schema.js";
 import { eq, inArray, desc } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
-import { assertProjectAccess } from "../lib/projectAccess.js";
+import { assertProjectAccess, assertProjectRole } from "../lib/projectAccess.js";
+import { writeAuditLog } from "../lib/auditLog.js";
+import { dispatchWebhooks } from "../lib/webhooks.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsSuiteId = z.object({ suiteId: z.string().uuid() });
@@ -153,6 +155,14 @@ export default async function runRoutes(app: FastifyInstance) {
       latestResult: null as { status: string; comment: string | null; elapsedSeconds: number | null; createdAt: Date } | null,
     }));
     const summary = { passed: 0, failed: 0, blocked: 0, skipped: 0, untested: testList.length };
+    await writeAuditLog(db, payload.sub, "run.created", "run", run.id, suite.projectId);
+    dispatchWebhooks(suite.projectId, "run.created", {
+      event: "run.created",
+      entityType: "run",
+      entityId: run.id,
+      projectId: suite.projectId,
+      timestamp: new Date().toISOString(),
+    }).catch(() => {});
     return reply.status(201).send({
       ...run,
       tests: testList,
@@ -241,6 +251,18 @@ export default async function runRoutes(app: FastifyInstance) {
       .set(setPayload)
       .where(eq(runs.id, paramsResult.data.id))
       .returning();
+    const [runRow] = await db.select().from(runs).where(eq(runs.id, paramsResult.data.id)).limit(1);
+    const [s] = runRow ? await db.select().from(suites).where(eq(suites.id, runRow.suiteId)).limit(1) : [null];
+    await writeAuditLog(db, payload.sub, "run.updated", "run", paramsResult.data.id, s?.projectId ?? null);
+    if (bodyResult.data.isCompleted === true && s?.projectId) {
+      dispatchWebhooks(s.projectId, "run.completed", {
+        event: "run.completed",
+        entityType: "run",
+        entityId: paramsResult.data.id,
+        projectId: s.projectId,
+        timestamp: new Date().toISOString(),
+      }).catch(() => {});
+    }
     return reply.send(updated);
   });
 
@@ -253,7 +275,13 @@ export default async function runRoutes(app: FastifyInstance) {
     if (!(await assertRunAccess(db, paramsResult.data.id, payload.sub))) {
       return replyError(reply, 404, "Run not found", "NOT_FOUND");
     }
+    const [runRow] = await db.select().from(runs).where(eq(runs.id, paramsResult.data.id)).limit(1);
+    const [s] = runRow ? await db.select().from(suites).where(eq(suites.id, runRow.suiteId)).limit(1) : [null];
+    if (s && !(await assertProjectRole(db, s.projectId, payload.sub, ["admin", "lead"]))) {
+      return replyError(reply, 403, "Only admin or lead can delete run", "FORBIDDEN");
+    }
     await db.delete(runs).where(eq(runs.id, paramsResult.data.id));
+    await writeAuditLog(db, payload.sub, "run.deleted", "run", paramsResult.data.id, s?.projectId ?? null);
     return reply.status(204).send();
   });
 }

@@ -4,6 +4,8 @@ import { getDb } from "../db/index.js";
 import { projects, projectMembers, users, roles } from "../db/schema.js";
 import { eq, and, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
+import { writeAuditLog } from "../lib/auditLog.js";
+import { assertProjectRole } from "../lib/projectAccess.js";
 
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
 const paramsId = z.object({ id: z.string().uuid() });
@@ -39,7 +41,9 @@ export default async function projectMemberRoutes(app: FastifyInstance) {
     const db = await getDb();
     const [p] = await db.select().from(projects).where(eq(projects.id, parsed.data.projectId)).limit(1);
     if (!p) return replyError(reply, 404, "Project not found", "NOT_FOUND");
-    if (p.userId !== payload.sub) return replyError(reply, 403, "Only project owner can list members", "FORBIDDEN");
+    if (!(await assertProjectRole(db, parsed.data.projectId, payload.sub, ["admin", "lead"]))) {
+      return replyError(reply, 403, "Only admin or lead can list members", "FORBIDDEN");
+    }
     const members = await db.select().from(projectMembers).where(eq(projectMembers.projectId, parsed.data.projectId));
     const userIds = [...new Set(members.map((m) => m.userId))];
     const roleIds = [...new Set(members.map((m) => m.roleId))];
@@ -69,7 +73,9 @@ export default async function projectMemberRoutes(app: FastifyInstance) {
     const db = await getDb();
     const [p] = await db.select().from(projects).where(eq(projects.id, paramsResult.data.projectId)).limit(1);
     if (!p) return replyError(reply, 404, "Project not found", "NOT_FOUND");
-    if (p.userId !== payload.sub) return replyError(reply, 403, "Only project owner can add members", "FORBIDDEN");
+    if (!(await assertProjectRole(db, paramsResult.data.projectId, payload.sub, ["admin", "lead"]))) {
+      return replyError(reply, 403, "Only admin or lead can add members", "FORBIDDEN");
+    }
     const [existing] = await db
       .select()
       .from(projectMembers)
@@ -84,6 +90,7 @@ export default async function projectMemberRoutes(app: FastifyInstance) {
         roleId: bodyResult.data.roleId,
       })
       .returning();
+    await writeAuditLog(db, payload.sub, "member.added", "member", member.id, paramsResult.data.projectId);
     return reply.status(201).send(member);
   });
 
@@ -96,7 +103,10 @@ export default async function projectMemberRoutes(app: FastifyInstance) {
     const db = await getDb();
     const [p] = await db.select().from(projects).where(eq(projects.id, paramsResult.data.projectId)).limit(1);
     if (!p) return replyError(reply, 404, "Project not found", "NOT_FOUND");
-    if (p.userId !== payload.sub) return replyError(reply, 403, "Only project owner can remove members", "FORBIDDEN");
+    if (!(await assertProjectRole(db, paramsResult.data.projectId, payload.sub, ["admin", "lead"]))) {
+      return replyError(reply, 403, "Only admin or lead can remove members", "FORBIDDEN");
+    }
+    await writeAuditLog(db, payload.sub, "member.removed", "member", paramsResult.data.userId, paramsResult.data.projectId);
     await db
       .delete(projectMembers)
       .where(and(eq(projectMembers.projectId, paramsResult.data.projectId), eq(projectMembers.userId, paramsResult.data.userId)));

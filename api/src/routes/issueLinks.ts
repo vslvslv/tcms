@@ -5,6 +5,7 @@ import { issueLinks, testCases, sections, suites, results, tests, runs } from ".
 import { eq, and } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsCaseId = z.object({ id: z.string().uuid() });
@@ -78,6 +79,10 @@ export default async function issueLinkRoutes(app: FastifyInstance) {
         createdBy: payload.sub,
       })
       .returning();
+    const [c] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+    const [sec] = c ? await db.select().from(sections).where(eq(sections.id, c.sectionId)).limit(1) : [null];
+    const [s] = sec ? await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1) : [null];
+    await writeAuditLog(db, payload.sub, "issue_link.added", "issue_link", row.id, s?.projectId ?? null);
     return reply.status(201).send(row);
   });
 
@@ -119,6 +124,11 @@ export default async function issueLinkRoutes(app: FastifyInstance) {
         createdBy: payload.sub,
       })
       .returning();
+    const [res] = await db.select().from(results).where(eq(results.id, paramsResult.data.id)).limit(1);
+    const [t] = res ? await db.select().from(tests).where(eq(tests.id, res.testId)).limit(1) : [null];
+    const [r] = t ? await db.select().from(runs).where(eq(runs.id, t.runId)).limit(1) : [null];
+    const [s] = r ? await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1) : [null];
+    await writeAuditLog(db, payload.sub, "issue_link.added", "issue_link", row.id, s?.projectId ?? null);
     return reply.status(201).send(row);
   });
 
@@ -135,7 +145,21 @@ export default async function issueLinkRoutes(app: FastifyInstance) {
         ? await assertCaseAccessForIssue(db, link.entityId, payload.sub)
         : await assertResultAccessForIssue(db, link.entityId, payload.sub);
     if (!allowed) return replyError(reply, 404, "Issue link not found", "NOT_FOUND");
+    let projectId: string | null = null;
+    if (link.entityType === "case") {
+      const [c] = await db.select().from(testCases).where(eq(testCases.id, link.entityId)).limit(1);
+      const [sec] = c ? await db.select().from(sections).where(eq(sections.id, c.sectionId)).limit(1) : [null];
+      const [s] = sec ? await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1) : [null];
+      projectId = s?.projectId ?? null;
+    } else {
+      const [res] = await db.select().from(results).where(eq(results.id, link.entityId)).limit(1);
+      const [t] = res ? await db.select().from(tests).where(eq(tests.id, res.testId)).limit(1) : [null];
+      const [r] = t ? await db.select().from(runs).where(eq(runs.id, t.runId)).limit(1) : [null];
+      const [s] = r ? await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1) : [null];
+      projectId = s?.projectId ?? null;
+    }
     await db.delete(issueLinks).where(eq(issueLinks.id, parsed.data.id));
+    await writeAuditLog(db, payload.sub, "issue_link.removed", "issue_link", parsed.data.id, projectId);
     return reply.status(204).send();
   });
 }

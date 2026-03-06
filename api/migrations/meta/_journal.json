@@ -50,6 +50,41 @@
       "when": 1772748114812,
       "tag": "0006_mighty_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1772750000000,
+      "tag": "0007_audit_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1772750100000,
+      "tag": "0008_case_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1772750200000,
+      "tag": "0009_requirement_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1772750300000,
+      "tag": "0010_webhooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1772750400000,
+      "tag": "0011_share_tokens",
+      "breakpoints": true
     }
   ]
 }

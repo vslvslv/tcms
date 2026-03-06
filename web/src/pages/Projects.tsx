@@ -48,7 +48,10 @@ export default function Projects() {
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: 16 }}>
       <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1>TCMS — Projects</h1>
+        <h1 style={{ margin: 0 }}>
+          <Link to="/dashboard" style={{ marginRight: 16 }}>Dashboard</Link>
+          TCMS — Projects
+        </h1>
         <div>
           {user?.name} <button type="button" onClick={logout}>Log out</button>
         </div>

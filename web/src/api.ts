@@ -46,6 +46,9 @@ export type TestCase = {
   sortOrder: number;
   caseTypeId?: string | null;
   priorityId?: string | null;
+  status?: "draft" | "ready" | "approved";
+  approvedById?: string | null;
+  approvedAt?: string | null;
   steps?: TestStep[];
   customFields?: { caseFieldId: string; value: string }[];
 };
@@ -81,6 +84,23 @@ export type CaseTemplate = {
 };
 
 export type IssueLink = { id: string; entityType: string; entityId: string; url: string; title: string | null; externalId: string | null; createdBy: string; createdAt: string };
+
+export type RequirementLink = { id: string; projectId: string; caseId: string; requirementRef: string; title: string | null; createdAt: string };
+
+export type RequirementsCoverageItem = { requirementRef: string; title: string | null; caseCount: number; caseIds: string[] };
+
+export type Webhook = { id: string; projectId: string; url: string; events: string[]; isActive: boolean; createdAt: string };
+
+export type AuditLogEntry = {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  projectId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
 
 export type CaseVersion = {
   id: string;

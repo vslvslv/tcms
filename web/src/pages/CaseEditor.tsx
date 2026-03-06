@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
-import { api, type TestCase, type TestStep, type CaseType, type Priority, type CaseFieldDefinition, type SharedStep, type CaseVersion, type CaseTemplate, type IssueLink, type Dataset, type Suite, type Section } from "../api";
+import { api, type TestCase, type TestStep, type CaseType, type Priority, type CaseFieldDefinition, type SharedStep, type CaseVersion, type CaseTemplate, type IssueLink, type RequirementLink, type Dataset, type Suite, type Section } from "../api";
 
 type StepRow = { content: string; expected: string; sharedStepId?: string };
 
@@ -23,10 +23,15 @@ export default function CaseEditor() {
   const [issueLinksList, setIssueLinksList] = useState<IssueLink[]>([]);
   const [newIssueUrl, setNewIssueUrl] = useState("");
   const [newIssueTitle, setNewIssueTitle] = useState("");
+  const [requirementLinksList, setRequirementLinksList] = useState<RequirementLink[]>([]);
+  const [newRequirementRef, setNewRequirementRef] = useState("");
+  const [newRequirementTitle, setNewRequirementTitle] = useState("");
   const [title, setTitle] = useState("");
   const [prerequisite, setPrerequisite] = useState("");
   const [caseTypeId, setCaseTypeId] = useState("");
   const [priorityId, setPriorityId] = useState("");
+  const [status, setStatus] = useState<"draft" | "ready" | "approved">("draft");
+  const [myRole, setMyRole] = useState<string | null>(null);
   const [customValues, setCustomValues] = useState<Record<string, string>>({});
   const [steps, setSteps] = useState<StepRow[]>([{ content: "", expected: "" }]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +48,7 @@ export default function CaseEditor() {
         setPrerequisite(c.prerequisite ?? "");
         setCaseTypeId(c.caseTypeId ?? "");
         setPriorityId(c.priorityId ?? "");
+        setStatus((c as TestCase).status ?? "draft");
         setDatasetId((c as { datasetId?: string | null }).datasetId ?? "");
         setSteps(
           c.steps && c.steps.length > 0
@@ -56,6 +62,7 @@ export default function CaseEditor() {
         setCustomValues(byField);
         api<CaseVersion[]>(`/api/cases/${c.id}/versions`).then((v) => setVersions(v)).catch(() => setVersions([]));
         api<IssueLink[]>(`/api/cases/${c.id}/issue-links`).then(setIssueLinksList).catch(() => setIssueLinksList([]));
+        api<RequirementLink[]>(`/api/cases/${c.id}/requirement-links`).then(setRequirementLinksList).catch(() => setRequirementLinksList([]));
         const sec = await api<Section>(`/api/sections/${c.sectionId}`);
         if (cancelled) return;
         const suite = await api<Suite>(`/api/suites/${sec.suiteId}`);
@@ -90,6 +97,7 @@ export default function CaseEditor() {
           if (!caseId && !sectionId) setLoading(false);
           return;
         }
+        api<{ role: string }>(`/api/projects/${pid}/my-role`).then((r) => { if (!cancelled) setMyRole(r.role); }).catch(() => { if (!cancelled) setMyRole(null); });
         return Promise.all([
           api<CaseType[]>(`/api/projects/${pid}/case-types`),
           api<Priority[]>(`/api/projects/${pid}/priorities`),
@@ -132,6 +140,7 @@ export default function CaseEditor() {
         prerequisite: prerequisite || undefined,
         caseTypeId: caseTypeId || null,
         priorityId: priorityId || null,
+        status,
         datasetId: datasetId || null,
         customFields: customFieldsPayload.length > 0 ? customFieldsPayload : undefined,
       };
@@ -228,6 +237,35 @@ export default function CaseEditor() {
     }
   }
 
+  async function addRequirementLink(e: React.FormEvent) {
+    e.preventDefault();
+    if (!caseId || !newRequirementRef.trim()) return;
+    try {
+      await api<RequirementLink>(`/api/cases/${caseId}/requirement-links`, {
+        method: "POST",
+        body: JSON.stringify({ requirementRef: newRequirementRef.trim(), title: newRequirementTitle.trim() || undefined }),
+      });
+      setNewRequirementRef("");
+      setNewRequirementTitle("");
+      const list = await api<RequirementLink[]>(`/api/cases/${caseId}/requirement-links`);
+      setRequirementLinksList(list);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add requirement link");
+    }
+  }
+
+  async function removeRequirementLink(linkId: string) {
+    try {
+      await api(`/api/requirement-links/${linkId}`, { method: "DELETE" });
+      if (caseId) {
+        const list = await api<RequirementLink[]>(`/api/cases/${caseId}/requirement-links`);
+        setRequirementLinksList(list);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove link");
+    }
+  }
+
   if (loading) return <p>Loading…</p>;
 
   return (
@@ -269,6 +307,16 @@ export default function CaseEditor() {
             </label>
           </div>
         )}
+        <div style={{ marginBottom: 12 }}>
+          <label>
+            Status{" "}
+            <select value={status} onChange={(e) => setStatus(e.target.value as "draft" | "ready" | "approved")}>
+              <option value="draft">Draft</option>
+              <option value="ready">Ready</option>
+              <option value="approved" disabled={myRole !== "admin" && myRole !== "lead"}>Approved (admin/lead only)</option>
+            </select>
+          </label>
+        </div>
         {datasetsList.length > 0 && (
           <div style={{ marginBottom: 12 }}>
             <label>
@@ -417,6 +465,25 @@ export default function CaseEditor() {
             <input value={newIssueUrl} onChange={(e) => setNewIssueUrl(e.target.value)} placeholder="URL" style={{ minWidth: 200 }} required />
             <input value={newIssueTitle} onChange={(e) => setNewIssueTitle(e.target.value)} placeholder="Title (optional)" />
             <button type="submit">Add link</button>
+          </form>
+        </section>
+      )}
+
+      {caseId && (
+        <section style={{ marginTop: 32, borderTop: "1px solid #ccc", paddingTop: 16 }}>
+          <h3>Requirements</h3>
+          <ul style={{ listStyle: "none", padding: 0 }}>
+            {requirementLinksList.map((l) => (
+              <li key={l.id} style={{ marginBottom: 4 }}>
+                {l.title ? `${l.requirementRef}: ${l.title}` : l.requirementRef}
+                <button type="button" style={{ marginLeft: 8 }} onClick={() => removeRequirementLink(l.id)}>Remove</button>
+              </li>
+            ))}
+          </ul>
+          <form onSubmit={addRequirementLink} style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+            <input value={newRequirementRef} onChange={(e) => setNewRequirementRef(e.target.value)} placeholder="Requirement ref (e.g. REQ-001)" style={{ minWidth: 160 }} required />
+            <input value={newRequirementTitle} onChange={(e) => setNewRequirementTitle(e.target.value)} placeholder="Title (optional)" />
+            <button type="submit">Add requirement</button>
           </form>
         </section>
       )}

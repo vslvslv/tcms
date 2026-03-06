@@ -5,6 +5,7 @@ import { milestones, runs, results, tests } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
@@ -55,6 +56,7 @@ export default async function milestoneRoutes(app: FastifyInstance) {
         dueDate: bodyResult.data.dueDate ?? null,
       })
       .returning();
+    await writeAuditLog(db, payload.sub, "milestone.created", "milestone", milestone.id, paramsResult.data.projectId);
     return reply.status(201).send(milestone);
   });
 
@@ -95,6 +97,7 @@ export default async function milestoneRoutes(app: FastifyInstance) {
       })
       .where(eq(milestones.id, paramsResult.data.id))
       .returning();
+    await writeAuditLog(db, payload.sub, "milestone.updated", "milestone", paramsResult.data.id, existing.projectId);
     return reply.send(updated);
   });
 
@@ -149,6 +152,7 @@ export default async function milestoneRoutes(app: FastifyInstance) {
       return replyError(reply, 404, "Milestone not found", "NOT_FOUND");
     }
     await db.delete(milestones).where(eq(milestones.id, parsed.data.id));
+    await writeAuditLog(db, payload.sub, "milestone.deleted", "milestone", parsed.data.id, existing.projectId);
     return reply.status(204).send();
   });
 }

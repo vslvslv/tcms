@@ -5,6 +5,7 @@ import { sharedSteps, testSteps } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
@@ -58,6 +59,7 @@ export default async function sharedStepRoutes(app: FastifyInstance) {
         sortOrder: bodyResult.data.sortOrder ?? 0,
       })
       .returning();
+    await writeAuditLog(db, payload.sub, "shared_step.created", "shared_step", row.id, paramsResult.data.projectId);
     return reply.status(201).send(row);
   });
 
@@ -107,6 +109,7 @@ export default async function sharedStepRoutes(app: FastifyInstance) {
         })
         .where(eq(testSteps.sharedStepId, paramsResult.data.id));
     }
+    await writeAuditLog(db, payload.sub, "shared_step.updated", "shared_step", paramsResult.data.id, existing.projectId);
     return reply.send(updated);
   });
 
@@ -123,6 +126,7 @@ export default async function sharedStepRoutes(app: FastifyInstance) {
     }
     await db.update(testSteps).set({ sharedStepId: null, content: existing.content, expected: existing.expected, updatedAt: new Date() }).where(eq(testSteps.sharedStepId, parsed.data.id));
     await db.delete(sharedSteps).where(eq(sharedSteps.id, parsed.data.id));
+    await writeAuditLog(db, payload.sub, "shared_step.deleted", "shared_step", parsed.data.id, existing.projectId);
     return reply.status(204).send();
   });
 }

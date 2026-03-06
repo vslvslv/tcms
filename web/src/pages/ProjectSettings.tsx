@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { useAuth } from "../AuthContext";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   api,
   type Project,
@@ -13,6 +12,9 @@ import {
   type Dataset,
   type Role,
   type User,
+  type RequirementsCoverageItem,
+  type Webhook,
+  type AuditLogEntry,
 } from "../api";
 
 type ProjectMemberWithDetails = {
@@ -26,7 +28,7 @@ type ProjectMemberWithDetails = {
 
 export default function ProjectSettings() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { user } = useAuth();
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [caseTypes, setCaseTypes] = useState<CaseType[]>([]);
   const [priorities, setPriorities] = useState<Priority[]>([]);
@@ -61,10 +63,19 @@ export default function ProjectSettings() {
   const [newDatasetName, setNewDatasetName] = useState("");
   const [newRowData, setNewRowData] = useState("");
   const [addingRowDatasetId, setAddingRowDatasetId] = useState<string | null>(null);
+  const [requirementsCoverage, setRequirementsCoverage] = useState<RequirementsCoverageItem[]>([]);
+  const [webhooksList, setWebhooksList] = useState<Webhook[]>([]);
+  const [newWebhookUrl, setNewWebhookUrl] = useState("");
+  const [newWebhookEvents, setNewWebhookEvents] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [myRole, setMyRole] = useState<string | null>(null);
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
 
   function load() {
     if (!projectId) return;
+    api<{ role: string }>(`/api/projects/${projectId}/my-role`)
+      .then((r) => setMyRole(r.role))
+      .catch(() => setMyRole(null));
     Promise.all([
       api<Project>(`/api/projects/${projectId}`),
       api<CaseType[]>(`/api/projects/${projectId}/case-types`),
@@ -76,8 +87,10 @@ export default function ProjectSettings() {
       api<Dataset[]>(`/api/projects/${projectId}/datasets`),
       api<Role[]>(`/api/roles`),
       api<User[]>(`/api/users`),
+      api<RequirementsCoverageItem[]>(`/api/projects/${projectId}/requirements/coverage`),
+      api<Webhook[]>(`/api/projects/${projectId}/webhooks`).catch(() => []),
     ])
-      .then(([p, ct, pr, cfg, cf, ss, tmpl, ds, r, u]) => {
+      .then(([p, ct, pr, cfg, cf, ss, tmpl, ds, r, u, cov, wh]) => {
         setProject(p);
         setCaseTypes(ct);
         setPriorities(pr);
@@ -88,11 +101,18 @@ export default function ProjectSettings() {
         setDatasetsList(ds);
         setRoles(r);
         setUsers(u);
+        setRequirementsCoverage(cov ?? []);
+        setWebhooksList(Array.isArray(wh) ? wh : []);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
       .finally(() => setLoading(false));
 
     api<ProjectMemberWithDetails[]>(`/api/projects/${projectId}/members`).then(setMembers).catch(() => setMembers([]));
+  }
+
+  function loadAuditLog() {
+    if (!projectId) return;
+    api<AuditLogEntry[]>(`/api/projects/${projectId}/audit-log?limit=50`).then(setAuditLog).catch(() => setAuditLog([]));
   }
 
   useEffect(() => {
@@ -376,7 +396,7 @@ export default function ProjectSettings() {
   if (error && !project) return <p style={{ color: "red" }}>{error}</p>;
   if (!project) return <p>Project not found</p>;
 
-  const isOwner = project.userId === user?.id;
+  const canManage = myRole === "admin" || myRole === "lead";
 
   return (
     <div style={{ maxWidth: 700, margin: "0 auto", padding: 16 }}>
@@ -475,6 +495,117 @@ export default function ProjectSettings() {
       </section>
 
       <section style={{ marginBottom: 32 }}>
+        <h3>Requirements coverage</h3>
+        <p style={{ fontSize: 12, color: "#666" }}>Requirement refs linked to cases (add links in case editor).</p>
+        {requirementsCoverage.length === 0 ? (
+          <p>No requirement links yet.</p>
+        ) : (
+          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>Requirement ref</th>
+                <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>Title</th>
+                <th style={{ textAlign: "right", borderBottom: "1px solid #ccc" }}>Cases</th>
+              </tr>
+            </thead>
+            <tbody>
+              {requirementsCoverage.map((row) => (
+                <tr key={row.requirementRef}>
+                  <td style={{ borderBottom: "1px solid #eee" }}>{row.requirementRef}</td>
+                  <td style={{ borderBottom: "1px solid #eee" }}>{row.title ?? "—"}</td>
+                  <td style={{ textAlign: "right", borderBottom: "1px solid #eee" }}>{row.caseCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      {canManage && (
+      <section style={{ marginBottom: 32 }}>
+        <h3>Audit log</h3>
+        <p style={{ fontSize: 12, color: "#666" }}>Recent activity in this project. Only admin/lead can view.</p>
+        <button type="button" onClick={loadAuditLog}>Load audit log</button>
+        {auditLog.length > 0 && (
+          <ul style={{ listStyle: "none", padding: 0, marginTop: 8, fontSize: 13 }}>
+            {auditLog.map((e) => (
+              <li key={e.id} style={{ borderBottom: "1px solid #eee", padding: "4px 0" }}>
+                <strong>{e.action}</strong> {e.entityType} {e.entityId} — {new Date(e.createdAt).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      )}
+
+      {canManage && (
+      <section style={{ marginBottom: 32 }}>
+        <h3>Webhooks</h3>
+        <p style={{ fontSize: 12, color: "#666" }}>POST to URL on events (case/run/result). Optional secret for X-Webhook-Signature (HMAC-SHA256).</p>
+        <ul style={{ listStyle: "none", padding: 0 }}>
+          {webhooksList.map((w) => (
+            <li key={w.id} style={{ marginBottom: 8, padding: 8, border: "1px solid #eee" }}>
+              <a href={w.url} target="_blank" rel="noopener noreferrer">{w.url}</a>
+              <span style={{ marginLeft: 8, fontSize: 12 }}>{w.events?.join(", ")}</span>
+              <button
+                type="button"
+                style={{ marginLeft: 8 }}
+                onClick={async () => {
+                  try {
+                    await api(`/api/webhooks/${w.id}`, { method: "DELETE" });
+                    setWebhooksList((prev) => prev.filter((x) => x.id !== w.id));
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Delete failed");
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+        <form
+          style={{ marginTop: 12 }}
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!projectId || !newWebhookUrl.trim() || newWebhookEvents.length === 0) return;
+            setSaving(true);
+            try {
+              const created = await api<Webhook>(`/api/projects/${projectId}/webhooks`, {
+                method: "POST",
+                body: JSON.stringify({ url: newWebhookUrl.trim(), events: newWebhookEvents }),
+              });
+              setWebhooksList((prev) => [...prev, created]);
+              setNewWebhookUrl("");
+              setNewWebhookEvents([]);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Add webhook failed");
+            } finally {
+              setSaving(false);
+            }
+          }}
+        >
+          <div style={{ marginBottom: 8 }}>
+            <input value={newWebhookUrl} onChange={(e) => setNewWebhookUrl(e.target.value)} placeholder="https://..." style={{ width: 320, marginRight: 8 }} required />
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            {["case.created", "case.updated", "run.created", "run.completed", "result.created"].map((ev) => (
+              <label key={ev} style={{ marginRight: 12 }}>
+                <input
+                  type="checkbox"
+                  checked={newWebhookEvents.includes(ev)}
+                  onChange={(e) => setNewWebhookEvents((prev) => (e.target.checked ? [...prev, ev] : prev.filter((x) => x !== ev)))}
+                />
+                {ev}
+              </label>
+            ))}
+          </div>
+          <button type="submit" disabled={saving}>Add webhook</button>
+        </form>
+      </section>
+      )}
+
+      <section style={{ marginBottom: 32 }}>
         <h3>Priorities</h3>
         <form onSubmit={addPriority} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <input value={newPriorityName} onChange={(e) => setNewPriorityName(e.target.value)} placeholder="Name" />
@@ -530,7 +661,29 @@ export default function ProjectSettings() {
         <ul style={{ listStyle: "none", padding: 0 }}>{caseFields.map((f) => <li key={f.id}>{f.name} ({f.fieldType})</li>)}</ul>
       </section>
 
-      {isOwner && (
+      {canManage && (
+        <section style={{ marginBottom: 32 }}>
+          <h3>Danger zone</h3>
+          <p style={{ fontSize: 12, color: "#666" }}>Only admin/lead can delete the project.</p>
+          <button
+            type="button"
+            style={{ background: "#c00", color: "#fff", border: "none", padding: "8px 12px" }}
+            onClick={async () => {
+              if (!projectId || !confirm("Delete this project and all its data? This cannot be undone.")) return;
+              try {
+                await api(`/api/projects/${projectId}`, { method: "DELETE" });
+                navigate("/projects");
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Delete failed");
+              }
+            }}
+          >
+            Delete project
+          </button>
+        </section>
+      )}
+
+      {canManage && (
         <section style={{ marginBottom: 32 }}>
           <h3>Project members</h3>
           <ul style={{ listStyle: "none", padding: 0 }}>

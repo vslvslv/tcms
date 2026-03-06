@@ -32,6 +32,8 @@ export const attachmentEntityEnum = pgEnum("attachment_entity", ["case", "result
 
 export const issueLinkEntityEnum = pgEnum("issue_link_entity", ["case", "result"]);
 
+export const caseStatusEnum = pgEnum("case_status", ["draft", "ready", "approved"]);
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
@@ -237,6 +239,9 @@ export const testCases = pgTable("test_cases", {
   caseTypeId: uuid("case_type_id").references(() => caseTypes.id, { onDelete: "set null" }),
   priorityId: uuid("priority_id").references(() => priorities.id, { onDelete: "set null" }),
   datasetId: uuid("dataset_id").references(() => datasets.id, { onDelete: "set null" }),
+  status: caseStatusEnum("status").default("draft").notNull(),
+  approvedById: uuid("approved_by_id").references(() => users.id, { onDelete: "set null" }),
+  approvedAt: timestamp("approved_at"),
   sortOrder: integer("sort_order").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -369,5 +374,58 @@ export const attachments = pgTable("attachments", {
   uploadedBy: uuid("uploaded_by")
     .notNull()
     .references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const webhooks = pgTable("webhooks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  secret: text("secret"),
+  events: jsonb("events").$type<string[]>().notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const requirementLinks = pgTable("requirement_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  caseId: uuid("case_id")
+    .notNull()
+    .references(() => testCases.id, { onDelete: "cascade" }),
+  requirementRef: text("requirement_ref").notNull(),
+  title: text("title"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const shareTokens = pgTable("share_tokens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  resourceType: text("resource_type").notNull(),
+  resourceId: uuid("resource_id").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at"),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const auditLog = pgTable("audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
+  action: text("action").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: uuid("entity_id").notNull(),
+  projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

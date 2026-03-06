@@ -13,6 +13,8 @@ import CreateRun from "./pages/CreateRun";
 import MilestoneProgress from "./pages/MilestoneProgress";
 import PlanSummary from "./pages/PlanSummary";
 import ProjectSettings from "./pages/ProjectSettings";
+import Dashboard from "./pages/Dashboard";
+import ShareView from "./pages/ShareView";
 import "./App.css";
 
 function AppRoutes() {
@@ -20,6 +22,15 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/shares/:token" element={<ShareView />} />
+      <Route
+        path="/dashboard"
+        element={
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/projects"
         element={

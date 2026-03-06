@@ -27,8 +27,21 @@ export default function PlanSummary() {
 
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", padding: 16 }}>
-      <header style={{ marginBottom: 24 }}>
-        <Link to={`/projects/${plan.projectId}`}>Project</Link> → <strong>Plan: {plan.name}</strong>
+      <header style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span><Link to={`/projects/${plan.projectId}`}>Project</Link> → <strong>Plan: {plan.name}</strong></span>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const res = await api<{ shareUrl: string }>(`/api/plans/${planId}/share`, { method: "POST", body: JSON.stringify({}) });
+              window.prompt("Share link (copy):", res.shareUrl);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Share failed");
+            }
+          }}
+        >
+          Share
+        </button>
       </header>
       <h2>{plan.name}</h2>
       {plan.description && <p style={{ color: "#666" }}>{plan.description}</p>}

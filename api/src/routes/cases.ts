@@ -2,9 +2,11 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
 import { projects, suites, sections, testCases, testSteps, sharedSteps, caseFieldValues, caseVersions, caseTemplates } from "../db/schema.js";
-import { eq, inArray, desc } from "drizzle-orm";
+import { eq, inArray, desc, and } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
-import { assertProjectAccess } from "../lib/projectAccess.js";
+import { assertProjectAccess, assertProjectRole } from "../lib/projectAccess.js";
+import { writeAuditLog } from "../lib/auditLog.js";
+import { dispatchWebhooks } from "../lib/webhooks.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsSectionId = z.object({ sectionId: z.string().uuid() });
@@ -20,6 +22,7 @@ const stepSchema = z.union([
   }),
 ]);
 const customFieldSchema = z.object({ caseFieldId: z.string().uuid(), value: z.string() });
+const caseStatusSchema = z.enum(["draft", "ready", "approved"]);
 const createCaseBody = z.object({
   title: z.string().min(1),
   prerequisite: z.string().optional(),
@@ -27,6 +30,7 @@ const createCaseBody = z.object({
   caseTypeId: z.string().uuid().optional().nullable(),
   priorityId: z.string().uuid().optional().nullable(),
   datasetId: z.string().uuid().optional().nullable(),
+  status: caseStatusSchema.optional(),
   templateId: z.string().uuid().optional(),
   steps: z.array(stepSchema).optional(),
   customFields: z.array(customFieldSchema).optional(),
@@ -38,6 +42,7 @@ const updateCaseBody = z.object({
   caseTypeId: z.string().uuid().optional().nullable(),
   priorityId: z.string().uuid().optional().nullable(),
   datasetId: z.string().uuid().optional().nullable(),
+  status: caseStatusSchema.optional(),
   steps: z.array(stepSchema).optional(),
   customFields: z.array(customFieldSchema).optional(),
 });
@@ -142,14 +147,20 @@ export default async function caseRoutes(app: FastifyInstance) {
     if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
     const parsed = paramsSectionId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
     if (!parsed.success) return replyError(reply, 400, "Invalid sectionId", "VALIDATION_ERROR");
+    const q = (req as FastifyRequest<{ Querystring: { status?: string } }>).query;
     const db = await getDb();
     if (!(await assertSectionAccess(db, parsed.data.sectionId, payload.sub))) {
       return replyError(reply, 404, "Section not found", "NOT_FOUND");
     }
+    const statusFilter = q.status && ["draft", "ready", "approved"].includes(q.status) ? q.status : undefined;
     const casesList = await db
       .select()
       .from(testCases)
-      .where(eq(testCases.sectionId, parsed.data.sectionId));
+      .where(
+        statusFilter
+          ? and(eq(testCases.sectionId, parsed.data.sectionId), eq(testCases.status, statusFilter as "draft" | "ready" | "approved"))
+          : eq(testCases.sectionId, parsed.data.sectionId)
+      );
     const caseIds = casesList.map((c) => c.id);
     const stepsList =
       caseIds.length === 0
@@ -197,6 +208,7 @@ export default async function caseRoutes(app: FastifyInstance) {
         caseTypeId: bodyResult.data.caseTypeId ?? null,
         priorityId: bodyResult.data.priorityId ?? null,
         datasetId: bodyResult.data.datasetId ?? null,
+        status: bodyResult.data.status ?? "draft",
         sortOrder: bodyResult.data.sortOrder ?? 0,
       })
       .returning();
@@ -252,6 +264,18 @@ export default async function caseRoutes(app: FastifyInstance) {
       stepsSnapshot: snapshot,
       createdBy: payload.sub,
     });
+    const [secForAudit] = await db.select().from(sections).where(eq(sections.id, paramsResult.data.sectionId)).limit(1);
+    const [suitForAudit] = secForAudit ? await db.select().from(suites).where(eq(suites.id, secForAudit.suiteId)).limit(1) : [null];
+    await writeAuditLog(db, payload.sub, "case.created", "case", inserted.id, suitForAudit?.projectId ?? null);
+    if (suitForAudit?.projectId) {
+      dispatchWebhooks(suitForAudit.projectId, "case.created", {
+        event: "case.created",
+        entityType: "case",
+        entityId: inserted.id,
+        projectId: suitForAudit.projectId,
+        timestamp: new Date().toISOString(),
+      }).catch(() => {});
+    }
     return reply.status(201).send({
       ...inserted,
       steps: stepsWithSharedResolved(steps, sharedMap),
@@ -302,6 +326,26 @@ export default async function caseRoutes(app: FastifyInstance) {
     if (bodyResult.data.caseTypeId !== undefined) updatePayload.caseTypeId = bodyResult.data.caseTypeId;
     if (bodyResult.data.priorityId !== undefined) updatePayload.priorityId = bodyResult.data.priorityId;
     if (bodyResult.data.datasetId !== undefined) updatePayload.datasetId = bodyResult.data.datasetId;
+    if (bodyResult.data.status !== undefined) {
+      updatePayload.status = bodyResult.data.status;
+      if (bodyResult.data.status === "approved") {
+        const [c] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+        if (c) {
+          const [sec] = await db.select().from(sections).where(eq(sections.id, c.sectionId)).limit(1);
+          if (sec) {
+            const [s] = await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1);
+            if (s && !(await assertProjectRole(db, s.projectId, payload.sub, ["admin", "lead"]))) {
+              return replyError(reply, 403, "Only admin or lead can approve cases", "FORBIDDEN");
+            }
+          }
+        }
+        updatePayload.approvedById = payload.sub;
+        updatePayload.approvedAt = new Date();
+      } else {
+        updatePayload.approvedById = null;
+        updatePayload.approvedAt = null;
+      }
+    }
     await db.update(testCases).set(updatePayload).where(eq(testCases.id, paramsResult.data.id));
     if (bodyResult.data.steps !== undefined) {
       await db.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
@@ -347,6 +391,18 @@ export default async function caseRoutes(app: FastifyInstance) {
       stepsSnapshot: snapshot,
       createdBy: payload.sub,
     });
+    const [secForAudit] = await db.select().from(sections).where(eq(sections.id, c.sectionId)).limit(1);
+    const [suitForAudit] = secForAudit ? await db.select().from(suites).where(eq(suites.id, secForAudit.suiteId)).limit(1) : [null];
+    await writeAuditLog(db, payload.sub, "case.updated", "case", paramsResult.data.id, suitForAudit?.projectId ?? null);
+    if (suitForAudit?.projectId) {
+      dispatchWebhooks(suitForAudit.projectId, "case.updated", {
+        event: "case.updated",
+        entityType: "case",
+        entityId: paramsResult.data.id,
+        projectId: suitForAudit.projectId,
+        timestamp: new Date().toISOString(),
+      }).catch(() => {});
+    }
     return reply.send({
       ...c,
       steps: stepsWithSharedResolved(steps, sharedMap),
@@ -437,8 +493,12 @@ export default async function caseRoutes(app: FastifyInstance) {
     if (!(await assertCaseAccess(db, parsed.data.id, payload.sub))) {
       return replyError(reply, 404, "Case not found", "NOT_FOUND");
     }
+    const [caseRow] = await db.select().from(testCases).where(eq(testCases.id, parsed.data.id)).limit(1);
+    const [secForAudit] = caseRow ? await db.select().from(sections).where(eq(sections.id, caseRow.sectionId)).limit(1) : [null];
+    const [suitForAudit] = secForAudit ? await db.select().from(suites).where(eq(suites.id, secForAudit.suiteId)).limit(1) : [null];
     await db.delete(testSteps).where(eq(testSteps.testCaseId, parsed.data.id));
     await db.delete(testCases).where(eq(testCases.id, parsed.data.id));
+    await writeAuditLog(db, payload.sub, "case.deleted", "case", parsed.data.id, suitForAudit?.projectId ?? null);
     return reply.status(204).send();
   });
 }
