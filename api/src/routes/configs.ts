@@ -9,8 +9,11 @@ import { assertProjectAccess } from "../lib/projectAccess.js";
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
 const paramsGroupId = z.object({ groupId: z.string().uuid() });
+const paramsOptionId = z.object({ id: z.string().uuid() });
 const createGroupBody = z.object({ name: z.string().min(1) });
 const createOptionBody = z.object({ name: z.string().min(1) });
+const updateGroupBody = z.object({ name: z.string().min(1).optional() });
+const updateOptionBody = z.object({ name: z.string().min(1).optional() });
 
 export default async function configRoutes(app: FastifyInstance) {
   app.addHook("preValidation", app.authenticate);
@@ -70,5 +73,113 @@ export default async function configRoutes(app: FastifyInstance) {
       .values({ configGroupId: paramsResult.data.groupId, name: bodyResult.data.name })
       .returning();
     return reply.status(201).send(row);
+  });
+
+  app.get("/api/config-groups/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    const [group] = await db.select().from(configGroups).where(eq(configGroups.id, paramsResult.data.id)).limit(1);
+    if (!group) return replyError(reply, 404, "Config group not found", "NOT_FOUND");
+    if (!(await assertProjectAccess(db, group.projectId, payload.sub))) {
+      return replyError(reply, 404, "Config group not found", "NOT_FOUND");
+    }
+    const options = await db.select().from(configOptions).where(eq(configOptions.configGroupId, group.id));
+    return reply.send({ ...group, options });
+  });
+
+  app.patch("/api/config-groups/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const bodyResult = updateGroupBody.safeParse((req as FastifyRequest<{ Body: unknown }>).body);
+    if (!bodyResult.success) return replyError(reply, 400, bodyResult.error.message, "VALIDATION_ERROR");
+    const db = await getDb();
+    const [group] = await db.select().from(configGroups).where(eq(configGroups.id, paramsResult.data.id)).limit(1);
+    if (!group) return replyError(reply, 404, "Config group not found", "NOT_FOUND");
+    if (!(await assertProjectAccess(db, group.projectId, payload.sub))) {
+      return replyError(reply, 404, "Config group not found", "NOT_FOUND");
+    }
+    const setPayload: Partial<{ name: string }> = {};
+    if (bodyResult.data.name !== undefined) setPayload.name = bodyResult.data.name;
+    const [updated] = await db
+      .update(configGroups)
+      .set(setPayload)
+      .where(eq(configGroups.id, paramsResult.data.id))
+      .returning();
+    return reply.send(updated);
+  });
+
+  app.delete("/api/config-groups/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    const [group] = await db.select().from(configGroups).where(eq(configGroups.id, paramsResult.data.id)).limit(1);
+    if (!group) return replyError(reply, 404, "Config group not found", "NOT_FOUND");
+    if (!(await assertProjectAccess(db, group.projectId, payload.sub))) {
+      return replyError(reply, 404, "Config group not found", "NOT_FOUND");
+    }
+    await db.delete(configGroups).where(eq(configGroups.id, paramsResult.data.id));
+    return reply.status(204).send();
+  });
+
+  app.get("/api/config-options/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsOptionId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    const [option] = await db.select().from(configOptions).where(eq(configOptions.id, paramsResult.data.id)).limit(1);
+    if (!option) return replyError(reply, 404, "Config option not found", "NOT_FOUND");
+    const [group] = await db.select().from(configGroups).where(eq(configGroups.id, option.configGroupId)).limit(1);
+    if (!group || !(await assertProjectAccess(db, group.projectId, payload.sub))) {
+      return replyError(reply, 404, "Config option not found", "NOT_FOUND");
+    }
+    return reply.send(option);
+  });
+
+  app.patch("/api/config-options/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsOptionId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const bodyResult = updateOptionBody.safeParse((req as FastifyRequest<{ Body: unknown }>).body);
+    if (!bodyResult.success) return replyError(reply, 400, bodyResult.error.message, "VALIDATION_ERROR");
+    const db = await getDb();
+    const [option] = await db.select().from(configOptions).where(eq(configOptions.id, paramsResult.data.id)).limit(1);
+    if (!option) return replyError(reply, 404, "Config option not found", "NOT_FOUND");
+    const [group] = await db.select().from(configGroups).where(eq(configGroups.id, option.configGroupId)).limit(1);
+    if (!group || !(await assertProjectAccess(db, group.projectId, payload.sub))) {
+      return replyError(reply, 404, "Config option not found", "NOT_FOUND");
+    }
+    const setPayload: Partial<{ name: string }> = {};
+    if (bodyResult.data.name !== undefined) setPayload.name = bodyResult.data.name;
+    const [updated] = await db
+      .update(configOptions)
+      .set(setPayload)
+      .where(eq(configOptions.id, paramsResult.data.id))
+      .returning();
+    return reply.send(updated);
+  });
+
+  app.delete("/api/config-options/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsOptionId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    const [option] = await db.select().from(configOptions).where(eq(configOptions.id, paramsResult.data.id)).limit(1);
+    if (!option) return replyError(reply, 404, "Config option not found", "NOT_FOUND");
+    const [group] = await db.select().from(configGroups).where(eq(configGroups.id, option.configGroupId)).limit(1);
+    if (!group || !(await assertProjectAccess(db, group.projectId, payload.sub))) {
+      return replyError(reply, 404, "Config option not found", "NOT_FOUND");
+    }
+    await db.delete(configOptions).where(eq(configOptions.id, paramsResult.data.id));
+    return reply.status(204).send();
   });
 }

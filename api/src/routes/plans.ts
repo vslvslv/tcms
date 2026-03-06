@@ -5,6 +5,7 @@ import { testPlans, milestones, runs, tests, results } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
+import { writeAuditLog } from "../lib/auditLog.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
@@ -62,6 +63,7 @@ export default async function planRoutes(app: FastifyInstance) {
         createdBy: payload.sub,
       })
       .returning();
+    await writeAuditLog(db, payload.sub, "plan.created", "plan", plan.id, paramsResult.data.projectId);
     return reply.status(201).send(plan);
   });
 
@@ -101,6 +103,7 @@ export default async function planRoutes(app: FastifyInstance) {
       .set(setPayload as typeof testPlans.$inferInsert)
       .where(eq(testPlans.id, paramsResult.data.id))
       .returning();
+    await writeAuditLog(db, payload.sub, "plan.updated", "plan", paramsResult.data.id, existing.projectId);
     return reply.send(updated);
   });
 
@@ -153,6 +156,7 @@ export default async function planRoutes(app: FastifyInstance) {
       return replyError(reply, 404, "Plan not found", "NOT_FOUND");
     }
     await db.delete(testPlans).where(eq(testPlans.id, parsed.data.id));
+    await writeAuditLog(db, payload.sub, "plan.deleted", "plan", parsed.data.id, existing.projectId);
     return reply.status(204).send();
   });
 }

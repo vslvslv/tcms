@@ -29,7 +29,15 @@ export type User = { id: string; email: string; name: string };
 export type Project = { id: string; name: string; description: string | null; userId: string; suiteMode: string; createdAt: string; updatedAt: string };
 export type Suite = { id: string; projectId: string; name: string; description: string | null; createdAt: string; updatedAt: string };
 export type Section = { id: string; suiteId: string; parentId: string | null; name: string; createdAt: string; updatedAt: string };
-export type TestStep = { id: string; testCaseId: string; content: string; expected: string | null; sortOrder: number };
+export type TestStep = {
+  id: string;
+  testCaseId: string;
+  content: string;
+  expected: string | null;
+  sortOrder: number;
+  sharedStepId?: string;
+};
+export type SharedStep = { id: string; projectId: string; content: string; expected: string | null; sortOrder: number; createdAt: string; updatedAt: string };
 export type TestCase = {
   id: string;
   sectionId: string;
@@ -38,6 +46,9 @@ export type TestCase = {
   sortOrder: number;
   caseTypeId?: string | null;
   priorityId?: string | null;
+  status?: "draft" | "ready" | "approved";
+  approvedById?: string | null;
+  approvedAt?: string | null;
   steps?: TestStep[];
   customFields?: { caseFieldId: string; value: string }[];
 };
@@ -62,10 +73,62 @@ export type ConfigOption = { id: string; configGroupId: string; name: string };
 export type CaseFieldDefinition = { id: string; projectId: string | null; name: string; fieldType: string; options: string[] | null; sortOrder: number };
 export type Role = { id: string; name: string };
 export type ProjectMember = { id: string; userId: string; projectId: string; roleId: string; user?: User; role?: Role };
+export type CaseTemplate = {
+  id: string;
+  projectId: string;
+  name: string;
+  templateType: string;
+  defaultSteps: { content: string; expected: string | null; sortOrder: number }[] | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type IssueLink = { id: string; entityType: string; entityId: string; url: string; title: string | null; externalId: string | null; createdBy: string; createdAt: string };
+
+export type RequirementLink = { id: string; projectId: string; caseId: string; requirementRef: string; title: string | null; createdAt: string };
+
+export type RequirementsCoverageItem = { requirementRef: string; title: string | null; caseCount: number; caseIds: string[] };
+
+export type Webhook = { id: string; projectId: string; url: string; events: string[]; isActive: boolean; createdAt: string };
+
+export type AuditLogEntry = {
+  id: string;
+  userId: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  projectId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type CaseVersion = {
+  id: string;
+  testCaseId: string;
+  title: string;
+  prerequisite: string | null;
+  caseTypeId: string | null;
+  priorityId: string | null;
+  stepsSnapshot: { content: string; expected: string | null; sortOrder: number; sharedStepId?: string }[] | null;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type Dataset = {
+  id: string;
+  projectId: string;
+  name: string;
+  createdAt: string;
+  columns?: { id: string; datasetId: string; name: string; sortOrder: number }[];
+  rows?: { id: string; datasetId: string; data: Record<string, string> }[];
+};
+
 export type RunTest = {
   id: string;
   runId: string;
   testCaseId: string;
   caseTitle: string;
+  datasetRowId?: string;
+  datasetRow?: Record<string, string>;
   latestResult: { id: string; status: string; comment: string | null; elapsedSeconds: number | null; createdAt: string } | null;
 };

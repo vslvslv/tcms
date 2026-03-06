@@ -17,11 +17,27 @@ import priorityRoutes from "./routes/priorities.js";
 import configRoutes from "./routes/configs.js";
 import caseFieldRoutes from "./routes/caseFields.js";
 import projectMemberRoutes from "./routes/projectMembers.js";
+import sharedStepRoutes from "./routes/sharedSteps.js";
+import caseTemplateRoutes from "./routes/caseTemplates.js";
+import issueLinkRoutes from "./routes/issueLinks.js";
+import importResultsRoutes from "./routes/importResults.js";
+import datasetRoutes from "./routes/datasets.js";
+import auditRoutes from "./routes/audit.js";
+import importExportRoutes from "./routes/importExport.js";
+import requirementLinkRoutes from "./routes/requirementLinks.js";
+import webhookRoutes from "./routes/webhooks.js";
+import dashboardRoutes from "./routes/dashboard.js";
+import shareRoutes from "./routes/shares.js";
 
 const app = Fastify({ logger: true });
 
+const corsOrigin = process.env.CORS_ORIGIN;
 await app.register(cors, {
-  origin: process.env.CORS_ORIGIN ?? "http://localhost:5001",
+  origin: corsOrigin
+    ? corsOrigin.includes(",")
+      ? corsOrigin.split(",").map((o) => o.trim())
+      : corsOrigin
+    : ["http://localhost:5001", "http://localhost:5173"],
 });
 
 await app.register(jwt, {
@@ -34,6 +50,12 @@ app.decorate("authenticate", async function (req: FastifyRequest, reply: Fastify
   } catch {
     return reply.status(401).send({ error: "Unauthorized", code: "UNAUTHORIZED" });
   }
+});
+
+app.addContentTypeParser("text/csv", async (_req: FastifyRequest, payload: NodeJS.ReadableStream) => {
+  const chunks: Buffer[] = [];
+  for await (const chunk of payload) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks).toString("utf8");
 });
 
 await app.register(authRoutes);
@@ -50,6 +72,17 @@ await app.register(priorityRoutes);
 await app.register(configRoutes);
 await app.register(caseFieldRoutes);
 await app.register(projectMemberRoutes);
+await app.register(sharedStepRoutes);
+await app.register(caseTemplateRoutes);
+await app.register(issueLinkRoutes);
+await app.register(importResultsRoutes);
+await app.register(datasetRoutes);
+await app.register(auditRoutes);
+await app.register(importExportRoutes);
+await app.register(requirementLinkRoutes);
+await app.register(webhookRoutes);
+await app.register(dashboardRoutes);
+await app.register(shareRoutes);
 
 app.get("/health", async () => {
   try {

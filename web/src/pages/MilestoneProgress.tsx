@@ -32,8 +32,21 @@ export default function MilestoneProgress() {
 
   return (
     <div style={{ maxWidth: 800, margin: "0 auto", padding: 16 }}>
-      <header style={{ marginBottom: 24 }}>
-        <Link to={`/projects/${milestone.projectId}`}>Project</Link> → <strong>Milestone: {milestone.name}</strong>
+      <header style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span><Link to={`/projects/${milestone.projectId}`}>Project</Link> → <strong>Milestone: {milestone.name}</strong></span>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const res = await api<{ shareUrl: string }>(`/api/milestones/${milestoneId}/share`, { method: "POST", body: JSON.stringify({}) });
+              window.prompt("Share link (copy):", res.shareUrl);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Share failed");
+            }
+          }}
+        >
+          Share
+        </button>
       </header>
       <h2>{milestone.name}</h2>
       {milestone.description && <p style={{ color: "#666" }}>{milestone.description}</p>}

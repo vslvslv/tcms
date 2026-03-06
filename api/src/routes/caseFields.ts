@@ -14,6 +14,7 @@ const createBody = z.object({
   options: z.array(z.string()).optional(),
   sortOrder: z.number().int().min(0).optional(),
 });
+const updateBody = createBody.partial();
 
 export default async function caseFieldRoutes(app: FastifyInstance) {
   app.addHook("preValidation", app.authenticate);
@@ -56,6 +57,54 @@ export default async function caseFieldRoutes(app: FastifyInstance) {
       })
       .returning();
     return reply.status(201).send(row);
+  });
+
+  app.get("/api/case-fields/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    const [row] = await db
+      .select()
+      .from(caseFieldDefinitions)
+      .where(eq(caseFieldDefinitions.id, parsed.data.id))
+      .limit(1);
+    if (!row) return replyError(reply, 404, "Case field not found", "NOT_FOUND");
+    if (row.projectId && !(await assertProjectAccess(db, row.projectId, payload.sub))) {
+      return replyError(reply, 404, "Case field not found", "NOT_FOUND");
+    }
+    return reply.send(row);
+  });
+
+  app.patch("/api/case-fields/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const bodyResult = updateBody.safeParse((req as FastifyRequest<{ Body: unknown }>).body);
+    if (!bodyResult.success) return replyError(reply, 400, bodyResult.error.message, "VALIDATION_ERROR");
+    const db = await getDb();
+    const [existing] = await db
+      .select()
+      .from(caseFieldDefinitions)
+      .where(eq(caseFieldDefinitions.id, parsed.data.id))
+      .limit(1);
+    if (!existing) return replyError(reply, 404, "Case field not found", "NOT_FOUND");
+    if (existing.projectId && !(await assertProjectAccess(db, existing.projectId, payload.sub))) {
+      return replyError(reply, 404, "Case field not found", "NOT_FOUND");
+    }
+    const setPayload: Partial<typeof caseFieldDefinitions.$inferInsert> = {};
+    if (bodyResult.data.name !== undefined) setPayload.name = bodyResult.data.name;
+    if (bodyResult.data.fieldType !== undefined) setPayload.fieldType = bodyResult.data.fieldType;
+    if (bodyResult.data.options !== undefined) setPayload.options = bodyResult.data.options;
+    if (bodyResult.data.sortOrder !== undefined) setPayload.sortOrder = bodyResult.data.sortOrder;
+    const [updated] = await db
+      .update(caseFieldDefinitions)
+      .set(setPayload)
+      .where(eq(caseFieldDefinitions.id, parsed.data.id))
+      .returning();
+    return reply.send(updated);
   });
 
   app.delete("/api/case-fields/:id", async (req: FastifyRequest, reply: FastifyReply) => {
