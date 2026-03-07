@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api, type TestPlan, type Run } from "../api";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { LoadingSpinner } from "../components/ui/LoadingSpinner";
+import { PageTitle } from "../components/ui/PageTitle";
 
 type RunSummary = { run: Run; summary: { passed: number; failed: number; blocked: number; skipped: number; untested: number } };
 type PlanSummaryData = { plan: TestPlan; runs: RunSummary[] };
@@ -20,17 +24,17 @@ export default function PlanSummary() {
   }, [planId]);
 
   if (!planId) return null;
-  if (loading) return <p>Loading…</p>;
-  if (error || !data) return <p style={{ color: "red" }}>{error || "Not found"}</p>;
+  if (loading) return <LoadingSpinner />;
+  if (error || !data) return <p className="text-error">{error || "Not found"}</p>;
 
   const { plan, runs } = data;
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 16 }}>
-      <header style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span><Link to={`/projects/${plan.projectId}`}>Project</Link> → <strong>Plan: {plan.name}</strong></span>
-        <button
-          type="button"
+    <div className="max-w-3xl">
+      <div className="mb-4 flex items-center justify-between">
+        <PageTitle>{plan.name}</PageTitle>
+        <Button
+          variant="secondary"
           onClick={async () => {
             try {
               const res = await api<{ shareUrl: string }>(`/api/plans/${planId}/share`, { method: "POST", body: JSON.stringify({}) });
@@ -41,21 +45,20 @@ export default function PlanSummary() {
           }}
         >
           Share
-        </button>
-      </header>
-      <h2>{plan.name}</h2>
-      {plan.description && <p style={{ color: "#666" }}>{plan.description}</p>}
-      <section style={{ marginTop: 24 }}>
-        <h3>Runs ({runs.length})</h3>
-        <ul style={{ listStyle: "none", padding: 0 }}>
+        </Button>
+      </div>
+      {plan.description && <p className="mb-6 text-gray-600">{plan.description}</p>}
+      <Card>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Runs ({runs.length})</h3>
+        <ul className="list-none p-0">
           {runs.map(({ run, summary }) => {
             const total = summary.passed + summary.failed + summary.blocked + summary.skipped + summary.untested;
             return (
-              <li key={run.id} style={{ marginBottom: 12, padding: 8, border: "1px solid #eee" }}>
-                <Link to={`/runs/${run.id}`}>{run.name}</Link>
-                {run.isCompleted && <span style={{ marginLeft: 8, color: "green" }}>Completed</span>}
+              <li key={run.id} className="border-b border-gray-100 py-3 last:border-0">
+                <Link to={`/runs/${run.id}`} className="font-medium text-primary hover:underline">{run.name}</Link>
+                {run.isCompleted && <span className="ml-2 text-sm text-green-600">Completed</span>}
                 {total > 0 && (
-                  <span style={{ marginLeft: 8, color: "#666" }}>
+                  <span className="ml-2 text-sm text-muted">
                     P: {summary.passed} F: {summary.failed} B: {summary.blocked} S: {summary.skipped} U: {summary.untested}
                   </span>
                 )}
@@ -63,8 +66,8 @@ export default function PlanSummary() {
             );
           })}
         </ul>
-        {runs.length === 0 && <p>No runs in this plan yet.</p>}
-      </section>
+        {runs.length === 0 && <p className="text-muted">No runs in this plan yet.</p>}
+      </Card>
     </div>
   );
 }

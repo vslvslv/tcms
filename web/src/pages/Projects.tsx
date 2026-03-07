@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../AuthContext";
 import { api, type Project } from "../api";
+import { Button, SubmitButton } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/Input";
+import { Label } from "../components/ui/Label";
+import { LoadingSpinner } from "../components/ui/LoadingSpinner";
+import { PageTitle } from "../components/ui/PageTitle";
+import { SectionHeading } from "../components/ui/SectionHeading";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { dateStyle: "medium" });
+}
 
 export default function Projects() {
-  const { user, logout } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,42 +56,124 @@ export default function Projects() {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: 16 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h1 style={{ margin: 0 }}>
-          <Link to="/dashboard" style={{ marginRight: 16 }}>Dashboard</Link>
-          TCMS — Projects
-        </h1>
-        <div>
-          {user?.name} <button type="button" onClick={logout}>Log out</button>
+    <div className="max-w-4xl">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <PageTitle>Projects</PageTitle>
+        {!showNew && (
+          <Button variant="primary" onClick={() => setShowNew(true)}>
+            New project
+          </Button>
+        )}
+      </div>
+
+      {error && (
+        <div className="mb-6 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+          {error}
         </div>
-      </header>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      )}
+
       {showNew && (
-        <form onSubmit={createProject} style={{ marginBottom: 16, padding: 16, border: "1px solid #ccc" }}>
-          <div style={{ marginBottom: 8 }}>
-            <label>Name <input value={newName} onChange={(e) => setNewName(e.target.value)} required /></label>
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <label>Description <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} /></label>
-          </div>
-          <button type="submit" disabled={saving}>Create</button>
-          <button type="button" onClick={() => { setShowNew(false); setNewName(""); setNewDesc(""); }}>Cancel</button>
-        </form>
+        <Card className="mb-6">
+          <SectionHeading className="mb-4">New project</SectionHeading>
+          <form onSubmit={createProject} className="space-y-4" data-testid="new-project-form">
+            <div>
+              <Label htmlFor="project-name">Name</Label>
+              <Input
+                id="project-name"
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                required
+                placeholder="Project name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="project-desc">Description</Label>
+              <Input
+                id="project-desc"
+                type="text"
+                value={newDesc}
+                onChange={(e) => setNewDesc(e.target.value)}
+                placeholder="Optional short description"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <SubmitButton disabled={saving}>
+                {saving ? "Creating…" : "Create project"}
+              </SubmitButton>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowNew(false);
+                  setNewName("");
+                  setNewDesc("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </Card>
       )}
-      {!showNew && <button type="button" onClick={() => setShowNew(true)}>New project</button>}
-      {loading && <p>Loading…</p>}
-      {!loading && !error && (
-        <ul style={{ listStyle: "none", padding: 0, marginTop: 16 }}>
-          {projects.map((p) => (
-            <li key={p.id} style={{ marginBottom: 8 }}>
-              <Link to={`/projects/${p.id}`}>{p.name}</Link>
-              {p.description && <span style={{ color: "#666", marginLeft: 8 }}>{p.description}</span>}
-            </li>
-          ))}
-        </ul>
+
+      {loading && <LoadingSpinner />}
+
+      {!loading && !error && projects.length > 0 && (
+        <Card className="overflow-hidden p-0" data-testid="projects-list">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[500px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border bg-gray-50">
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Description</th>
+                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Updated</th>
+                  <th className="w-28 px-4 py-3 text-right font-semibold text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projects.map((p) => (
+                  <tr key={p.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                    <td className="px-4 py-3">
+                      <Link to={`/projects/${p.id}`} className="font-medium text-primary hover:underline">
+                        {p.name}
+                      </Link>
+                    </td>
+                    <td className="max-w-xs truncate px-4 py-3 text-muted" title={p.description ?? undefined}>
+                      {p.description || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-muted">{formatDate(p.updatedAt)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        to={`/projects/${p.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        View
+                      </Link>
+                      <span className="mx-2 text-gray-300">·</span>
+                      <Link
+                        to={`/projects/${p.id}/settings`}
+                        className="text-muted hover:underline"
+                      >
+                        Settings
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
-      {!loading && projects.length === 0 && !error && !showNew && <p>No projects yet.</p>}
+
+      {!loading && projects.length === 0 && !error && !showNew && (
+        <Card>
+          <EmptyState
+            message="No projects yet. Create your first project to manage test cases, runs, and plans."
+            action={<Button variant="primary" onClick={() => setShowNew(true)}>New project</Button>}
+          />
+        </Card>
+      )}
     </div>
   );
 }

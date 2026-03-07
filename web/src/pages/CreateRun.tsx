@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { api, type Run, type Suite, type Milestone, type TestPlan, type ConfigGroup } from "../api";
+import { Select } from "../components/ui/Select";
 
 export default function CreateRun() {
   const { suiteId } = useParams<{ suiteId: string }>();
@@ -70,10 +71,8 @@ export default function CreateRun() {
   if (loading) return <p>Loading…</p>;
 
   return (
-    <div style={{ maxWidth: 500, margin: "0 auto", padding: 16 }}>
-      <header style={{ marginBottom: 24 }}>
-        <Link to={`/suites/${suiteId}`}>{suite?.name ?? "Suite"}</Link> → Create run
-      </header>
+    <div style={{ maxWidth: 500, margin: 0 }}>
+      <h1 style={{ margin: "0 0 16px 0" }}>Create run{suite ? ` — ${suite.name}` : ""}</h1>
       {error && <p style={{ color: "red" }}>{error}</p>}
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 12 }}>
@@ -90,10 +89,10 @@ export default function CreateRun() {
           <div style={{ marginBottom: 12 }}>
             <label>
               Test plan{" "}
-              <select value={planId} onChange={(e) => setPlanId(e.target.value)}>
+              <Select value={planId} onChange={(e) => setPlanId(e.target.value)}>
                 <option value="">— None —</option>
                 {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              </Select>
             </label>
           </div>
         )}
@@ -101,10 +100,10 @@ export default function CreateRun() {
           <div style={{ marginBottom: 12 }}>
             <label>
               Milestone{" "}
-              <select value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
+              <Select value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
                 <option value="">— None —</option>
                 {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
+              </Select>
             </label>
           </div>
         )}

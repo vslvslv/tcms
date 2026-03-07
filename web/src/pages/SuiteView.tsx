@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api, type Suite, type Section } from "../api";
+import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 
 function buildTree(sections: Section[]): (Section & { children: ReturnType<typeof buildTree> })[] {
   const byParent = new Map<string | null, Section[]>();
@@ -83,8 +84,8 @@ export default function SuiteView() {
   }
 
   if (!suiteId) return null;
-  if (loading) return <p>Loading…</p>;
-  if (error && !suite) return <p style={{ color: "red" }}>{error}</p>;
+  if (loading) return <LoadingSpinner />;
+  if (error && !suite) return <p className="text-error">{error}</p>;
   if (!suite) return null;
 
   const tree = buildTree(sections);
@@ -98,20 +99,20 @@ export default function SuiteView() {
     depth: number;
   }) {
     return (
-      <div key={section.id} style={{ marginLeft: depth * 16, marginBottom: 4 }}>
-        <Link to={`/sections/${section.id}/cases`} style={{ marginRight: 8 }}>{section.name}</Link>
-        <Link to={`/sections/${section.id}/cases/new`}>Add case</Link>
+      <div key={section.id} className="mb-1" style={{ marginLeft: depth * 16 }}>
+        <Link to={`/sections/${section.id}/cases`} className="mr-2 font-medium text-primary hover:underline">{section.name}</Link>
+        <Link to={`/sections/${section.id}/cases/new`} className="text-sm text-primary hover:underline">Add case</Link>
         {" · "}
-        <button type="button" onClick={() => setAddingUnderParent(section.id)}>Add subsection</button>
+        <button type="button" className="text-sm text-gray-600 hover:underline" onClick={() => setAddingUnderParent(section.id)}>Add subsection</button>
         {addingUnderParent === section.id && (
-          <form onSubmit={addSubSection} style={{ marginTop: 4, display: "flex", gap: 8, alignItems: "center" }}>
-            <input value={subSectionName} onChange={(e) => setSubSectionName(e.target.value)} placeholder="Section name" />
-            <button type="submit" disabled={saving}>Add</button>
-            <button type="button" onClick={() => { setAddingUnderParent(null); setSubSectionName(""); }}>Cancel</button>
+          <form onSubmit={addSubSection} className="mt-2 flex flex-wrap items-center gap-2">
+            <input value={subSectionName} onChange={(e) => setSubSectionName(e.target.value)} placeholder="Section name" className="rounded border border-gray-300 px-2 py-1 text-sm" />
+            <button type="submit" disabled={saving} className="rounded border border-primary bg-primary px-2 py-1 text-sm text-white hover:bg-primary-hover disabled:opacity-50">Add</button>
+            <button type="button" className="rounded border border-gray-300 px-2 py-1 text-sm hover:bg-gray-50" onClick={() => { setAddingUnderParent(null); setSubSectionName(""); }}>Cancel</button>
           </form>
         )}
         {section.children.length > 0 && (
-          <div style={{ marginTop: 4 }}>
+          <div className="mt-1">
             {section.children.map((c) => (
               <SectionNode key={c.id} section={c} depth={depth + 1} />
             ))}
@@ -122,22 +123,22 @@ export default function SuiteView() {
   }
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: 16 }}>
-      <header style={{ marginBottom: 24 }}>
-        <Link to="/projects">Projects</Link> → <Link to={`/projects/${suite.projectId}`}>Project</Link> → <strong>{suite.name}</strong>
-      </header>
-      <p>
-        <Link to={`/suites/${suiteId}/runs/new`}>Create run</Link>
+    <div className="max-w-3xl">
+      <h1 className="mb-2 text-xl font-semibold text-gray-900">{suite.name}</h1>
+      <p className="mb-6">
+        <Link to={`/suites/${suiteId}/runs/new`} className="text-primary hover:underline">Create run</Link>
       </p>
-      <h2>Sections</h2>
-      <form onSubmit={addRootSection} style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
-        <input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="New section name" style={{ width: 200 }} />
-        <button type="submit" disabled={saving}>Add section</button>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Sections</h2>
+      <form onSubmit={addRootSection} className="mb-6 flex items-center gap-2">
+        <input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="New section name" className="w-48 rounded border border-gray-300 px-2 py-1.5 text-sm" />
+        <button type="submit" disabled={saving} className="rounded border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50">Add section</button>
       </form>
-      {tree.map((s) => (
-        <SectionNode key={s.id} section={s} depth={0} />
-      ))}
-      {tree.length === 0 && !newSectionName && <p>No sections. Add one above.</p>}
+      <div className="rounded-lg border border-border bg-surface p-4">
+        {tree.map((s) => (
+          <SectionNode key={s.id} section={s} depth={0} />
+        ))}
+        {tree.length === 0 && !newSectionName && <p className="text-muted">No sections. Add one above.</p>}
+      </div>
     </div>
   );
 }

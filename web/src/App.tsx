@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
+import { ProjectProvider } from "./ProjectContext";
 import { RequireAuth } from "./RequireAuth";
+import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Projects from "./pages/Projects";
@@ -14,8 +16,14 @@ import MilestoneProgress from "./pages/MilestoneProgress";
 import PlanSummary from "./pages/PlanSummary";
 import ProjectSettings from "./pages/ProjectSettings";
 import Dashboard from "./pages/Dashboard";
+import Reports from "./pages/Reports";
+import CasesOverview from "./pages/cases/CasesOverview";
+import CasesDetails from "./pages/cases/CasesDetails";
+import CasesStatus from "./pages/cases/CasesStatus";
+import CasesDefects from "./pages/cases/CasesDefects";
+import RunsOverview from "./pages/runs/RunsOverview";
+import CreateRunPage from "./pages/runs/CreateRunPage";
 import ShareView from "./pages/ShareView";
-import "./App.css";
 
 function AppRoutes() {
   return (
@@ -24,103 +32,41 @@ function AppRoutes() {
       <Route path="/register" element={<Register />} />
       <Route path="/shares/:token" element={<ShareView />} />
       <Route
-        path="/dashboard"
+        path="/"
         element={
           <RequireAuth>
-            <Dashboard />
+            <Layout />
           </RequireAuth>
         }
-      />
-      <Route
-        path="/projects"
-        element={
-          <RequireAuth>
-            <Projects />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/projects/:projectId"
-        element={
-          <RequireAuth>
-            <ProjectDetail />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/projects/:projectId/settings"
-        element={
-          <RequireAuth>
-            <ProjectSettings />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/milestones/:milestoneId/progress"
-        element={
-          <RequireAuth>
-            <MilestoneProgress />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/plans/:planId/summary"
-        element={
-          <RequireAuth>
-            <PlanSummary />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/suites/:suiteId"
-        element={
-          <RequireAuth>
-            <SuiteView />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/sections/:sectionId/cases"
-        element={
-          <RequireAuth>
-            <SectionCases />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/sections/:sectionId/cases/new"
-        element={
-          <RequireAuth>
-            <CaseEditor />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/cases/:caseId/edit"
-        element={
-          <RequireAuth>
-            <CaseEditor />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/suites/:suiteId/runs/new"
-        element={
-          <RequireAuth>
-            <CreateRun />
-          </RequireAuth>
-        }
-      />
-      <Route
-        path="/runs/:runId"
-        element={
-          <RequireAuth>
-            <RunView />
-          </RequireAuth>
-        }
-      />
-      <Route path="/" element={<Navigate to="/projects" replace />} />
-      <Route path="*" element={<Navigate to="/projects" replace />} />
+      >
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="projects/:projectId" element={<ProjectDetail />} />
+        <Route path="cases/overview" element={<CasesOverview />} />
+        <Route path="cases/details" element={<CasesDetails />} />
+        <Route path="cases/details/:projectId" element={<CasesDetails />} />
+        <Route path="cases/status" element={<CasesStatus />} />
+        <Route path="cases/defects" element={<CasesDefects />} />
+        <Route path="projects/:projectId/settings" element={<ProjectSettings />} />
+        <Route path="milestones/:milestoneId/progress" element={<MilestoneProgress />} />
+        <Route path="plans/:planId/summary" element={<PlanSummary />} />
+        <Route path="suites/:suiteId" element={<SuiteView />} />
+        <Route path="sections/:sectionId/cases" element={<SectionCases />} />
+        <Route path="sections/:sectionId/cases/new" element={<CaseEditor />} />
+        <Route path="cases/:caseId/edit" element={<CaseEditor />} />
+        <Route path="suites/:suiteId/runs/new" element={<CreateRun />} />
+        <Route path="runs" element={<Navigate to="/runs/overview" replace />} />
+        <Route path="runs/overview" element={<RunsOverview />} />
+        <Route path="runs/new" element={<CreateRunPage />} />
+        <Route path="runs/:runId" element={<RunView />} />
+        <Route path="runs/:runId/activity" element={<RunView />} />
+        <Route path="runs/:runId/progress" element={<RunView />} />
+        <Route path="runs/:runId/defects" element={<RunView />} />
+        <Route path="reports" element={<Reports />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
@@ -129,7 +75,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ProjectProvider>
+          <AppRoutes />
+        </ProjectProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -125,8 +125,15 @@ export default async function sectionRoutes(app: FastifyInstance) {
   app.delete("/api/sections/:id", async (req: FastifyRequest, reply: FastifyReply) => {
     const payload = req.user as { sub: string } | undefined;
     if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
-    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
-    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const rawParams = (req as FastifyRequest<{ Params: { id?: string } }>).params;
+    const idRaw = rawParams?.id;
+    const idFromParams = typeof idRaw === "string" ? idRaw : Array.isArray(idRaw) ? idRaw[0] : undefined;
+    const idFromPath = req.url.replace(/^.*\/api\/sections\//, "").split("?")[0].split("/")[0]?.trim() || "";
+    const id = (idFromParams ?? idFromPath).trim();
+    const parsed = paramsId.safeParse({ id });
+    if (!parsed.success) {
+      return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    }
     const db = await getDb();
     const [existing] = await db.select().from(sections).where(eq(sections.id, parsed.data.id)).limit(1);
     if (!existing) return replyError(reply, 404, "Section not found", "NOT_FOUND");
