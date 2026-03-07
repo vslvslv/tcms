@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api, type Milestone } from "../api";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { LoadingSpinner } from "../components/ui/LoadingSpinner";
+import { PageTitle } from "../components/ui/PageTitle";
 
 type Progress = {
   milestone: Milestone;
@@ -24,18 +28,18 @@ export default function MilestoneProgress() {
   }, [milestoneId]);
 
   if (!milestoneId) return null;
-  if (loading) return <p>Loading…</p>;
-  if (error || !data) return <p style={{ color: "red" }}>{error || "Not found"}</p>;
+  if (loading) return <LoadingSpinner />;
+  if (error || !data) return <p className="text-error">{error || "Not found"}</p>;
 
   const { milestone, runsCount, completedRuns, summary } = data;
   const total = summary.passed + summary.failed + summary.blocked + summary.skipped + summary.untested;
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: 16 }}>
-      <header style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span><Link to={`/projects/${milestone.projectId}`}>Project</Link> → <strong>Milestone: {milestone.name}</strong></span>
-        <button
-          type="button"
+    <div className="max-w-3xl">
+      <div className="mb-6 flex items-center justify-between">
+        <PageTitle>Milestone: {milestone.name}</PageTitle>
+        <Button
+          variant="secondary"
           onClick={async () => {
             try {
               const res = await api<{ shareUrl: string }>(`/api/milestones/${milestoneId}/share`, { method: "POST", body: JSON.stringify({}) });
@@ -46,24 +50,23 @@ export default function MilestoneProgress() {
           }}
         >
           Share
-        </button>
-      </header>
-      <h2>{milestone.name}</h2>
-      {milestone.description && <p style={{ color: "#666" }}>{milestone.description}</p>}
-      {milestone.dueDate && <p>Due: {new Date(milestone.dueDate).toLocaleDateString()}</p>}
-      <section style={{ marginTop: 24 }}>
-        <h3>Progress</h3>
-        <p>Runs: {completedRuns} / {runsCount} completed</p>
+        </Button>
+      </div>
+      {milestone.description && <p className="mb-2 text-gray-600">{milestone.description}</p>}
+      {milestone.dueDate && <p className="mb-6 text-sm text-muted">Due: {new Date(milestone.dueDate).toLocaleDateString()}</p>}
+      <Card>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Progress</h3>
+        <p className="mb-2">Runs: {completedRuns} / {runsCount} completed</p>
         {total > 0 && (
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            <li>Passed: {summary.passed}</li>
-            <li>Failed: {summary.failed}</li>
-            <li>Blocked: {summary.blocked}</li>
-            <li>Skipped: {summary.skipped}</li>
-            <li>Untested: {summary.untested}</li>
+          <ul className="list-none p-0 text-sm">
+            <li className="text-green-700">Passed: {summary.passed}</li>
+            <li className="text-red-700">Failed: {summary.failed}</li>
+            <li className="text-amber-700">Blocked: {summary.blocked}</li>
+            <li className="text-gray-600">Skipped: {summary.skipped}</li>
+            <li className="text-muted">Untested: {summary.untested}</li>
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
   type Webhook,
   type AuditLogEntry,
 } from "../api";
+import { Select } from "../components/ui/Select";
 
 type ProjectMemberWithDetails = {
   id: string;
@@ -399,10 +400,11 @@ export default function ProjectSettings() {
   const canManage = myRole === "admin" || myRole === "lead";
 
   return (
-    <div style={{ maxWidth: 700, margin: "0 auto", padding: 16 }}>
-      <header style={{ marginBottom: 24 }}>
-        <Link to="/projects">Projects</Link> → <Link to={`/projects/${projectId}`}>{project.name}</Link> → <strong>Settings</strong>
-      </header>
+    <div style={{ maxWidth: 700, margin: 0 }}>
+      <h1 style={{ margin: "0 0 8px 0" }}>Settings</h1>
+      <p style={{ margin: "0 0 24px 0" }}>
+        <Link to={`/projects/${projectId}`}>← {project.name}</Link>
+      </p>
       {error && <p style={{ color: "red" }}>{error}</p>}
 
       <section style={{ marginBottom: 32 }}>
@@ -646,12 +648,12 @@ export default function ProjectSettings() {
         <form onSubmit={addCaseField} style={{ marginBottom: 8 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             <input value={newCaseFieldName} onChange={(e) => setNewCaseFieldName(e.target.value)} placeholder="Field name" />
-            <select value={newCaseFieldType} onChange={(e) => setNewCaseFieldType(e.target.value as typeof newCaseFieldType)}>
+            <Select value={newCaseFieldType} onChange={(e) => setNewCaseFieldType(e.target.value as typeof newCaseFieldType)}>
               <option value="text">Text</option>
               <option value="multiline">Multiline</option>
               <option value="number">Number</option>
               <option value="dropdown">Dropdown</option>
-            </select>
+            </Select>
             {newCaseFieldType === "dropdown" && (
               <input value={newCaseFieldOptions} onChange={(e) => setNewCaseFieldOptions(e.target.value)} placeholder="Options (comma-separated)" size={24} />
             )}
@@ -695,16 +697,16 @@ export default function ProjectSettings() {
             ))}
           </ul>
           <form onSubmit={addMember} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 8 }}>
-            <select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)} required>
+            <Select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)} required>
               <option value="">Select user</option>
               {users.filter((u) => !members.some((m) => m.userId === u.id)).map((u) => (
                 <option key={u.id} value={u.id}>{u.email} ({u.name})</option>
               ))}
-            </select>
-            <select value={addMemberRoleId} onChange={(e) => setAddMemberRoleId(e.target.value)} required>
+            </Select>
+            <Select value={addMemberRoleId} onChange={(e) => setAddMemberRoleId(e.target.value)} required>
               <option value="">Role</option>
               {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+            </Select>
             <button type="submit" disabled={saving}>Add member</button>
           </form>
         </section>

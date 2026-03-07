@@ -9,8 +9,9 @@ export async function api<T>(
   options: RequestInit & { token?: string | null } = {}
 ): Promise<T> {
   const { token = getToken(), ...rest } = options;
+  const hasBody = rest.body !== undefined && rest.body !== null;
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
+    ...(hasBody && { "Content-Type": "application/json" }),
     ...(rest.headers as Record<string, string>),
   };
   if (token) {
@@ -52,6 +53,7 @@ export type TestCase = {
   steps?: TestStep[];
   customFields?: { caseFieldId: string; value: string }[];
 };
+export type CaseSummary = { total: number; draft: number; ready: number; approved: number };
 export type Run = {
   id: string;
   suiteId: string;
@@ -61,8 +63,17 @@ export type Run = {
   milestoneId?: string | null;
   createdBy: string;
   isCompleted: boolean;
+  createdAt?: string;
+  updatedAt?: string;
   tests?: RunTest[];
   summary?: { passed: number; failed: number; blocked: number; skipped: number; untested: number };
+};
+/** Run list item from GET /api/projects/:projectId/runs */
+export type ProjectRun = Run & {
+  suiteName: string | null;
+  createdByName: string | null;
+  planName: string | null;
+  milestoneName: string | null;
 };
 export type Milestone = { id: string; projectId: string; name: string; description: string | null; dueDate: string | null; createdAt: string; updatedAt: string };
 export type TestPlan = { id: string; projectId: string; milestoneId: string | null; name: string; description: string | null; createdBy: string; createdAt: string; updatedAt: string };
@@ -83,6 +94,15 @@ export type CaseTemplate = {
   updatedAt: string;
 };
 
+export type TestResult = {
+  id: string;
+  testId: string;
+  status: string;
+  comment: string | null;
+  elapsedSeconds: number | null;
+  createdBy: string;
+  createdAt: string;
+};
 export type IssueLink = { id: string; entityType: string; entityId: string; url: string; title: string | null; externalId: string | null; createdBy: string; createdAt: string };
 
 export type RequirementLink = { id: string; projectId: string; caseId: string; requirementRef: string; title: string | null; createdAt: string };
@@ -128,6 +148,8 @@ export type RunTest = {
   runId: string;
   testCaseId: string;
   caseTitle: string;
+  sectionId?: string | null;
+  sectionName?: string | null;
   datasetRowId?: string;
   datasetRow?: Record<string, string>;
   latestResult: { id: string; status: string; comment: string | null; elapsedSeconds: number | null; createdAt: string } | null;
