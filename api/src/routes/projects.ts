@@ -1,8 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
-import { projects, projectMembers } from "../db/schema.js";
-import { eq, inArray } from "drizzle-orm";
+import { projects, projectMembers, suites, sections, testCases, issueLinks } from "../db/schema.js";
+import { eq, inArray, and } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess, assertProjectRole, getProjectRole } from "../lib/projectAccess.js";
 
@@ -63,6 +63,92 @@ export default async function projectRoutes(app: FastifyInstance) {
       })
       .returning();
     return reply.status(201).send(project);
+  });
+
+  app.get("/api/projects/:id/cases", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const q = (req as FastifyRequest<{ Querystring: { status?: string } }>).query;
+    const statusFilter = q.status && ["draft", "ready", "approved"].includes(q.status) ? (q.status as "draft" | "ready" | "approved") : undefined;
+    const db = await getDb();
+    if (!(await assertProjectAccess(db, parsed.data.id, payload.sub))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+    const projectSuites = await db.select({ id: suites.id }).from(suites).where(eq(suites.projectId, parsed.data.id));
+    const suiteIds = projectSuites.map((s) => s.id);
+    if (suiteIds.length === 0) return reply.send([]);
+    const projectSections = await db.select({ id: sections.id }).from(sections).where(inArray(sections.suiteId, suiteIds));
+    const sectionIds = projectSections.map((s) => s.id);
+    if (sectionIds.length === 0) return reply.send([]);
+    const casesList = await db
+      .select()
+      .from(testCases)
+      .where(
+        statusFilter
+          ? and(inArray(testCases.sectionId, sectionIds), eq(testCases.status, statusFilter))
+          : inArray(testCases.sectionId, sectionIds)
+      );
+    return reply.send(casesList);
+  });
+
+  app.get("/api/projects/:id/cases/summary", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertProjectAccess(db, parsed.data.id, payload.sub))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+    const projectSuites = await db.select({ id: suites.id }).from(suites).where(eq(suites.projectId, parsed.data.id));
+    const suiteIds = projectSuites.map((s) => s.id);
+    if (suiteIds.length === 0) return reply.send({ total: 0, draft: 0, ready: 0, approved: 0 });
+    const projectSections = await db.select({ id: sections.id }).from(sections).where(inArray(sections.suiteId, suiteIds));
+    const sectionIds = projectSections.map((s) => s.id);
+    if (sectionIds.length === 0) return reply.send({ total: 0, draft: 0, ready: 0, approved: 0 });
+    const rows = await db
+      .select({ status: testCases.status })
+      .from(testCases)
+      .where(inArray(testCases.sectionId, sectionIds));
+    const draft = rows.filter((r) => r.status === "draft").length;
+    const ready = rows.filter((r) => r.status === "ready").length;
+    const approved = rows.filter((r) => r.status === "approved").length;
+    return reply.send({
+      total: rows.length,
+      draft,
+      ready,
+      approved,
+    });
+  });
+
+  app.get("/api/projects/:id/cases/with-defects", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertProjectAccess(db, parsed.data.id, payload.sub))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+    const projectSuites = await db.select({ id: suites.id }).from(suites).where(eq(suites.projectId, parsed.data.id));
+    const suiteIds = projectSuites.map((s) => s.id);
+    if (suiteIds.length === 0) return reply.send([]);
+    const projectSections = await db.select({ id: sections.id }).from(sections).where(inArray(sections.suiteId, suiteIds));
+    const sectionIds = projectSections.map((s) => s.id);
+    if (sectionIds.length === 0) return reply.send([]);
+    const caseIdsWithDefects = await db
+      .selectDistinct({ entityId: issueLinks.entityId })
+      .from(issueLinks)
+      .where(and(eq(issueLinks.entityType, "case")));
+    const defectCaseIds = caseIdsWithDefects.map((r) => r.entityId);
+    if (defectCaseIds.length === 0) return reply.send([]);
+    const casesList = await db
+      .select()
+      .from(testCases)
+      .where(and(inArray(testCases.sectionId, sectionIds), inArray(testCases.id, defectCaseIds)));
+    return reply.send(casesList);
   });
 
   app.get("/api/projects/:id", async (req: FastifyRequest, reply: FastifyReply) => {
