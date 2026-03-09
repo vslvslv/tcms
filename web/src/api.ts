@@ -57,6 +57,7 @@ export type CaseSummary = { total: number; draft: number; ready: number; approve
 export type Run = {
   id: string;
   suiteId: string;
+  projectId?: string | null;
   name: string;
   description: string | null;
   planId?: string | null;
@@ -143,6 +144,18 @@ export type Dataset = {
   rows?: { id: string; datasetId: string; data: Record<string, string> }[];
 };
 
+export type RunActivityEntry = {
+  id: string;
+  type: "result" | "comment";
+  resultId: string;
+  testId: string;
+  caseTitle: string;
+  status?: string;
+  comment?: string | null;
+  createdByName: string;
+  createdAt: string;
+};
+
 export type RunTest = {
   id: string;
   runId: string;
@@ -152,5 +165,7 @@ export type RunTest = {
   sectionName?: string | null;
   datasetRowId?: string;
   datasetRow?: Record<string, string>;
+  assignedTo?: string | null;
+  assignedToName?: string | null;
   latestResult: { id: string; status: string; comment: string | null; elapsedSeconds: number | null; createdAt: string } | null;
 };

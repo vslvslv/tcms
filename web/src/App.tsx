@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
+import { DialogProvider } from "./components/ui/Dialog";
 import { ProjectProvider } from "./ProjectContext";
 import { RequireAuth } from "./RequireAuth";
 import Layout from "./components/Layout";
@@ -76,7 +77,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ProjectProvider>
-          <AppRoutes />
+          <DialogProvider>
+            <AppRoutes />
+          </DialogProvider>
         </ProjectProvider>
       </AuthProvider>
     </BrowserRouter>

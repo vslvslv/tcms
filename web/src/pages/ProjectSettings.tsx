@@ -16,6 +16,7 @@ import {
   type Webhook,
   type AuditLogEntry,
 } from "../api";
+import { useDialog } from "../components/ui/Dialog";
 import { Select } from "../components/ui/Select";
 
 type ProjectMemberWithDetails = {
@@ -28,6 +29,7 @@ type ProjectMemberWithDetails = {
 };
 
 export default function ProjectSettings() {
+  const dialog = useDialog();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
@@ -240,7 +242,13 @@ export default function ProjectSettings() {
 
   async function removeMember(userId: string) {
     if (!projectId) return;
-    if (!confirm("Remove this member?")) return;
+    const ok = await dialog.confirm({
+      title: "Remove member",
+      message: "Remove this member?",
+      icon: "warning",
+      confirmLabel: "Remove",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await api(`/api/projects/${projectId}/members/${userId}`, { method: "DELETE" });
@@ -288,7 +296,13 @@ export default function ProjectSettings() {
   }
 
   async function deleteSharedStep(id: string) {
-    if (!confirm("Delete this shared step? Cases will keep a copy as inline.")) return;
+    const ok = await dialog.confirm({
+      title: "Delete shared step",
+      message: "Delete this shared step? Cases will keep a copy as inline.",
+      icon: "delete",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await api(`/api/shared-steps/${id}`, { method: "DELETE" });
@@ -328,7 +342,13 @@ export default function ProjectSettings() {
   }
 
   async function deleteCaseTemplate(id: string) {
-    if (!confirm("Delete this template?")) return;
+    const ok = await dialog.confirm({
+      title: "Delete template",
+      message: "Delete this template?",
+      icon: "delete",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await api(`/api/case-templates/${id}`, { method: "DELETE" });
@@ -380,7 +400,13 @@ export default function ProjectSettings() {
   }
 
   async function deleteDataset(id: string) {
-    if (!confirm("Delete this dataset?")) return;
+    const ok = await dialog.confirm({
+      title: "Delete dataset",
+      message: "Delete this dataset?",
+      icon: "delete",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await api(`/api/datasets/${id}`, { method: "DELETE" });
@@ -671,7 +697,15 @@ export default function ProjectSettings() {
             type="button"
             style={{ background: "#c00", color: "#fff", border: "none", padding: "8px 12px" }}
             onClick={async () => {
-              if (!projectId || !confirm("Delete this project and all its data? This cannot be undone.")) return;
+              if (!projectId) return;
+              const ok = await dialog.confirm({
+                title: "Delete project",
+                message: "Delete this project and all its data? This cannot be undone.",
+                icon: "delete",
+                confirmLabel: "Delete",
+                variant: "danger",
+              });
+              if (!ok) return;
               try {
                 await api(`/api/projects/${projectId}`, { method: "DELETE" });
                 navigate("/projects");

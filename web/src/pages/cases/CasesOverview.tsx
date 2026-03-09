@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { api, type Project, type Suite, type Section, type TestCase, type CaseSummary, type Priority, type CaseType } from "../../api";
 import { useProject } from "../../ProjectContext";
+import { useDialog } from "../../components/ui/Dialog";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
@@ -49,6 +50,7 @@ type SortOption = "section" | "title-asc" | "title-desc" | "status" | "priority"
 const STATUS_ORDER: Record<string, number> = { draft: 0, ready: 1, approved: 2 };
 
 export default function CasesOverview() {
+  const dialog = useDialog();
   const { projectId, setProjectId } = useProject();
   const [projects, setProjects] = useState<Project[]>([]);
   const [summaries, setSummaries] = useState<Record<string, CaseSummary | null>>({});
@@ -284,7 +286,7 @@ export default function CasesOverview() {
     }
   }
 
-  function handleDeleteSection(section: SectionWithChildren) {
+  async function handleDeleteSection(section: SectionWithChildren) {
     const caseCount = totalCaseCount(section);
     const subsectionCount = section.children.length;
     const parts: string[] = [];
@@ -294,22 +296,43 @@ export default function CasesOverview() {
       parts.length > 0
         ? `Section "${section.name}" contains ${parts.join(" and ")}. Deleting it will permanently delete all of them. Are you sure?`
         : `Delete section "${section.name}"?`;
-    if (!window.confirm(message)) return;
+    const ok = await dialog.confirm({
+      title: "Delete section",
+      message,
+      icon: parts.length > 0 ? "warning" : "delete",
+      confirmLabel: "Delete",
+      variant: parts.length > 0 ? "danger" : "default",
+    });
+    if (!ok) return;
     setSaving(true);
-    api(`/api/sections/${section.id}`, { method: "DELETE" })
-      .then(() => loadOverview())
-      .catch((err) => setOverviewError(err instanceof Error ? err.message : "Failed to delete section"))
-      .finally(() => setSaving(false));
+    try {
+      await api(`/api/sections/${section.id}`, { method: "DELETE" });
+      loadOverview();
+    } catch (err) {
+      setOverviewError(err instanceof Error ? err.message : "Failed to delete section");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDeleteCase(c: TestCase) {
+  async function handleDeleteCase(c: TestCase) {
     const title = c.title || "(Untitled)";
-    if (!window.confirm(`Delete test case "${title}"?`)) return;
+    const ok = await dialog.confirm({
+      title: "Delete test case",
+      message: `Delete test case "${title}"?`,
+      icon: "delete",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setSaving(true);
-    api(`/api/cases/${c.id}`, { method: "DELETE" })
-      .then(() => loadOverview())
-      .catch((err) => setOverviewError(err instanceof Error ? err.message : "Failed to delete case"))
-      .finally(() => setSaving(false));
+    try {
+      await api(`/api/cases/${c.id}`, { method: "DELETE" });
+      loadOverview();
+    } catch (err) {
+      setOverviewError(err instanceof Error ? err.message : "Failed to delete case");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) return <LoadingSpinner />;

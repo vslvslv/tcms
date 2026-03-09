@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useProject } from "../../ProjectContext";
 import { api, type ProjectRun, type Project } from "../../api";
+import { useDialog } from "../../components/ui/Dialog";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -27,6 +28,7 @@ function progressPct(summary: { passed: number; failed: number; blocked: number;
 }
 
 export default function RunsOverview() {
+  const dialog = useDialog();
   const { projectId } = useProject();
   const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -59,7 +61,14 @@ export default function RunsOverview() {
   }, [projectId]);
 
   async function handleDelete(runId: string) {
-    if (!confirm("Delete this test run? This cannot be undone.")) return;
+    const ok = await dialog.confirm({
+      title: "Delete test run",
+      message: "Delete this test run? This cannot be undone.",
+      icon: "delete",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!ok) return;
     setDeletingId(runId);
     try {
       await api(`/api/runs/${runId}`, { method: "DELETE" });

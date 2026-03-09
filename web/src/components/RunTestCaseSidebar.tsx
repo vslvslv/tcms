@@ -8,9 +8,10 @@ import {
   type TestResult,
   type IssueLink,
   type CaseVersion,
+  type User,
 } from "../api";
 import { Button } from "./ui/Button";
-import { Card } from "./ui/Card";
+import { DialogComponents } from "./ui/Dialog";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
 import {
   Table,
@@ -48,6 +49,8 @@ function statusDotClass(s: string): string {
 export type RunTestCaseSidebarProps = {
   test: RunTest;
   runId: string;
+  /** Project ID for fetching assignable users (run.projectId) */
+  projectId?: string;
   /** Flat list of tests in display order (for Pass & Next) */
   allTestsInOrder: RunTest[];
   onClose: () => void;
@@ -59,6 +62,7 @@ type TabKey = "results" | "history" | "defects";
 export function RunTestCaseSidebar({
   test,
   runId,
+  projectId,
   allTestsInOrder,
   onClose,
   onResultSubmitted,
@@ -77,6 +81,11 @@ export function RunTestCaseSidebar({
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [caseVersions, setCaseVersions] = useState<CaseVersion[]>([]);
   const [caseVersionsLoading, setCaseVersionsLoading] = useState(false);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState<User[]>([]);
+  const [assignableLoading, setAssignableLoading] = useState(false);
+  const [assignError, setAssignError] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   const selectedResultId = test.latestResult?.id ?? null;
 
@@ -134,6 +143,19 @@ export function RunTestCaseSidebar({
       .catch(() => setResultIssueLinks([]));
   }, [selectedResultId]);
 
+  useEffect(() => {
+    if (!assignDialogOpen || !projectId) return;
+    setAssignableLoading(true);
+    setAssignError("");
+    api<User[]>(`/api/projects/${projectId}/assignable-users`)
+      .then(setAssignableUsers)
+      .catch((err) => {
+        setAssignError(err instanceof Error ? err.message : "Failed to load users");
+        setAssignableUsers([]);
+      })
+      .finally(() => setAssignableLoading(false));
+  }, [assignDialogOpen, projectId]);
+
   async function submitResult(statusOverride?: string, andSelectNext?: boolean) {
     setError("");
     setSubmitting(true);
@@ -182,6 +204,23 @@ export function RunTestCaseSidebar({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove link");
+    }
+  }
+
+  async function assignTo(userId: string | null) {
+    setAssigning(true);
+    setAssignError("");
+    try {
+      await api(`/api/tests/${test.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ assignedTo: userId }),
+      });
+      setAssignDialogOpen(false);
+      onResultSubmitted(undefined);
+    } catch (err) {
+      setAssignError(err instanceof Error ? err.message : "Failed to assign");
+    } finally {
+      setAssigning(false);
     }
   }
 
@@ -448,11 +487,66 @@ export function RunTestCaseSidebar({
               <option value="skipped">Skip & Next</option>
             </select>
           </div>
-          <Button type="button" variant="secondary" className="text-slate-600">
-            Assign To
+          <Button
+            type="button"
+            variant="secondary"
+            className="text-slate-600"
+            onClick={() => setAssignDialogOpen(true)}
+            aria-haspopup="dialog"
+            disabled={!projectId}
+            title={!projectId ? "Project context required" : undefined}
+          >
+            Assign To{test.assignedToName ? ` (${test.assignedToName})` : ""}
           </Button>
         </div>
       </div>
+
+      <DialogComponents.Custom
+        open={assignDialogOpen}
+        onClose={() => setAssignDialogOpen(false)}
+        title="Assign to"
+      >
+        <div className="space-y-4">
+          {assignError && <p className="text-sm text-red-600">{assignError}</p>}
+          {assignableLoading ? (
+            <div className="flex justify-center py-4">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <>
+              <p className="text-sm text-slate-600">
+                {test.assignedToName ? `Currently assigned to ${test.assignedToName}.` : "Assign this test to a project member."}
+              </p>
+              <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={assigning}
+                  onClick={() => assignTo(null)}
+                  className="w-full justify-start"
+                >
+                  Unassign
+                </Button>
+                {assignableUsers.map((u) => (
+                  <Button
+                    key={u.id}
+                    type="button"
+                    variant={test.assignedTo === u.id ? "primary" : "secondary"}
+                    disabled={assigning}
+                    onClick={() => assignTo(u.id)}
+                    className="w-full justify-start"
+                  >
+                    {u.name || u.email} {test.assignedTo === u.id ? " (current)" : ""}
+                  </Button>
+                ))}
+              </div>
+              {assignableUsers.length === 0 && !assignableLoading && (
+                <p className="text-sm text-slate-500">No other project members to assign.</p>
+              )}
+            </>
+          )}
+        </div>
+      </DialogComponents.Custom>
     </div>
   );
 }

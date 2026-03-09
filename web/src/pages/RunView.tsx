@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
-import { api, type Run, type RunTest } from "../api";
+import { api, type Run, type RunTest, type RunActivityEntry } from "../api";
 import { RunTestCaseSidebar } from "../components/RunTestCaseSidebar";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -61,6 +61,9 @@ export default function RunView() {
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [sortBy, setSortBy] = useState<string>("section");
+  const [activityList, setActivityList] = useState<RunActivityEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState("");
 
   function loadRun() {
     if (!runId) return;
@@ -74,6 +77,21 @@ export default function RunView() {
     loadRun();
   }, [runId]);
 
+  useEffect(() => {
+    if (tab !== "activity" || !runId) return;
+    setActivityLoading(true);
+    setActivityError("");
+    api<{ activity: RunActivityEntry[] }>(`/api/runs/${runId}/activity`)
+      .then((res) => {
+        setActivityList(res.activity);
+      })
+      .catch((err) => {
+        setActivityError(err instanceof Error ? err.message : "Failed to load activity");
+        setActivityList([]);
+      })
+      .finally(() => setActivityLoading(false));
+  }, [runId, tab]);
+
   const testsForSections = run?.tests ?? [];
   const sections = useMemo(() => groupTestsBySection(testsForSections), [testsForSections]);
   /** Flat list in display order (for Pass & Next in sidebar) */
@@ -82,6 +100,15 @@ export default function RunView() {
     [sections]
   );
   const selectedTest = selectedTestId ? allTestsInOrder.find((t) => t.id === selectedTestId) : null;
+  const activityByDate = useMemo(() => {
+    const byDate = new Map<string, RunActivityEntry[]>();
+    for (const entry of activityList) {
+      const key = entry.createdAt.slice(0, 10);
+      if (!byDate.has(key)) byDate.set(key, []);
+      byDate.get(key)!.push(entry);
+    }
+    return [...byDate.entries()].sort(([a], [b]) => b.localeCompare(a));
+  }, [activityList]);
 
   async function importResults(file: File) {
     if (!runId) return;
@@ -121,12 +148,78 @@ export default function RunView() {
   const passPct = total > 0 ? Math.round((summary.passed / total) * 100) : 0;
   const runBadgeId = run.id.slice(0, 8).toUpperCase();
 
-  // Tab content: stubs for Activity, Progress, Defects
+  // Tab content: Activity (full implementation), Progress/Defects stubs
   if (tab === "activity") {
+    const summaryForActivity = run.summary ?? { passed: 0, failed: 0, blocked: 0, skipped: 0, untested: 0 };
+    const totalForActivity =
+      summaryForActivity.passed +
+      summaryForActivity.failed +
+      summaryForActivity.blocked +
+      summaryForActivity.skipped +
+      summaryForActivity.untested;
     return (
-      <div>
+      <div className="max-w-4xl">
         <RunTitle runName={run.name} badgeId={runBadgeId} />
-        <Card className="mt-4 p-8 text-center text-muted">Activity for this run will be shown here (e.g. audit log).</Card>
+        {/* Summary strip */}
+        <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted">
+          <span className="font-medium text-success">{summaryForActivity.passed} Passed</span>
+          <span className="font-medium text-error">{summaryForActivity.failed} Failed</span>
+          <span>{summaryForActivity.blocked} Blocked</span>
+          <span>{summaryForActivity.skipped} Skipped</span>
+          {totalForActivity > 0 && (
+            <span>
+              {summaryForActivity.untested} Untested (
+              {Math.round((summaryForActivity.untested / totalForActivity) * 100)}%)
+            </span>
+          )}
+        </div>
+        <h2 className="mt-6 border-b border-border pb-2 text-lg font-semibold text-gray-900">Activity</h2>
+        {activityLoading && <LoadingSpinner />}
+        {activityError && <p className="mt-4 text-error">{activityError}</p>}
+        {!activityLoading && !activityError && activityList.length === 0 && (
+          <p className="mt-4 text-muted">No activity yet.</p>
+        )}
+        {!activityLoading && !activityError && activityByDate.length > 0 && (
+          <ul className="mt-4 list-none p-0" role="list">
+            {activityByDate.map(([dateKey, entries]) => (
+              <li key={dateKey} className="mb-6">
+                <h3 className="mb-3 text-sm font-medium text-muted">
+                  {new Date(dateKey + "T12:00:00").toLocaleDateString(undefined, {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </h3>
+                <Card className="overflow-hidden p-0">
+                  {entries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3 last:border-b-0"
+                    >
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <span
+                          className={cn(
+                            "shrink-0 rounded px-2 py-0.5 text-xs font-medium capitalize",
+                            entry.type === "comment"
+                              ? "bg-gray-100 text-gray-600"
+                              : statusBadgeClass(entry.status ?? "untested")
+                          )}
+                        >
+                          {entry.type === "comment" ? "Comment" : entry.status}
+                        </span>
+                        <span className="min-w-0 truncate font-medium text-gray-900">{entry.caseTitle || "(No title)"}</span>
+                      </div>
+                      <span className="shrink-0 text-sm text-muted">
+                        {entry.type === "result" ? "Tested by" : "Added by"} {entry.createdByName}
+                      </span>
+                    </div>
+                  ))}
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     );
   }
@@ -280,6 +373,7 @@ export default function RunView() {
             <RunTestCaseSidebar
               test={selectedTest}
               runId={runId}
+              projectId={run.projectId ?? undefined}
               allTestsInOrder={allTestsInOrder}
               onClose={() => setSelectedTestId(null)}
               onResultSubmitted={handleResultSubmitted}
