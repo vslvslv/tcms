@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { Bar } from "react-chartjs-2";
+import type { ChartOptions } from "chart.js";
+import { getChartThemeOptions } from "../charts/register";
 import { Flag, FolderOpen, Activity, Layers } from "lucide-react";
 import { api, type Project, type Suite, type Milestone, type ProjectRun, type AuditLogEntry } from "../api";
 import { Button } from "../components/ui/Button";
@@ -163,33 +165,46 @@ export default function ProjectDetail() {
         </div>
         <p className="mb-4 text-sm text-muted-foreground">Test runs created by day.</p>
         <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-              <XAxis
-                dataKey="displayDate"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                axisLine={{ stroke: "#e5e7eb" }}
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                axisLine={false}
-                tickLine={false}
-                width={28}
-              />
-              <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                labelFormatter={(_, payload) => payload[0]?.payload?.displayDate ?? ""}
-                formatter={(value: number | undefined) => [`${value ?? 0} run${(value ?? 0) !== 1 ? "s" : ""}`, "Runs"]}
-              />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} name="Runs">
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <Bar
+            data={{
+              labels: chartData.map((d) => d.displayDate),
+              datasets: [
+                {
+                  label: "Runs",
+                  data: chartData.map((d) => d.count),
+                  backgroundColor: chartData.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+                  borderRadius: { topLeft: 4, topRight: 4 },
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  ...getChartThemeOptions().plugins?.tooltip,
+                  callbacks: {
+                    label: (ctx) => `${ctx.raw} run${Number(ctx.raw) !== 1 ? "s" : ""}`,
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  ...getChartThemeOptions().scales?.x,
+                  ticks: { font: { size: 11 }, ...getChartThemeOptions().scales?.x?.ticks },
+                  grid: { display: false },
+                },
+                y: {
+                  ...getChartThemeOptions().scales?.y,
+                  beginAtZero: true,
+                  ticks: { font: { size: 11 }, stepSize: 1, ...getChartThemeOptions().scales?.y?.ticks },
+                  grid: { ...getChartThemeOptions().scales?.y?.grid },
+                  border: { display: false },
+                },
+              },
+            } as ChartOptions<"bar">}
+          />
         </div>
       </Card>
 
