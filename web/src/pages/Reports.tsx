@@ -9,7 +9,6 @@ import { PageTitle } from "../components/ui/PageTitle";
 type DashboardData = {
   projects: { id: string; name: string }[];
   milestones: { id: string; projectId: string; name: string; dueDate: string | null }[];
-  plans: { id: string; projectId: string; name: string; milestoneId: string | null }[];
   recentRuns: { id: string; name: string; suiteId: string; projectId?: string; createdAt: string }[];
 };
 
@@ -46,8 +45,7 @@ export default function Reports() {
     return [
       { name: "Projects", value: data.projects.length, color: PIE_COLORS[0] },
       { name: "Milestones", value: data.milestones.length, color: PIE_COLORS[1] },
-      { name: "Test plans", value: data.plans.length, color: PIE_COLORS[2] },
-      { name: "Recent runs (sample)", value: Math.min(data.recentRuns.length, 20), color: PIE_COLORS[3] },
+      { name: "Recent runs (sample)", value: Math.min(data.recentRuns.length, 20), color: PIE_COLORS[2] },
     ].filter((d) => d.value > 0);
   }, [data]);
 

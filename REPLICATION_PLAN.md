@@ -8,7 +8,7 @@ This document summarizes the plan to build a Test Case Management System (TCMS) 
 
 Build a TestRail-like test case management system with:
 
-- **Core**: Projects, suites, sections, test cases (with steps), test runs, test plans, milestones, and result recording.
+- **Core**: Projects, suites, sections, test cases (with steps), test runs, milestones, and result recording.
 - **Extended**: Custom case fields, shared steps, versioning, reporting, roles, and integrations (issue trackers, CI/CD).
 
 ---
@@ -37,28 +37,27 @@ Project
 
 ```
 Project
+  └── Suite(s) → Section(s) → Test case(s)
   └── Milestone(s)
-        └── Test Plan(s)
-              └── Test Run(s)   ← one per config / scope
-                    └── Test(s) ← case instance in run
-                          └── Result(s) ← one per execution (pass/fail/blocked/etc.)
+  └── Test Run(s)   ← created from a suite; optional milestone
+        └── Test(s) ← case instance in run
+              └── Result(s) ← one per execution (pass/fail/blocked/etc.)
 ```
 
 ### 3.3 Core entities
 
 | Entity        | Purpose |
 |---------------|--------|
-| **Project**   | Top-level container; holds suites, runs, plans, milestones. |
+| **Project**   | Top-level container; holds suites, runs, milestones. |
 | **Suite**     | Test case repository (one or many per project). |
 | **Section**   | Folder/hierarchy for organizing cases (tree). |
 | **Test case** | Scenario: title, steps, type, priority, custom fields. |
 | **Test step** | Action + expected result; can be shared across cases. |
 | **Shared steps** | Reusable step set; one edit propagates to all linked cases. |
 | **Test run**  | One execution of a set of cases (e.g. “Regression – Chrome”). |
-| **Test plan** | Group of runs (e.g. by browser/OS); often tied to a milestone. |
 | **Test**      | A case in a run; holds one current result. |
 | **Result**    | Outcome (pass/fail/blocked/skip), comment, time, attachments. |
-| **Milestone** | Release/version with due date; groups plans/runs. |
+| **Milestone** | Release/version with due date; can be linked to runs. |
 
 ### 3.4 Supporting entities
 
@@ -68,7 +67,7 @@ Project
 | Priority        | e.g. Critical, High, Medium, Low. |
 | Case field      | Custom fields (dropdown, text, etc.) per project/global. |
 | Template        | Case layout (steps-based, exploratory, etc.). |
-| Configuration   | e.g. OS, browser, device for runs/plans. |
+| Configuration   | e.g. OS, browser, device for runs. |
 | User / Role     | Permissions (global and per project). |
 
 ---
@@ -82,11 +81,10 @@ Project
 - Test cases: title, steps (action + expected result), prerequisites, type, priority.
 - Test runs: create from suite/section, assign, basic config.
 - Execution: record result per test (pass/fail/blocked/skip), comment, time.
-- Test plans: multiple runs in one plan; link to milestone.
-- Milestones: name, due date, link to plans/runs.
+- Milestones: name, due date, link to runs.
 - Case custom fields (configurable).
-- Filtering and list views for cases, runs, plans.
-- Basic reporting: run/plan summary (passed/failed/blocked/untested), milestone progress.
+- Filtering and list views for cases, runs.
+- Basic reporting: run summary (passed/failed/blocked/untested), milestone progress.
 
 ### Tier 2 — Parity
 
@@ -130,10 +128,10 @@ Project
 
 **Goal**: Full structure and execution parity with basic reporting and permissions.
 
-- [ ] **Data model**: TestPlan, Milestone, CaseType, Priority, CaseField (config + values), Configuration, User, Role.
-- [ ] **Features**: Test plans and milestones; custom case fields; priorities and case types; configurations for runs/plans; attachments (cases, results).
+- [ ] **Data model**: Milestone, CaseType, Priority, CaseField (config + values), Configuration, User, Role.
+- [ ] **Features**: Milestones; custom case fields; priorities and case types; configurations for runs; attachments (cases, results).
 - [ ] **Permissions**: Roles (e.g. admin, lead, tester); project-level access.
-- [ ] **Reporting**: Milestone progress; plan summary; filters and export.
+- [ ] **Reporting**: Milestone progress; filters and export.
 
 ---
 

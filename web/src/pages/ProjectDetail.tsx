@@ -1,14 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Flag, FolderOpen, Activity, Layers, ClipboardList } from "lucide-react";
-import { api, type Project, type Suite, type Milestone, type TestPlan, type ProjectRun, type AuditLogEntry } from "../api";
+import { Flag, FolderOpen, Activity, Layers } from "lucide-react";
+import { api, type Project, type Suite, type Milestone, type ProjectRun, type AuditLogEntry } from "../api";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/Select";
-
 function last7Days(): { date: string; displayDate: string }[] {
   const out: { date: string; displayDate: string }[] = [];
   for (let i = 6; i >= 0; i--) {
@@ -39,7 +37,6 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null);
   const [suites, setSuites] = useState<Suite[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [plans, setPlans] = useState<TestPlan[]>([]);
   const [recentRuns, setRecentRuns] = useState<ProjectRun[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,9 +46,6 @@ export default function ProjectDetail() {
   const [showNewMilestone, setShowNewMilestone] = useState(false);
   const [newMilestoneName, setNewMilestoneName] = useState("");
   const [newMilestoneDue, setNewMilestoneDue] = useState("");
-  const [showNewPlan, setShowNewPlan] = useState(false);
-  const [newPlanName, setNewPlanName] = useState("");
-  const [newPlanMilestoneId, setNewPlanMilestoneId] = useState("");
   const [saving, setSaving] = useState(false);
 
   function load() {
@@ -60,14 +54,12 @@ export default function ProjectDetail() {
       api<Project>(`/api/projects/${projectId}`),
       api<Suite[]>(`/api/projects/${projectId}/suites`),
       api<Milestone[]>(`/api/projects/${projectId}/milestones`),
-      api<TestPlan[]>(`/api/projects/${projectId}/plans`),
       api<ProjectRun[]>(`/api/projects/${projectId}/runs?limit=50`),
     ])
-      .then(([p, s, m, pl, runs]) => {
+      .then(([p, s, m, runs]) => {
         setProject(p);
         setSuites(s);
         setMilestones(m);
-        setPlans(pl);
         setRecentRuns(runs);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
@@ -144,30 +136,6 @@ export default function ProjectDetail() {
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create milestone");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function createPlan(e: React.FormEvent) {
-    e.preventDefault();
-    if (!projectId || !newPlanName.trim()) return;
-    setSaving(true);
-    setError("");
-    try {
-      await api<TestPlan>(`/api/projects/${projectId}/plans`, {
-        method: "POST",
-        body: JSON.stringify({
-          name: newPlanName.trim(),
-          milestoneId: newPlanMilestoneId.trim() || null,
-        }),
-      });
-      setNewPlanName("");
-      setNewPlanMilestoneId("");
-      setShowNewPlan(false);
-      load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create plan");
     } finally {
       setSaving(false);
     }
@@ -316,8 +284,8 @@ export default function ProjectDetail() {
         {auditLog.length === 0 && activityFromRuns.length === 0 && <p className="text-sm text-muted-foreground">No recent activity.</p>}
       </Card>
 
-      {/* Suites and Test plans */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      {/* Suites */}
+      <div className="mt-6">
         <Card>
           <div className="mb-3 flex items-center gap-2">
             <Layers size={18} className="shrink-0 text-muted-foreground" />
@@ -341,42 +309,6 @@ export default function ProjectDetail() {
             ))}
           </ul>
           {suites.length === 0 && !showNewSuite && <p className="text-sm text-muted-foreground">No suites. Add one above.</p>}
-        </Card>
-
-        <Card>
-          <div className="mb-3 flex items-center gap-2">
-            <ClipboardList size={18} className="shrink-0 text-muted-foreground" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Test plans</h2>
-          </div>
-          {showNewPlan && (
-            <form onSubmit={createPlan} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-muted/50 p-4">
-              <label className="flex items-center gap-2">
-                Name <input value={newPlanName} onChange={(e) => setNewPlanName(e.target.value)} required className="rounded border border-input px-2 py-1 text-sm" />
-              </label>
-              <label className="flex items-center gap-2">
-                Milestone
-                <Select value={newPlanMilestoneId} onValueChange={setNewPlanMilestoneId}>
-                  <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="— None —" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {milestones.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </label>
-              <Button type="submit" variant="primary" disabled={saving}>Create</Button>
-              <Button type="button" onClick={() => { setShowNewPlan(false); setNewPlanName(""); setNewPlanMilestoneId(""); }}>Cancel</Button>
-            </form>
-          )}
-          {!showNewPlan && <Button type="button" variant="primary" onClick={() => setShowNewPlan(true)} className="mb-3 text-sm">New plan</Button>}
-          <ul className="list-none p-0">
-            {plans.map((p) => (
-              <li key={p.id} className="py-1.5">
-                <Link to={`/plans/${p.id}/summary`} className="text-primary hover:underline">{p.name}</Link>
-              </li>
-            ))}
-          </ul>
-          {plans.length === 0 && !showNewPlan && <p className="text-sm text-muted-foreground">No test plans.</p>}
         </Card>
       </div>
     </div>

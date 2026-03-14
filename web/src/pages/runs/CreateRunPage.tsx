@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../../ProjectContext";
-import { api, type Run, type Suite, type Milestone, type TestPlan, type ConfigGroup } from "../../api";
+import { api, type Run, type Suite, type Milestone, type ConfigGroup } from "../../api";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
@@ -15,13 +15,11 @@ export default function CreateRunPage() {
   const navigate = useNavigate();
   const [suites, setSuites] = useState<Suite[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [plans, setPlans] = useState<TestPlan[]>([]);
   const [configGroups, setConfigGroups] = useState<ConfigGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [suiteId, setSuiteId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [planId, setPlanId] = useState("");
   const [milestoneId, setMilestoneId] = useState("");
   const [configOptionIds, setConfigOptionIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -35,13 +33,11 @@ export default function CreateRunPage() {
     Promise.all([
       api<Suite[]>(`/api/projects/${projectId}/suites`),
       api<Milestone[]>(`/api/projects/${projectId}/milestones`),
-      api<TestPlan[]>(`/api/projects/${projectId}/plans`),
       api<ConfigGroup[]>(`/api/projects/${projectId}/config-groups`),
     ])
-      .then(([s, m, p, c]) => {
+      .then(([s, m, c]) => {
         setSuites(s);
         setMilestones(m);
-        setPlans(p);
         setConfigGroups(c);
         if (s.length === 1) setSuiteId(s[0].id);
       })
@@ -64,7 +60,6 @@ export default function CreateRunPage() {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim() || undefined,
-          planId: planId || undefined,
           milestoneId: milestoneId || undefined,
           configOptionIds: configOptionIds.length > 0 ? configOptionIds : undefined,
         }),
@@ -135,19 +130,6 @@ export default function CreateRunPage() {
             className="mt-1 w-full rounded border border-border px-2 py-1.5 text-sm focus:ring-2 focus:ring-primary"
           />
         </div>
-        {plans.length > 0 && (
-          <div>
-            <Label htmlFor="plan">Test plan</Label>
-            <Select value={planId} onValueChange={setPlanId}>
-              <SelectTrigger id="plan" className="mt-1 w-full">
-                <SelectValue placeholder="— None —" />
-              </SelectTrigger>
-              <SelectContent>
-                {plans.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
         {milestones.length > 0 && (
           <div>
             <Label htmlFor="milestone">Milestone</Label>

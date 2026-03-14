@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { getDb } from "../db/index.js";
-import { projects, projectMembers, milestones, testPlans, suites, runs } from "../db/schema.js";
+import { projects, projectMembers, milestones, suites, runs } from "../db/schema.js";
 import { eq, inArray, desc } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 
@@ -25,10 +25,9 @@ export default async function dashboardRoutes(app: FastifyInstance) {
         recentRuns: [],
       });
     }
-    const [projectsList, milestonesList, plansList] = await Promise.all([
+    const [projectsList, milestonesList] = await Promise.all([
       db.select({ id: projects.id, name: projects.name }).from(projects).where(inArray(projects.id, projectIds)),
       db.select().from(milestones).where(inArray(milestones.projectId, projectIds)),
-      db.select().from(testPlans).where(inArray(testPlans.projectId, projectIds)),
     ]);
     const suiteRows = await db.select({ id: suites.id, projectId: suites.projectId }).from(suites).where(inArray(suites.projectId, projectIds));
     const suiteIds = suiteRows.map((s) => s.id);
@@ -49,7 +48,7 @@ export default async function dashboardRoutes(app: FastifyInstance) {
     return reply.send({
       projects: projectsList,
       milestones: milestonesList,
-      plans: plansList,
+      plans: [],
       recentRuns: recentRunsWithProject,
     });
   });

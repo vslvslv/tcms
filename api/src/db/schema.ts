@@ -93,21 +93,6 @@ export const milestones = pgTable("milestones", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const testPlans = pgTable("test_plans", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  projectId: uuid("project_id")
-    .notNull()
-    .references(() => projects.id, { onDelete: "cascade" }),
-  milestoneId: uuid("milestone_id").references(() => milestones.id, { onDelete: "set null" }),
-  name: text("name").notNull(),
-  description: text("description"),
-  createdBy: uuid("created_by")
-    .notNull()
-    .references(() => users.id, { onDelete: "restrict" }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
 export const caseTypes = pgTable("case_types", {
   id: uuid("id").primaryKey().defaultRandom(),
   projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
@@ -265,7 +250,6 @@ export const runs = pgTable("runs", {
   suiteId: uuid("suite_id")
     .notNull()
     .references(() => suites.id, { onDelete: "cascade" }),
-  planId: uuid("plan_id").references(() => testPlans.id, { onDelete: "set null" }),
   milestoneId: uuid("milestone_id").references(() => milestones.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   description: text("description"),

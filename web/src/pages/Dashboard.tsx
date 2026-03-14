@@ -9,7 +9,6 @@ import { PageTitle } from "../components/ui/PageTitle";
 type DashboardData = {
   projects: { id: string; name: string }[];
   milestones: { id: string; projectId: string; name: string; dueDate: string | null }[];
-  plans: { id: string; projectId: string; name: string; milestoneId: string | null }[];
   recentRuns: { id: string; name: string; suiteId: string; projectId?: string; createdAt: string }[];
 };
 
@@ -84,20 +83,19 @@ export default function Dashboard() {
   }
   if (!data) return null;
 
-  const hasAny = data.projects.length > 0 || data.milestones.length > 0 || data.plans.length > 0 || data.recentRuns.length > 0;
+  const hasAny = data.projects.length > 0 || data.milestones.length > 0 || data.recentRuns.length > 0;
 
   return (
     <div className="max-w-5xl">
       <PageTitle className="mb-6">Dashboard</PageTitle>
       <p className="mb-8 text-muted-foreground">
-        Overview of your projects, milestones, test plans, and recent activity.
+        Overview of your projects, milestones, and recent activity.
       </p>
 
       {/* Stats strip – TestRail-style summary */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="Projects" value={data.projects.length} href={data.projects.length > 0 ? "/projects" : undefined} />
         <StatCard label="Milestones" value={data.milestones.length} />
-        <StatCard label="Test plans" value={data.plans.length} />
         <StatCard label="Recent runs" value={data.recentRuns.length} />
       </div>
 
@@ -143,7 +141,7 @@ export default function Dashboard() {
         </Card>
       )}
 
-      {/* Content grid – Projects, Milestones, Plans, Recent runs */}
+      {/* Content grid – Projects, Milestones, Recent runs */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Projects</h2>
@@ -200,28 +198,6 @@ export default function Dashboard() {
           {data.milestones.length > 6 && (
             <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">
               +{data.milestones.length - 6} more
-            </p>
-          )}
-        </Card>
-
-        <Card>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Test plans</h2>
-          {data.plans.length > 0 ? (
-            <ul className="list-none space-y-2 p-0">
-              {data.plans.slice(0, 6).map((p) => (
-                <li key={p.id}>
-                  <Link to={`/plans/${p.id}/summary`} className="font-medium text-primary hover:underline">
-                    {p.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground">No test plans.</p>
-          )}
-          {data.plans.length > 6 && (
-            <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">
-              +{data.plans.length - 6} more
             </p>
           )}
         </Card>
