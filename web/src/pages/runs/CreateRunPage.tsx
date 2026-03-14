@@ -6,7 +6,7 @@ import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { PageTitle } from "../../components/ui/PageTitle";
-import { Select } from "../../components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/Select";
 import { Input } from "../../components/ui/Input";
 import { Label } from "../../components/ui/Label";
 
@@ -110,11 +110,15 @@ export default function CreateRunPage() {
       <form onSubmit={handleSubmit} className="space-y-4" data-testid="create-run-form">
         <div>
           <Label htmlFor="suite">Suite</Label>
-          <Select id="suite" value={suiteId} onChange={(e) => setSuiteId(e.target.value)} required className="mt-1 w-full">
-            <option value="">— Select suite —</option>
-            {suites.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
+          <Select value={suiteId} onValueChange={setSuiteId} required>
+            <SelectTrigger id="suite" className="mt-1 w-full">
+              <SelectValue placeholder="— Select suite —" />
+            </SelectTrigger>
+            <SelectContent>
+              {suites.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
         <div>
@@ -134,18 +138,26 @@ export default function CreateRunPage() {
         {plans.length > 0 && (
           <div>
             <Label htmlFor="plan">Test plan</Label>
-            <Select id="plan" value={planId} onChange={(e) => setPlanId(e.target.value)} className="mt-1 w-full">
-              <option value="">— None —</option>
-              {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <Select value={planId} onValueChange={setPlanId}>
+              <SelectTrigger id="plan" className="mt-1 w-full">
+                <SelectValue placeholder="— None —" />
+              </SelectTrigger>
+              <SelectContent>
+                {plans.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
         )}
         {milestones.length > 0 && (
           <div>
             <Label htmlFor="milestone">Milestone</Label>
-            <Select id="milestone" value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)} className="mt-1 w-full">
-              <option value="">— None —</option>
-              {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            <Select value={milestoneId} onValueChange={setMilestoneId}>
+              <SelectTrigger id="milestone" className="mt-1 w-full">
+                <SelectValue placeholder="— None —" />
+              </SelectTrigger>
+              <SelectContent>
+                {milestones.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
         )}
@@ -155,7 +167,7 @@ export default function CreateRunPage() {
             <div className="mt-2 space-y-1">
               {configGroups.map((g) => (
                 <div key={g.id}>
-                  <span className="text-sm font-medium text-muted">{g.name}:</span>
+                  <span className="text-sm font-medium text-muted-foreground">{g.name}:</span>
                   <div className="mt-1 flex flex-wrap gap-2">
                     {g.options?.map((o) => (
                       <label key={o.id} className="flex items-center gap-1.5 text-sm">

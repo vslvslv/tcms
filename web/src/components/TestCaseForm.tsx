@@ -19,7 +19,7 @@ import {
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
-import { Select } from "./ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/Select";
 
 type StepRow = { content: string; expected: string; sharedStepId?: string };
 
@@ -71,6 +71,7 @@ export function TestCaseForm({
   const [newRequirementRef, setNewRequirementRef] = useState("");
   const [newRequirementTitle, setNewRequirementTitle] = useState("");
   const [versions, setVersions] = useState<CaseVersion[]>([]);
+  const [sharedStepSelectValue, setSharedStepSelectValue] = useState("");
   const [diffFrom, setDiffFrom] = useState("");
   const [diffTo, setDiffTo] = useState("");
   const [diffResult, setDiffResult] = useState<{
@@ -353,7 +354,7 @@ export function TestCaseForm({
 
   const formClass = compact ? "space-y-3" : "space-y-4";
   const inputClass =
-    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+    "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
 
   if (loading) return <LoadingSpinner />;
   if (error && !title) return <p className="text-error">{error}</p>;
@@ -361,13 +362,13 @@ export function TestCaseForm({
   return (
     <div className="max-w-2xl space-y-8">
       <Card className={compact ? "p-4" : "p-6"}>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">
           {isEdit ? "Edit test case" : "New test case"}
         </h2>
         <form onSubmit={handleSubmit} className={formClass}>
           {error && <p className="text-sm text-error">{error}</p>}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Title</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -377,7 +378,7 @@ export function TestCaseForm({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Prerequisite</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">Prerequisite</label>
             <textarea
               value={prerequisite}
               onChange={(e) => setPrerequisite(e.target.value)}
@@ -388,58 +389,71 @@ export function TestCaseForm({
           </div>
           {caseTypes.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Case type</label>
-              <Select value={caseTypeId} onChange={(e) => setCaseTypeId(e.target.value)} className={inputClass}>
-                <option value="">— None —</option>
-                {caseTypes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+              <label className="mb-1 block text-sm font-medium text-foreground">Case type</label>
+              <Select value={caseTypeId} onValueChange={setCaseTypeId}>
+                <SelectTrigger className={inputClass}>
+                  <SelectValue placeholder="— None —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {caseTypes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
           )}
           {priorities.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
-              <Select value={priorityId} onChange={(e) => setPriorityId(e.target.value)} className={inputClass}>
-                <option value="">— None —</option>
-                {priorities.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
+              <label className="mb-1 block text-sm font-medium text-foreground">Priority</label>
+              <Select value={priorityId} onValueChange={setPriorityId}>
+                <SelectTrigger className={inputClass}>
+                  <SelectValue placeholder="— None —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {priorities.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
           )}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-            <Select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as "draft" | "ready" | "approved")}
-              className={inputClass}
-            >
-              <option value="draft">Draft</option>
-              <option value="ready">Ready</option>
-              <option value="approved" disabled={isEdit && myRole !== "admin" && myRole !== "lead"}>
-                Approved {isEdit && myRole !== "admin" && myRole !== "lead" ? "(admin/lead only)" : ""}
-              </option>
+            <label className="mb-1 block text-sm font-medium text-foreground">Status</label>
+            <Select value={status} onValueChange={(v) => setStatus(v as "draft" | "ready" | "approved")}>
+              <SelectTrigger className={inputClass}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="ready">Ready</SelectItem>
+                <SelectItem value="approved" disabled={isEdit && myRole !== "admin" && myRole !== "lead"}>
+                  Approved {isEdit && myRole !== "admin" && myRole !== "lead" ? "(admin/lead only)" : ""}
+                </SelectItem>
+              </SelectContent>
             </Select>
           </div>
           {datasetsList.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Dataset</label>
-              <Select value={datasetId} onChange={(e) => setDatasetId(e.target.value)} className={inputClass}>
-                <option value="">— None —</option>
-                {datasetsList.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
+              <label className="mb-1 block text-sm font-medium text-foreground">Dataset</label>
+              <Select value={datasetId} onValueChange={setDatasetId}>
+                <SelectTrigger className={inputClass}>
+                  <SelectValue placeholder="— None —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {datasetsList.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
           )}
           {caseFields.length > 0 && (
             <div>
-              <h4 className="mb-2 text-sm font-medium text-slate-700">Custom fields</h4>
+              <h4 className="mb-2 text-sm font-medium text-foreground">Custom fields</h4>
               <div className="space-y-2">
                 {caseFields.map((f) => (
                   <div key={f.id}>
-                    <label className="mb-0.5 block text-xs text-slate-600">{f.name}</label>
+                    <label className="mb-0.5 block text-xs text-muted-foreground">{f.name}</label>
                     {f.fieldType === "text" && (
                       <input
                         value={customValues[f.id] ?? ""}
@@ -464,15 +478,15 @@ export function TestCaseForm({
                       />
                     )}
                     {f.fieldType === "dropdown" && (
-                      <Select
-                        value={customValues[f.id] ?? ""}
-                        onChange={(e) => setCustomValue(f.id, e.target.value)}
-                        className={inputClass}
-                      >
-                        <option value="">—</option>
-                        {(f.options ?? []).map((o) => (
-                          <option key={o} value={o}>{o}</option>
-                        ))}
+                      <Select value={customValues[f.id] ?? ""} onValueChange={(v) => setCustomValue(f.id, v)}>
+                        <SelectTrigger className={inputClass}>
+                          <SelectValue placeholder="—" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(f.options ?? []).map((o) => (
+                            <SelectItem key={o} value={o}>{o}</SelectItem>
+                          ))}
+                        </SelectContent>
                       </Select>
                     )}
                   </div>
@@ -481,13 +495,13 @@ export function TestCaseForm({
             </div>
           )}
           <div>
-            <h4 className="mb-2 text-sm font-medium text-slate-700">Steps</h4>
+            <h4 className="mb-2 text-sm font-medium text-foreground">Steps</h4>
             <div className="space-y-2">
               {steps.map((step, i) => (
-                <div key={i} className="rounded-lg border border-slate-200 bg-slate-50/50 p-3">
-                  {step.sharedStepId && <div className="mb-2 text-xs text-muted">Shared step</div>}
+                <div key={i} className="rounded-lg border border-border bg-muted/40 p-3">
+                  {step.sharedStepId && <div className="mb-2 text-xs text-muted-foreground">Shared step</div>}
                   <div className="mb-2">
-                    <label className="mb-0.5 block text-xs text-slate-600">Action</label>
+                    <label className="mb-0.5 block text-xs text-muted-foreground">Action</label>
                     <input
                       value={step.content}
                       onChange={(e) => updateStep(i, "content", e.target.value)}
@@ -496,7 +510,7 @@ export function TestCaseForm({
                     />
                   </div>
                   <div>
-                    <label className="mb-0.5 block text-xs text-slate-600">Expected</label>
+                    <label className="mb-0.5 block text-xs text-muted-foreground">Expected</label>
                     <input
                       value={step.expected}
                       onChange={(e) => updateStep(i, "expected", e.target.value)}
@@ -504,7 +518,7 @@ export function TestCaseForm({
                       readOnly={!!step.sharedStepId}
                     />
                   </div>
-                  <button type="button" onClick={() => removeStep(i)} className="mt-2 text-sm text-muted hover:text-error">
+                  <button type="button" onClick={() => removeStep(i)} className="mt-2 text-sm text-muted-foreground hover:text-error">
                     Remove step
                   </button>
                 </div>
@@ -515,26 +529,28 @@ export function TestCaseForm({
                 Add step
               </Button>
               {sharedStepsList.length > 0 && (
-                <span className="text-sm text-slate-600">
+                <span className="text-sm text-muted-foreground">
                   Insert shared:{" "}
                   <Select
-                    value=""
-                    onChange={(e) => {
-                      const id = e.target.value;
+                    value={sharedStepSelectValue}
+                    onValueChange={(id) => {
                       if (id) {
                         const sh = sharedStepsList.find((s) => s.id === id);
                         if (sh) insertSharedStep(sh);
-                        (e.target as HTMLSelectElement).value = "";
+                        setSharedStepSelectValue("");
                       }
                     }}
-                    className="rounded-lg border border-border bg-surface px-2 py-1 text-sm"
                   >
-                    <option value="">— Choose —</option>
-                    {sharedStepsList.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.content.slice(0, 50)}{s.content.length > 50 ? "…" : ""}
-                      </option>
-                    ))}
+                    <SelectTrigger className="rounded-lg border border-border bg-surface px-2 py-1 text-sm">
+                      <SelectValue placeholder="— Choose —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sharedStepsList.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.content.slice(0, 50)}{s.content.length > 50 ? "…" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
                   </Select>
                 </span>
               )}
@@ -556,14 +572,14 @@ export function TestCaseForm({
       {isEdit && caseId && (
         <>
           <Card className="p-6">
-            <h3 className="mb-3 text-sm font-semibold text-slate-800">Defects / Issues</h3>
+            <h3 className="mb-3 text-sm font-semibold text-foreground">Defects / Issues</h3>
             <ul className="list-none space-y-2 p-0 text-sm">
               {issueLinksList.map((l) => (
                 <li key={l.id} className="flex items-center gap-2">
                   <a href={l.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                     {l.title || l.url}
                   </a>
-                  <button type="button" onClick={() => removeIssueLink(l.id)} className="text-muted hover:text-error">
+                  <button type="button" onClick={() => removeIssueLink(l.id)} className="text-muted-foreground hover:text-error">
                     Remove
                   </button>
                 </li>
@@ -575,25 +591,25 @@ export function TestCaseForm({
                 onChange={(e) => setNewIssueUrl(e.target.value)}
                 placeholder="URL"
                 required
-                className="min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="min-w-[200px] rounded-lg border border-input px-3 py-2 text-sm"
               />
               <input
                 value={newIssueTitle}
                 onChange={(e) => setNewIssueTitle(e.target.value)}
                 placeholder="Title (optional)"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-input px-3 py-2 text-sm"
               />
               <Button type="submit" variant="primary">Add link</Button>
             </form>
           </Card>
 
           <Card className="p-6">
-            <h3 className="mb-3 text-sm font-semibold text-slate-800">Requirements</h3>
+            <h3 className="mb-3 text-sm font-semibold text-foreground">Requirements</h3>
             <ul className="list-none space-y-2 p-0 text-sm">
               {requirementLinksList.map((l) => (
                 <li key={l.id} className="flex items-center gap-2">
                   {l.title ? `${l.requirementRef}: ${l.title}` : l.requirementRef}
-                  <button type="button" onClick={() => removeRequirementLink(l.id)} className="text-muted hover:text-error">
+                  <button type="button" onClick={() => removeRequirementLink(l.id)} className="text-muted-foreground hover:text-error">
                     Remove
                   </button>
                 </li>
@@ -605,13 +621,13 @@ export function TestCaseForm({
                 onChange={(e) => setNewRequirementRef(e.target.value)}
                 placeholder="Requirement ref (e.g. REQ-001)"
                 required
-                className="min-w-[160px] rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="min-w-[160px] rounded-lg border border-input px-3 py-2 text-sm"
               />
               <input
                 value={newRequirementTitle}
                 onChange={(e) => setNewRequirementTitle(e.target.value)}
                 placeholder="Title (optional)"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-input px-3 py-2 text-sm"
               />
               <Button type="submit" variant="primary">Add requirement</Button>
             </form>
@@ -619,8 +635,8 @@ export function TestCaseForm({
 
           {versions.length > 0 && (
             <Card className="p-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-800">History</h3>
-              <ul className="list-none space-y-1 p-0 text-sm text-slate-600">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">History</h3>
+              <ul className="list-none space-y-1 p-0 text-sm text-muted-foreground">
                 {versions.map((v) => (
                   <li key={v.id}>
                     {new Date(v.createdAt).toLocaleString()} — v {v.id.slice(0, 8)}
@@ -628,39 +644,45 @@ export function TestCaseForm({
                 ))}
               </ul>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label className="text-sm text-slate-600">Compare:</label>
+                <label className="text-sm text-muted-foreground">Compare:</label>
                 <Select
                   value={diffFrom}
-                  onChange={(e) => {
-                    setDiffFrom(e.target.value);
+                  onValueChange={(v) => {
+                    setDiffFrom(v);
                     setDiffResult(null);
                   }}
-                  className="rounded-lg border border-border px-2 py-1.5 text-sm"
                 >
-                  <option value="">— From —</option>
-                  {versions.map((v) => (
-                    <option key={v.id} value={v.id}>{new Date(v.createdAt).toLocaleString()}</option>
-                  ))}
+                  <SelectTrigger className="rounded-lg border border-border px-2 py-1.5 text-sm">
+                    <SelectValue placeholder="— From —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {versions.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{new Date(v.createdAt).toLocaleString()}</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
                 <Select
                   value={diffTo}
-                  onChange={(e) => {
-                    setDiffTo(e.target.value);
+                  onValueChange={(v) => {
+                    setDiffTo(v);
                     setDiffResult(null);
                   }}
-                  className="rounded-lg border border-border px-2 py-1.5 text-sm"
                 >
-                  <option value="">— To —</option>
-                  {versions.map((v) => (
-                    <option key={v.id} value={v.id}>{new Date(v.createdAt).toLocaleString()}</option>
-                  ))}
+                  <SelectTrigger className="rounded-lg border border-border px-2 py-1.5 text-sm">
+                    <SelectValue placeholder="— To —" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {versions.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>{new Date(v.createdAt).toLocaleString()}</SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
                 <Button type="button" onClick={loadDiff} disabled={!diffFrom || !diffTo}>
                   Show diff
                 </Button>
               </div>
               {diffResult && (
-                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div className="mt-3 rounded-lg border border-border bg-muted/50 p-3 text-sm">
                   <strong>Changes:</strong>
                   <ul className="mt-2 list-inside list-disc pl-2">
                     {diffResult.changes.map((c, i) => (

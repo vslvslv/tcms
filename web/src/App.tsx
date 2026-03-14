@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
+import { ThemeProvider } from "./ThemeContext";
 import { DialogProvider } from "./components/ui/Dialog";
 import { ProjectProvider } from "./ProjectContext";
 import { RequireAuth } from "./RequireAuth";
@@ -75,13 +76,15 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ProjectProvider>
-          <DialogProvider>
-            <AppRoutes />
-          </DialogProvider>
-        </ProjectProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ProjectProvider>
+            <DialogProvider>
+              <AppRoutes />
+            </DialogProvider>
+          </ProjectProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

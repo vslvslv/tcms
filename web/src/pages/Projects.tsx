@@ -124,25 +124,25 @@ export default function Projects() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[500px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-border bg-gray-50">
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Description</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Updated</th>
-                  <th className="w-28 px-4 py-3 text-right font-semibold text-gray-700">Actions</th>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-3 text-left font-semibold text-foreground">Name</th>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground">Description</th>
+                  <th className="px-4 py-3 text-left font-semibold text-foreground">Updated</th>
+                  <th className="w-28 px-4 py-3 text-right font-semibold text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {projects.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-3">
                       <Link to={`/projects/${p.id}`} className="font-medium text-primary hover:underline">
                         {p.name}
                       </Link>
                     </td>
-                    <td className="max-w-xs truncate px-4 py-3 text-muted" title={p.description ?? undefined}>
+                    <td className="max-w-xs truncate px-4 py-3 text-muted-foreground" title={p.description ?? undefined}>
                       {p.description || "—"}
                     </td>
-                    <td className="px-4 py-3 text-muted">{formatDate(p.updatedAt)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{formatDate(p.updatedAt)}</td>
                     <td className="px-4 py-3 text-right">
                       <Link
                         to={`/projects/${p.id}`}
@@ -150,10 +150,10 @@ export default function Projects() {
                       >
                         View
                       </Link>
-                      <span className="mx-2 text-gray-300">·</span>
+                      <span className="mx-2 text-muted-foreground">·</span>
                       <Link
                         to={`/projects/${p.id}/settings`}
-                        className="text-muted hover:underline"
+                        className="text-muted-foreground hover:underline"
                       >
                         Settings
                       </Link>

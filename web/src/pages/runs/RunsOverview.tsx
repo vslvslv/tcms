@@ -8,6 +8,7 @@ import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { PageTitle } from "../../components/ui/PageTitle";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/Select";
 import { cn } from "../../lib/cn";
 
 function formatDate(iso: string): string {
@@ -36,6 +37,8 @@ export default function RunsOverview() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = useState<string>("none");
+  const [orderBy, setOrderBy] = useState<string>("date");
 
   useEffect(() => {
     api<Project[]>("/api/projects")
@@ -80,15 +83,34 @@ export default function RunsOverview() {
     }
   }
 
-  const openRuns = runs.filter((r) => !r.isCompleted);
-  const completedRuns = runs.filter((r) => r.isCompleted);
-  const completedByDate = new Map<string, ProjectRun[]>();
-  for (const r of completedRuns) {
-    const key = r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : "";
-    if (!completedByDate.has(key)) completedByDate.set(key, []);
-    completedByDate.get(key)!.push(r);
-  }
-  const sortedDateKeys = [...completedByDate.keys()].sort((a, b) => b.localeCompare(a));
+  const sortRuns = (list: ProjectRun[]) => {
+    if (orderBy === "name") return [...list].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    return [...list].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+  };
+
+  const openRuns = sortRuns(runs.filter((r) => !r.isCompleted));
+  const completedRuns = sortRuns(runs.filter((r) => r.isCompleted));
+
+  const completedGrouped =
+    groupBy === "milestone"
+      ? (() => {
+          const byMilestone = new Map<string, ProjectRun[]>();
+          for (const r of completedRuns) {
+            const key = r.milestoneId && r.milestoneName ? r.milestoneId : "__none__";
+            if (!byMilestone.has(key)) byMilestone.set(key, []);
+            byMilestone.get(key)!.push(r);
+          }
+          return { type: "milestone" as const, groups: byMilestone, keys: [...byMilestone.keys()] };
+        })()
+      : (() => {
+          const byDate = new Map<string, ProjectRun[]>();
+          for (const r of completedRuns) {
+            const key = r.createdAt ? new Date(r.createdAt).toISOString().slice(0, 10) : "";
+            if (!byDate.has(key)) byDate.set(key, []);
+            byDate.get(key)!.push(r);
+          }
+          return { type: "date" as const, groups: byDate, keys: [...byDate.keys()].sort((a, b) => b.localeCompare(a)) };
+        })();
 
   if (!projectId) {
     return (
@@ -115,10 +137,42 @@ export default function RunsOverview() {
     <div>
       <PageTitle className="mb-4">Test Runs &amp; Results</PageTitle>
 
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Link to="/runs/new">
+          <Button variant="primary">+ Add Test Run</Button>
+        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            Group by
+            <Select value={groupBy} onValueChange={setGroupBy}>
+              <SelectTrigger className="w-36 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="milestone">Milestone</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            Order by
+            <Select value={orderBy} onValueChange={setOrderBy}>
+              <SelectTrigger className="w-36 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Date</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+              </SelectContent>
+            </Select>
+          </label>
+        </div>
+      </div>
+
       {openRuns.length === 0 && completedRuns.length === 0 && (
         <div data-testid="runs-empty-state">
           <EmptyState
-            message={`No test runs yet in ${projectName}. Create a run from a suite or use the sidebar.`}
+            message={`No test runs yet in ${projectName}. Create a run from a suite.`}
             action={
               <Link to="/runs/new">
                 <Button variant="primary">+ Add Test Run</Button>
@@ -130,7 +184,7 @@ export default function RunsOverview() {
 
       {openRuns.length > 0 && (
         <section className="mb-8" data-testid="runs-open-list">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Open</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Open</h2>
           <ul className="list-none space-y-2 p-0">
             {openRuns.map((r) => (
               <RunCard key={r.id} run={r} onDelete={() => handleDelete(r.id)} deleting={deletingId === r.id} />
@@ -141,13 +195,20 @@ export default function RunsOverview() {
 
       {completedRuns.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Completed</h2>
-          {sortedDateKeys.map((dateKey) => {
-            const list = completedByDate.get(dateKey)!;
-            const displayDate = list[0]?.createdAt ? formatSectionDate(list[0].createdAt) : dateKey;
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Completed</h2>
+          {completedGrouped.keys.map((key) => {
+            const list = completedGrouped.groups.get(key)!;
+            const label =
+              completedGrouped.type === "milestone"
+                ? key === "__none__"
+                  ? "No milestone"
+                  : list[0]?.milestoneName ?? key
+                : list[0]?.createdAt
+                  ? formatSectionDate(list[0].createdAt)
+                  : key;
             return (
-              <div key={dateKey} className="mb-6">
-                <h3 className="mb-2 text-sm font-medium text-muted">{displayDate}</h3>
+              <div key={key} className="mb-6">
+                <h3 className="mb-2 text-sm font-medium text-muted-foreground">{label}</h3>
                 <ul className="list-none space-y-2 p-0">
                   {list.map((r) => (
                     <RunCard key={r.id} run={r} onDelete={() => handleDelete(r.id)} deleting={deletingId === r.id} compact />
@@ -190,22 +251,22 @@ function RunCard({
             {run.name}
           </Link>
           {compact && (
-            <span className="text-sm text-muted">{pct}%</span>
+            <span className="text-sm text-muted-foreground">{pct}%</span>
           )}
         </div>
-        <p className="mt-0.5 text-xs text-muted">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           By {run.createdByName ?? "Unknown"} on {run.createdAt ? formatDate(run.createdAt) : "—"}
           {" · "}
           <Link to={`/runs/${run.id}`} className="text-primary hover:underline">Edit</Link>
         </p>
         {!compact && (
           <>
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-xs text-muted-foreground">
               {summary.passed} Passed, {summary.blocked} Blocked, {summary.untested} Untested, {summary.skipped} Skipped, {summary.failed} Failed
             </p>
             {total > 0 && (
               <div className="mt-2 flex items-center gap-2">
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                   <div className="flex h-full">
                     {summary.passed > 0 && (
                       <div className="bg-success" style={{ width: `${(summary.passed / total) * 100}%` }} />
@@ -217,14 +278,14 @@ function RunCard({
                       <div className="bg-warning" style={{ width: `${(summary.blocked / total) * 100}%` }} />
                     )}
                     {summary.skipped > 0 && (
-                      <div className="bg-gray-400" style={{ width: `${(summary.skipped / total) * 100}%` }} />
+                      <div className="bg-muted-foreground/70" style={{ width: `${(summary.skipped / total) * 100}%` }} />
                     )}
                     {summary.untested > 0 && (
-                      <div className="bg-gray-200" style={{ width: `${(summary.untested / total) * 100}%` }} />
+                      <div className="bg-muted" style={{ width: `${(summary.untested / total) * 100}%` }} />
                     )}
                   </div>
                 </div>
-                <span className="text-xs font-medium text-muted">{pct}%</span>
+                <span className="text-xs font-medium text-muted-foreground">{pct}%</span>
               </div>
             )}
           </>
@@ -234,7 +295,7 @@ function RunCard({
         type="button"
         onClick={onDelete}
         disabled={deleting}
-        className="shrink-0 rounded p-1 text-muted hover:bg-error/10 hover:text-error"
+        className="shrink-0 rounded p-1 text-muted-foreground hover:bg-error/10 hover:text-error"
         aria-label="Remove run"
       >
         <span className="text-lg leading-none">×</span>

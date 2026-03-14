@@ -2,12 +2,11 @@ import { useEffect, useState, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import { api, type Run, type RunTest, type RunActivityEntry } from "../api";
 import { RunTestCaseSidebar } from "../components/RunTestCaseSidebar";
-import { Button } from "../components/ui/Button";
 import { Dialog, DialogComponents } from "../components/ui/Dialog";
 import { Card } from "../components/ui/Card";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
-import { Select } from "../components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/Select";
 import {
   Table,
   TableBody,
@@ -19,15 +18,13 @@ import {
 } from "../components/ui/Table";
 import { cn } from "../lib/cn";
 
-const STATUSES = ["passed", "failed", "blocked", "skipped", "untested"] as const;
-
 function statusBadgeClass(s: string): string {
   switch (s) {
     case "passed": return "bg-success/10 text-success";
     case "failed": return "bg-error/10 text-error";
     case "blocked": return "bg-warning/10 text-warning";
-    case "skipped": return "bg-gray-100 text-gray-600";
-    default: return "bg-gray-100 text-muted";
+    case "skipped": return "bg-muted text-muted-foreground";
+    default: return "bg-muted text-muted-foreground";
   }
 }
 
@@ -151,7 +148,6 @@ export default function RunView() {
   if (!run) return null;
 
   const summary = run.summary ?? { passed: 0, failed: 0, blocked: 0, skipped: 0, untested: 0 };
-  const tests = run.tests ?? [];
   const total = summary.passed + summary.failed + summary.blocked + summary.skipped + summary.untested;
   const passPct = total > 0 ? Math.round((summary.passed / total) * 100) : 0;
   const runBadgeId = run.id.slice(0, 8).toUpperCase();
@@ -169,7 +165,7 @@ export default function RunView() {
       <div className="max-w-4xl">
         <RunTitle runName={run.name} badgeId={runBadgeId} />
         {/* Summary strip */}
-        <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted">
+        <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span className="font-medium text-success">{summaryForActivity.passed} Passed</span>
           <span className="font-medium text-error">{summaryForActivity.failed} Failed</span>
           <span>{summaryForActivity.blocked} Blocked</span>
@@ -181,17 +177,17 @@ export default function RunView() {
             </span>
           )}
         </div>
-        <h2 className="mt-6 border-b border-border pb-2 text-lg font-semibold text-gray-900">Activity</h2>
+        <h2 className="mt-6 border-b border-border pb-2 text-lg font-semibold text-foreground">Activity</h2>
         {activityLoading && <LoadingSpinner />}
         {activityError && <p className="mt-4 text-error">{activityError}</p>}
         {!activityLoading && !activityError && activityList.length === 0 && (
-          <p className="mt-4 text-muted">No activity yet.</p>
+          <p className="mt-4 text-muted-foreground">No activity yet.</p>
         )}
         {!activityLoading && !activityError && activityByDate.length > 0 && (
           <ul className="mt-4 list-none p-0" role="list">
             {activityByDate.map(([dateKey, entries]) => (
               <li key={dateKey} className="mb-6">
-                <h3 className="mb-3 text-sm font-medium text-muted">
+                <h3 className="mb-3 text-sm font-medium text-muted-foreground">
                   {new Date(dateKey + "T12:00:00").toLocaleDateString(undefined, {
                     weekday: "long",
                     year: "numeric",
@@ -210,15 +206,15 @@ export default function RunView() {
                           className={cn(
                             "shrink-0 rounded px-2 py-0.5 text-xs font-medium capitalize",
                             entry.type === "comment"
-                              ? "bg-gray-100 text-gray-600"
+                              ? "bg-muted text-muted-foreground"
                               : statusBadgeClass(entry.status ?? "untested")
                           )}
                         >
                           {entry.type === "comment" ? "Comment" : entry.status}
                         </span>
-                        <span className="min-w-0 truncate font-medium text-gray-900">{entry.caseTitle || "(No title)"}</span>
+                        <span className="min-w-0 truncate font-medium text-foreground">{entry.caseTitle || "(No title)"}</span>
                       </div>
-                      <span className="shrink-0 text-sm text-muted">
+                      <span className="shrink-0 text-sm text-muted-foreground">
                         {entry.type === "result" ? "Tested by" : "Added by"} {entry.createdByName}
                       </span>
                     </div>
@@ -235,7 +231,7 @@ export default function RunView() {
     return (
       <div>
         <RunTitle runName={run.name} badgeId={runBadgeId} />
-        <Card className="mt-4 p-8 text-center text-muted">Progress over time will be shown here.</Card>
+        <Card className="mt-4 p-8 text-center text-muted-foreground">Progress over time will be shown here.</Card>
       </div>
     );
   }
@@ -243,7 +239,7 @@ export default function RunView() {
     return (
       <div>
         <RunTitle runName={run.name} badgeId={runBadgeId} />
-        <Card className="mt-4 p-8 text-center text-muted">Defects linked to this run will be listed here.</Card>
+        <Card className="mt-4 p-8 text-center text-muted-foreground">Defects linked to this run will be listed here.</Card>
       </div>
     );
   }
@@ -256,41 +252,46 @@ export default function RunView() {
       {/* Summary widgets */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Card className="p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Test Status</h3>
-          <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Test Status</h3>
+          <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-muted">
             <div className="flex h-full">
               {summary.passed > 0 && <div className="bg-success" style={{ width: `${total > 0 ? (summary.passed / total) * 100 : 0}%` }} />}
               {summary.failed > 0 && <div className="bg-error" style={{ width: `${total > 0 ? (summary.failed / total) * 100 : 0}%` }} />}
               {summary.blocked > 0 && <div className="bg-warning" style={{ width: `${total > 0 ? (summary.blocked / total) * 100 : 0}%` }} />}
-              {summary.skipped > 0 && <div className="bg-gray-400" style={{ width: `${total > 0 ? (summary.skipped / total) * 100 : 0}%` }} />}
-              {summary.untested > 0 && <div className="bg-gray-200" style={{ width: `${total > 0 ? (summary.untested / total) * 100 : 0}%` }} />}
+              {summary.skipped > 0 && <div className="bg-muted-foreground/70" style={{ width: `${total > 0 ? (summary.skipped / total) * 100 : 0}%` }} />}
+              {summary.untested > 0 && <div className="bg-muted" style={{ width: `${total > 0 ? (summary.untested / total) * 100 : 0}%` }} />}
             </div>
           </div>
           <div className="text-sm">
             <div className="font-medium text-success">{summary.passed} Passed</div>
-            <div className="text-muted">{summary.blocked} Blocked</div>
-            <div className="text-muted">{summary.skipped} Skipped</div>
+            <div className="text-muted-foreground">{summary.blocked} Blocked</div>
+            <div className="text-muted-foreground">{summary.skipped} Skipped</div>
             <div className="font-medium text-error">{summary.failed} Failed</div>
           </div>
         </Card>
         <Card className="p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Automation Status</h3>
-          <div className="text-sm text-muted">0 Automation Passed · 0 Automation Failed · 0 Automation Error</div>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Automation Status</h3>
+          <div className="text-sm text-muted-foreground">0 Automation Passed · 0 Automation Failed · 0 Automation Error</div>
         </Card>
         <Card className="p-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Overall Pass Rate</h3>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Overall Pass Rate</h3>
           <div className="text-2xl font-semibold text-success">{passPct}% passed</div>
-          <div className="text-sm text-muted">{summary.untested}/{total} untested ({total > 0 ? Math.round((summary.untested / total) * 100) : 0}%)</div>
+          <div className="text-sm text-muted-foreground">{summary.untested}/{total} untested ({total > 0 ? Math.round((summary.untested / total) * 100) : 0}%)</div>
         </Card>
       </div>
 
       {/* Toolbar */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-40 text-sm">
-          <option value="section">Sort: Section</option>
-          <option value="status">Sort: Status</option>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-40 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="section">Sort: Section</SelectItem>
+            <SelectItem value="status">Sort: Status</SelectItem>
+          </SelectContent>
         </Select>
-        <label className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface px-3 py-1.5 text-sm hover:bg-gray-50">
+        <label className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface px-3 py-1.5 text-sm hover:bg-accent">
           <span>+ Add Results</span>
           <input
             type="file"
@@ -313,11 +314,11 @@ export default function RunView() {
       <div>
         <Card className="overflow-hidden p-0">
           {sections.length === 0 ? (
-            <p className="p-6 text-muted">No tests in this run.</p>
+            <p className="p-6 text-muted-foreground">No tests in this run.</p>
           ) : (
             sections.map(({ sectionName, tests: sectionTests }) => (
               <div key={sectionName} className="border-b border-border last:border-b-0">
-                <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-muted">{sectionName}</div>
+                <div className="bg-muted/50 px-4 py-2 text-sm font-medium text-muted-foreground">{sectionName}</div>
                 <Table>
                   <TableHead>
                     <TableHeaderRow>
@@ -350,20 +351,20 @@ export default function RunView() {
                             isSelected && "bg-primary/5"
                           )}
                         >
-                          <TableCell className="font-mono text-xs text-muted">{t.id.slice(0, 8)}</TableCell>
-                          <TableCell className="font-medium text-slate-900">
+                          <TableCell className="font-mono text-xs text-muted-foreground">{t.id.slice(0, 8)}</TableCell>
+                          <TableCell className="font-medium text-foreground">
                             {t.caseTitle}
                             {t.datasetRow && Object.keys(t.datasetRow).length > 0 && (
-                              <span className="ml-1 text-muted">— {Object.entries(t.datasetRow).map(([k, v]) => `${k}: ${v}`).join(", ")}</span>
+                              <span className="ml-1 text-muted-foreground">— {Object.entries(t.datasetRow).map(([k, v]) => `${k}: ${v}`).join(", ")}</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-muted">—</TableCell>
-                          <TableCell className="text-muted">—</TableCell>
+                          <TableCell className="text-muted-foreground">—</TableCell>
+                          <TableCell className="text-muted-foreground">—</TableCell>
                           <TableCell>
                             <span className={cn("inline-flex rounded px-2 py-0.5 text-xs font-medium", statusBadgeClass(status))}>{status}</span>
                           </TableCell>
                           <TableCell>
-                            <span className="text-muted">›</span>
+                            <span className="text-muted-foreground">›</span>
                           </TableCell>
                         </TableRow>
                       );

@@ -38,8 +38,8 @@ function StatCard({
 }: { label: string; value: number; href?: string }) {
   const content = (
     <>
-      <span className="text-2xl font-bold tabular-nums text-gray-900">{value}</span>
-      <span className="text-sm font-medium text-muted">{label}</span>
+      <span className="text-2xl font-bold tabular-nums text-foreground">{value}</span>
+      <span className="text-sm font-medium text-muted-foreground">{label}</span>
     </>
   );
   return (
@@ -76,7 +76,7 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="max-w-5xl">
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
           {error}
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function Dashboard() {
   return (
     <div className="max-w-5xl">
       <PageTitle className="mb-6">Dashboard</PageTitle>
-      <p className="mb-8 text-gray-600">
+      <p className="mb-8 text-muted-foreground">
         Overview of your projects, milestones, test plans, and recent activity.
       </p>
 
@@ -105,10 +105,10 @@ export default function Dashboard() {
       {activityData.length > 0 && (
         <Card className="mb-8">
           <div className="mb-1 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">Activity</h2>
-            <span className="text-xs text-muted">Test runs created by day</span>
+            <h2 className="text-base font-semibold text-foreground">Activity</h2>
+            <span className="text-xs text-muted-foreground">Test runs created by day</span>
           </div>
-          <p className="mb-4 text-sm text-muted">
+          <p className="mb-4 text-sm text-muted-foreground">
             Dates and quantity of test runs. Automatically updates as new runs are added.
           </p>
           <div className="h-56">
@@ -146,7 +146,7 @@ export default function Dashboard() {
       {/* Content grid – Projects, Milestones, Plans, Recent runs */}
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Projects</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Projects</h2>
           {data.projects.length > 0 ? (
             <ul className="list-none space-y-2 p-0">
               {data.projects.slice(0, 8).map((p) => (
@@ -154,24 +154,24 @@ export default function Dashboard() {
                   <Link to={`/projects/${p.id}`} className="font-medium text-primary hover:underline">
                     {p.name}
                   </Link>
-                  <Link to={`/projects/${p.id}/settings`} className="text-xs text-muted hover:text-gray-700 hover:underline">
+                  <Link to={`/projects/${p.id}/settings`} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
                     Settings
                   </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-muted">No projects.</p>
+            <p className="text-muted-foreground">No projects.</p>
           )}
           {data.projects.length > 8 && (
-            <p className="mt-3 border-t border-gray-100 pt-3">
+            <p className="mt-3 border-t border-border pt-3">
               <Link to="/projects" className="text-sm text-primary hover:underline">
                 View all projects →
               </Link>
             </p>
           )}
           {data.projects.length > 0 && data.projects.length <= 8 && (
-            <p className="mt-3 border-t border-gray-100 pt-3">
+            <p className="mt-3 border-t border-border pt-3">
               <Link to="/projects" className="text-sm text-primary hover:underline">
                 Go to projects →
               </Link>
@@ -180,7 +180,7 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Milestones</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Milestones</h2>
           {data.milestones.length > 0 ? (
             <ul className="list-none space-y-2 p-0">
               {data.milestones.slice(0, 6).map((m) => (
@@ -189,23 +189,23 @@ export default function Dashboard() {
                     {m.name}
                   </Link>
                   {m.dueDate && (
-                    <span className="text-xs text-muted">Due {new Date(m.dueDate).toLocaleDateString(undefined, { dateStyle: "short" })}</span>
+                    <span className="text-xs text-muted-foreground">Due {new Date(m.dueDate).toLocaleDateString(undefined, { dateStyle: "short" })}</span>
                   )}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-muted">No milestones.</p>
+            <p className="text-muted-foreground">No milestones.</p>
           )}
           {data.milestones.length > 6 && (
-            <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
+            <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">
               +{data.milestones.length - 6} more
             </p>
           )}
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Test plans</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Test plans</h2>
           {data.plans.length > 0 ? (
             <ul className="list-none space-y-2 p-0">
               {data.plans.slice(0, 6).map((p) => (
@@ -217,17 +217,17 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <p className="text-muted">No test plans.</p>
+            <p className="text-muted-foreground">No test plans.</p>
           )}
           {data.plans.length > 6 && (
-            <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
+            <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">
               +{data.plans.length - 6} more
             </p>
           )}
         </Card>
 
         <Card>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Recent test runs</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Recent test runs</h2>
           {data.recentRuns.length > 0 ? (
             <ul className="list-none space-y-2 p-0">
               {data.recentRuns.slice(0, 6).map((r) => (
@@ -235,17 +235,17 @@ export default function Dashboard() {
                   <Link to={`/runs/${r.id}`} className="font-medium text-primary hover:underline">
                     {r.name}
                   </Link>
-                  <span className="text-xs text-muted">
+                  <span className="text-xs text-muted-foreground">
                     {new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: "short" })}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-muted">No runs yet.</p>
+            <p className="text-muted-foreground">No runs yet.</p>
           )}
           {data.recentRuns.length > 6 && (
-            <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
+            <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">
               +{data.recentRuns.length - 6} more
             </p>
           )}
@@ -254,7 +254,7 @@ export default function Dashboard() {
 
       {!hasAny && (
         <Card className="mt-6 border-dashed">
-          <p className="text-center text-muted">
+          <p className="text-center text-muted-foreground">
             Get started by <Link to="/projects" className="text-primary hover:underline">creating a project</Link>.
           </p>
         </Card>

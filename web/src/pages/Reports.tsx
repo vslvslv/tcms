@@ -57,11 +57,11 @@ export default function Reports() {
   return (
     <div className="max-w-4xl">
       <PageTitle className="mb-6">Reports</PageTitle>
-      <p className="mb-6 text-gray-600">Overview of your projects and recent activity.</p>
+      <p className="mb-6 text-muted-foreground">Overview of your projects and recent activity.</p>
 
       {overviewPieData.length > 0 && (
         <Card className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Overview</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Overview</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -80,7 +80,7 @@ export default function Reports() {
 
       {activityData.length > 0 && (
         <Card className="mb-6">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Runs by day (last 14 days)</h2>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Runs by day (last 14 days)</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={activityData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
@@ -96,7 +96,7 @@ export default function Reports() {
 
       {!data?.projects.length && !loading && (
         <Card>
-          <p className="text-muted">No data yet. <Link to="/projects" className="text-primary hover:underline">Create a project</Link> to see reports.</p>
+          <p className="text-muted-foreground">No data yet. <Link to="/projects" className="text-primary hover:underline">Create a project</Link> to see reports.</p>
         </Card>
       )}
     </div>

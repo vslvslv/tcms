@@ -47,18 +47,18 @@ export default function PlanSummary() {
           Share
         </Button>
       </div>
-      {plan.description && <p className="mb-6 text-gray-600">{plan.description}</p>}
+      {plan.description && <p className="mb-6 text-muted-foreground">{plan.description}</p>}
       <Card>
-        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Runs ({runs.length})</h3>
+        <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Runs ({runs.length})</h3>
         <ul className="list-none p-0">
           {runs.map(({ run, summary }) => {
             const total = summary.passed + summary.failed + summary.blocked + summary.skipped + summary.untested;
             return (
-              <li key={run.id} className="border-b border-gray-100 py-3 last:border-0">
+              <li key={run.id} className="border-b border-border py-3 last:border-0">
                 <Link to={`/runs/${run.id}`} className="font-medium text-primary hover:underline">{run.name}</Link>
                 {run.isCompleted && <span className="ml-2 text-sm text-green-600">Completed</span>}
                 {total > 0 && (
-                  <span className="ml-2 text-sm text-muted">
+                  <span className="ml-2 text-sm text-muted-foreground">
                     P: {summary.passed} F: {summary.failed} B: {summary.blocked} S: {summary.skipped} U: {summary.untested}
                   </span>
                 )}
@@ -66,7 +66,7 @@ export default function PlanSummary() {
             );
           })}
         </ul>
-        {runs.length === 0 && <p className="text-muted">No runs in this plan yet.</p>}
+        {runs.length === 0 && <p className="text-muted-foreground">No runs in this plan yet.</p>}
       </Card>
     </div>
   );

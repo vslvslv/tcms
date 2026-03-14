@@ -17,7 +17,7 @@ import {
   type AuditLogEntry,
 } from "../api";
 import { useDialog } from "../components/ui/Dialog";
-import { Select } from "../components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/Select";
 
 type ProjectMemberWithDetails = {
   id: string;
@@ -674,11 +674,16 @@ export default function ProjectSettings() {
         <form onSubmit={addCaseField} style={{ marginBottom: 8 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             <input value={newCaseFieldName} onChange={(e) => setNewCaseFieldName(e.target.value)} placeholder="Field name" />
-            <Select value={newCaseFieldType} onChange={(e) => setNewCaseFieldType(e.target.value as typeof newCaseFieldType)}>
-              <option value="text">Text</option>
-              <option value="multiline">Multiline</option>
-              <option value="number">Number</option>
-              <option value="dropdown">Dropdown</option>
+            <Select value={newCaseFieldType} onValueChange={(v) => setNewCaseFieldType(v as typeof newCaseFieldType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Text</SelectItem>
+                <SelectItem value="multiline">Multiline</SelectItem>
+                <SelectItem value="number">Number</SelectItem>
+                <SelectItem value="dropdown">Dropdown</SelectItem>
+              </SelectContent>
             </Select>
             {newCaseFieldType === "dropdown" && (
               <input value={newCaseFieldOptions} onChange={(e) => setNewCaseFieldOptions(e.target.value)} placeholder="Options (comma-separated)" size={24} />
@@ -731,15 +736,23 @@ export default function ProjectSettings() {
             ))}
           </ul>
           <form onSubmit={addMember} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 8 }}>
-            <Select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)} required>
-              <option value="">Select user</option>
-              {users.filter((u) => !members.some((m) => m.userId === u.id)).map((u) => (
-                <option key={u.id} value={u.id}>{u.email} ({u.name})</option>
-              ))}
+            <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select user" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.filter((u) => !members.some((m) => m.userId === u.id)).map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.email} ({u.name})</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-            <Select value={addMemberRoleId} onChange={(e) => setAddMemberRoleId(e.target.value)} required>
-              <option value="">Role</option>
-              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            <Select value={addMemberRoleId} onValueChange={setAddMemberRoleId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+              </SelectContent>
             </Select>
             <button type="submit" disabled={saving}>Add member</button>
           </form>

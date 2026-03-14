@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, type Run, type Suite, type Milestone, type TestPlan, type ConfigGroup } from "../api";
-import { Select } from "../components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/Select";
 
 export default function CreateRun() {
   const { suiteId } = useParams<{ suiteId: string }>();
@@ -89,9 +89,11 @@ export default function CreateRun() {
           <div style={{ marginBottom: 12 }}>
             <label>
               Test plan{" "}
-              <Select value={planId} onChange={(e) => setPlanId(e.target.value)}>
-                <option value="">— None —</option>
-                {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              <Select value={planId} onValueChange={setPlanId}>
+                <SelectTrigger><SelectValue placeholder="— None —" /></SelectTrigger>
+                <SelectContent>
+                  {plans.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
               </Select>
             </label>
           </div>
@@ -100,9 +102,11 @@ export default function CreateRun() {
           <div style={{ marginBottom: 12 }}>
             <label>
               Milestone{" "}
-              <Select value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
-                <option value="">— None —</option>
-                {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              <Select value={milestoneId} onValueChange={setMilestoneId}>
+                <SelectTrigger><SelectValue placeholder="— None —" /></SelectTrigger>
+                <SelectContent>
+                  {milestones.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectContent>
               </Select>
             </label>
           </div>

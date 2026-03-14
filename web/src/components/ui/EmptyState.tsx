@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { cn } from "../../lib/cn";
+import { cn } from "@/lib/utils";
 
 export function EmptyState({
   message,
@@ -11,8 +11,13 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-gray-50/50 py-12 text-center", className)}>
-      <p className="text-muted">{message}</p>
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/30 py-12 text-center",
+        className
+      )}
+    >
+      <p className="text-sm text-muted-foreground">{message}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

@@ -27,12 +27,12 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-sm">
-        <div className="rounded-xl border border-border bg-surface p-8 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">Create account</h1>
-            <p className="mt-1 text-sm text-muted">Register for TCMS</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Create account</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Register for TCMS</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
@@ -41,7 +41,7 @@ export default function Register() {
               </div>
             )}
             <div>
-              <label htmlFor="register-name" className="mb-1.5 block text-sm font-medium text-gray-700">
+              <label htmlFor="register-name" className="mb-1.5 block text-sm font-medium text-foreground">
                 Name
               </label>
               <input
@@ -51,12 +51,12 @@ export default function Register() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full rounded-lg border border-border px-3 py-2 text-sm text-gray-900 placeholder-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="Your name"
               />
             </div>
             <div>
-              <label htmlFor="register-email" className="mb-1.5 block text-sm font-medium text-gray-700">
+              <label htmlFor="register-email" className="mb-1.5 block text-sm font-medium text-foreground">
                 Email
               </label>
               <input
@@ -66,12 +66,12 @@ export default function Register() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full rounded-lg border border-border px-3 py-2 text-sm text-gray-900 placeholder-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="you@example.com"
               />
             </div>
             <div>
-              <label htmlFor="register-password" className="mb-1.5 block text-sm font-medium text-gray-700">
+              <label htmlFor="register-password" className="mb-1.5 block text-sm font-medium text-foreground">
                 Password
               </label>
               <input
@@ -82,10 +82,10 @@ export default function Register() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
-                className="w-full rounded-lg border border-border px-3 py-2 text-sm text-gray-900 placeholder-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder-muted focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 placeholder="At least 8 characters"
               />
-              <p className="mt-1 text-xs text-muted">Minimum 8 characters</p>
+              <p className="mt-1 text-xs text-muted-foreground">Minimum 8 characters</p>
             </div>
             <SubmitButton
               disabled={submitting}
@@ -94,7 +94,7 @@ export default function Register() {
               {submitting ? "Creating account…" : "Register"}
             </SubmitButton>
           </form>
-          <p className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link to="/login" className="font-medium text-primary hover:underline">
               Log in

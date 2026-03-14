@@ -8,7 +8,7 @@ export function SectionHeading({
 }: HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
-      className={cn("mb-3 text-sm font-semibold uppercase tracking-wide text-muted", className)}
+      className={cn("mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground", className)}
       {...props}
     >
       {children}
