@@ -3,6 +3,7 @@ import { useParams, useLocation } from "react-router-dom";
 import { api, type Run, type RunTest, type RunActivityEntry } from "../api";
 import { RunTestCaseSidebar } from "../components/RunTestCaseSidebar";
 import { Button } from "../components/ui/Button";
+import { Dialog, DialogComponents } from "../components/ui/Dialog";
 import { Card } from "../components/ui/Card";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
@@ -58,6 +59,8 @@ export default function RunView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
+  const [isExecutionDirty, setExecutionDirty] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [sortBy, setSortBy] = useState<string>("section");
@@ -135,6 +138,11 @@ export default function RunView() {
   function handleResultSubmitted(nextTestId?: string | null) {
     loadRun();
     if (nextTestId !== undefined) setSelectedTestId(nextTestId);
+  }
+
+  function handleExecutionClose() {
+    if (isExecutionDirty) setShowDiscardConfirm(true);
+    else setSelectedTestId(null);
   }
 
   if (!runId) return null;
@@ -301,86 +309,110 @@ export default function RunView() {
         )}
       </div>
 
-      {/* Tests table + execution sidebar */}
-      <div className="flex gap-0">
-        <div className={cn("min-w-0 flex-1", selectedTest && "md:max-w-[calc(100%-380px)] lg:max-w-[calc(100%-420px)]")}>
-          <Card className="overflow-hidden p-0">
-            {sections.length === 0 ? (
-              <p className="p-6 text-muted">No tests in this run.</p>
-            ) : (
-              sections.map(({ sectionName, tests: sectionTests }) => (
-                <div key={sectionName} className="border-b border-border last:border-b-0">
-                  <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-muted">{sectionName}</div>
-                  <Table>
-                    <TableHead>
-                      <TableHeaderRow>
-                        <TableHeadCell>ID</TableHeadCell>
-                        <TableHeadCell>Title</TableHeadCell>
-                        <TableHeadCell>Test Labels</TableHeadCell>
-                        <TableHeadCell>Assigned To</TableHeadCell>
-                        <TableHeadCell>Status</TableHeadCell>
-                        <TableHeadCell className="w-8" />
-                      </TableHeaderRow>
-                    </TableHead>
-                    <TableBody>
-                      {sectionTests.map((t) => {
-                        const status = t.latestResult?.status ?? "untested";
-                        const isSelected = selectedTestId === t.id;
-                        return (
-                          <TableRow
-                            key={t.id}
-                            role="button"
-                            tabIndex={0}
-                            onClick={() => setSelectedTestId(isSelected ? null : t.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
-                                setSelectedTestId(isSelected ? null : t.id);
-                              }
-                            }}
-                            className={cn(
-                              "cursor-pointer",
-                              isSelected && "bg-primary/5"
+      {/* Tests table */}
+      <div>
+        <Card className="overflow-hidden p-0">
+          {sections.length === 0 ? (
+            <p className="p-6 text-muted">No tests in this run.</p>
+          ) : (
+            sections.map(({ sectionName, tests: sectionTests }) => (
+              <div key={sectionName} className="border-b border-border last:border-b-0">
+                <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-muted">{sectionName}</div>
+                <Table>
+                  <TableHead>
+                    <TableHeaderRow>
+                      <TableHeadCell>ID</TableHeadCell>
+                      <TableHeadCell>Title</TableHeadCell>
+                      <TableHeadCell>Test Labels</TableHeadCell>
+                      <TableHeadCell>Assigned To</TableHeadCell>
+                      <TableHeadCell>Status</TableHeadCell>
+                      <TableHeadCell className="w-8" />
+                    </TableHeaderRow>
+                  </TableHead>
+                  <TableBody>
+                    {sectionTests.map((t) => {
+                      const status = t.latestResult?.status ?? "untested";
+                      const isSelected = selectedTestId === t.id;
+                      return (
+                        <TableRow
+                          key={t.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setSelectedTestId(isSelected ? null : t.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedTestId(isSelected ? null : t.id);
+                            }
+                          }}
+                          className={cn(
+                            "cursor-pointer",
+                            isSelected && "bg-primary/5"
+                          )}
+                        >
+                          <TableCell className="font-mono text-xs text-muted">{t.id.slice(0, 8)}</TableCell>
+                          <TableCell className="font-medium text-slate-900">
+                            {t.caseTitle}
+                            {t.datasetRow && Object.keys(t.datasetRow).length > 0 && (
+                              <span className="ml-1 text-muted">— {Object.entries(t.datasetRow).map(([k, v]) => `${k}: ${v}`).join(", ")}</span>
                             )}
-                          >
-                            <TableCell className="font-mono text-xs text-muted">{t.id.slice(0, 8)}</TableCell>
-                            <TableCell className="font-medium text-slate-900">
-                              {t.caseTitle}
-                              {t.datasetRow && Object.keys(t.datasetRow).length > 0 && (
-                                <span className="ml-1 text-muted">— {Object.entries(t.datasetRow).map(([k, v]) => `${k}: ${v}`).join(", ")}</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-muted">—</TableCell>
-                            <TableCell className="text-muted">—</TableCell>
-                            <TableCell>
-                              <span className={cn("inline-flex rounded px-2 py-0.5 text-xs font-medium", statusBadgeClass(status))}>{status}</span>
-                            </TableCell>
-                            <TableCell>
-                              <span className="text-muted">›</span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              ))
-            )}
-          </Card>
-        </div>
-        {selectedTest && runId && (
-          <div className="hidden w-full shrink-0 self-start md:block md:w-[380px] lg:w-[420px] md:sticky md:top-4 md:max-h-[calc(100vh-2rem)] md:h-[calc(100vh-2rem)]">
+                          </TableCell>
+                          <TableCell className="text-muted">—</TableCell>
+                          <TableCell className="text-muted">—</TableCell>
+                          <TableCell>
+                            <span className={cn("inline-flex rounded px-2 py-0.5 text-xs font-medium", statusBadgeClass(status))}>{status}</span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-muted">›</span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            ))
+          )}
+        </Card>
+      </div>
+
+      {/* Execution panel as dialog */}
+      {selectedTest && runId && (
+        <Dialog
+          open
+          onClose={handleExecutionClose}
+          onOverlayClick={handleExecutionClose}
+          className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden p-0"
+        >
+          <div className="flex h-[min(70vh,640px)] flex-col overflow-hidden">
             <RunTestCaseSidebar
               test={selectedTest}
               runId={runId}
               projectId={run.projectId ?? undefined}
               allTestsInOrder={allTestsInOrder}
-              onClose={() => setSelectedTestId(null)}
+              onClose={handleExecutionClose}
               onResultSubmitted={handleResultSubmitted}
+              onDirtyChange={setExecutionDirty}
             />
           </div>
-        )}
-      </div>
+        </Dialog>
+      )}
+
+      {/* Confirm discard when closing with unsaved changes */}
+      <DialogComponents.Confirmation
+        open={showDiscardConfirm}
+        onClose={() => setShowDiscardConfirm(false)}
+        title="Discard changes?"
+        message="You have unsaved changes (e.g. comment or status). Discard them?"
+        confirmLabel="Discard"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => {
+          setSelectedTestId(null);
+          setExecutionDirty(false);
+          setShowDiscardConfirm(false);
+        }}
+      />
     </div>
   );
 }

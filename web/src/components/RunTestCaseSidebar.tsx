@@ -55,6 +55,8 @@ export type RunTestCaseSidebarProps = {
   allTestsInOrder: RunTest[];
   onClose: () => void;
   onResultSubmitted: (nextTestId?: string | null) => void;
+  /** Called when the user has unsaved input (comment, status, elapsed, or new issue). */
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
 type TabKey = "results" | "history" | "defects";
@@ -66,6 +68,7 @@ export function RunTestCaseSidebar({
   allTestsInOrder,
   onClose,
   onResultSubmitted,
+  onDirtyChange,
 }: RunTestCaseSidebarProps) {
   const [caseData, setCaseData] = useState<TestCase & { steps?: TestStep[] } | null>(null);
   const [caseLoading, setCaseLoading] = useState(true);
@@ -132,6 +135,20 @@ export function RunTestCaseSidebar({
     setResultComment(test.latestResult?.comment ?? "");
     setResultElapsed(test.latestResult?.elapsedSeconds != null ? String(test.latestResult.elapsedSeconds) : "");
   }, [test.id, test.latestResult]);
+
+  const savedComment = test.latestResult?.comment ?? "";
+  const savedStatus = test.latestResult?.status ?? "passed";
+  const savedElapsed = test.latestResult?.elapsedSeconds != null ? String(test.latestResult.elapsedSeconds) : "";
+  const dirty =
+    resultComment !== savedComment ||
+    resultStatus !== savedStatus ||
+    resultElapsed !== savedElapsed ||
+    newIssueUrl.trim() !== "" ||
+    newIssueTitle.trim() !== "";
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   useEffect(() => {
     if (!selectedResultId) {
