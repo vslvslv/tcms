@@ -60,7 +60,6 @@ export type Run = {
   projectId?: string | null;
   name: string;
   description: string | null;
-  planId?: string | null;
   milestoneId?: string | null;
   createdBy: string;
   isCompleted: boolean;
@@ -73,11 +72,9 @@ export type Run = {
 export type ProjectRun = Run & {
   suiteName: string | null;
   createdByName: string | null;
-  planName: string | null;
   milestoneName: string | null;
 };
 export type Milestone = { id: string; projectId: string; name: string; description: string | null; dueDate: string | null; createdAt: string; updatedAt: string };
-export type TestPlan = { id: string; projectId: string; milestoneId: string | null; name: string; description: string | null; createdBy: string; createdAt: string; updatedAt: string };
 export type CaseType = { id: string; projectId: string | null; name: string; sortOrder: number };
 export type Priority = { id: string; projectId: string | null; name: string; sortOrder: number };
 export type ConfigGroup = { id: string; projectId: string; name: string; options?: ConfigOption[] };

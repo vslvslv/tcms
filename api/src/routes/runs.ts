@@ -10,7 +10,6 @@ import {
   tests,
   results,
   runConfigs,
-  testPlans,
   milestones,
   datasetRows,
 } from "../db/schema.js";
@@ -31,7 +30,6 @@ const projectRunsQuery = z.object({
 const createRunBody = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  planId: z.string().uuid().optional(),
   milestoneId: z.string().uuid().optional(),
   configOptionIds: z.array(z.string().uuid()).optional(),
 });
@@ -156,21 +154,17 @@ export default async function runRoutes(app: FastifyInstance) {
     }
     const suiteById = new Map((await db.select().from(suites).where(inArray(suites.id, suiteIds))).map((s) => [s.id, s]));
     const creatorIds = [...new Set(runsList.map((r) => r.createdBy))];
-    const planIds = [...new Set(runsList.map((r) => r.planId).filter(Boolean))] as string[];
     const milestoneIds = [...new Set(runsList.map((r) => r.milestoneId).filter(Boolean))] as string[];
-    const [usersList, plansList, milestonesList] = await Promise.all([
+    const [usersList, milestonesList] = await Promise.all([
       creatorIds.length > 0 ? db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, creatorIds)) : Promise.resolve([]),
-      planIds.length > 0 ? db.select({ id: testPlans.id, name: testPlans.name }).from(testPlans).where(inArray(testPlans.id, planIds)) : Promise.resolve([]),
       milestoneIds.length > 0 ? db.select({ id: milestones.id, name: milestones.name }).from(milestones).where(inArray(milestones.id, milestoneIds)) : Promise.resolve([]),
     ]);
     const userById = new Map((usersList as { id: string; name: string }[]).map((u) => [u.id, u.name]));
-    const planById = new Map((plansList as { id: string; name: string }[]).map((p) => [p.id, p.name]));
     const milestoneById = new Map((milestonesList as { id: string; name: string }[]).map((m) => [m.id, m.name]));
     const out = runsList.map((r) => ({
       ...r,
       suiteName: suiteById.get(r.suiteId)?.name ?? null,
       createdByName: userById.get(r.createdBy) ?? null,
-      planName: r.planId ? planById.get(r.planId) ?? null : null,
       milestoneName: r.milestoneId ? milestoneById.get(r.milestoneId) ?? null : null,
       summary: summaryByRunId.get(r.id) ?? { passed: 0, failed: 0, blocked: 0, skipped: 0, untested: 0 },
     }));
@@ -190,10 +184,6 @@ export default async function runRoutes(app: FastifyInstance) {
     }
     const [suite] = await db.select().from(suites).where(eq(suites.id, paramsResult.data.suiteId)).limit(1);
     if (!suite) return replyError(reply, 404, "Suite not found", "NOT_FOUND");
-    if (bodyResult.data.planId) {
-      const [plan] = await db.select().from(testPlans).where(eq(testPlans.id, bodyResult.data.planId)).limit(1);
-      if (!plan || plan.projectId !== suite.projectId) return replyError(reply, 400, "Plan not found or wrong project", "VALIDATION_ERROR");
-    }
     if (bodyResult.data.milestoneId) {
       const [m] = await db.select().from(milestones).where(eq(milestones.id, bodyResult.data.milestoneId)).limit(1);
       if (!m || m.projectId !== suite.projectId) return replyError(reply, 400, "Milestone not found or wrong project", "VALIDATION_ERROR");
@@ -203,7 +193,6 @@ export default async function runRoutes(app: FastifyInstance) {
       .insert(runs)
       .values({
         suiteId: paramsResult.data.suiteId,
-        planId: bodyResult.data.planId ?? null,
         milestoneId: bodyResult.data.milestoneId ?? null,
         name: bodyResult.data.name,
         description: bodyResult.data.description ?? null,
