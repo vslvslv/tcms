@@ -57,9 +57,9 @@ export type CaseSummary = { total: number; draft: number; ready: number; approve
 export type Run = {
   id: string;
   suiteId: string;
+  projectId?: string | null;
   name: string;
   description: string | null;
-  planId?: string | null;
   milestoneId?: string | null;
   createdBy: string;
   isCompleted: boolean;
@@ -72,11 +72,9 @@ export type Run = {
 export type ProjectRun = Run & {
   suiteName: string | null;
   createdByName: string | null;
-  planName: string | null;
   milestoneName: string | null;
 };
 export type Milestone = { id: string; projectId: string; name: string; description: string | null; dueDate: string | null; createdAt: string; updatedAt: string };
-export type TestPlan = { id: string; projectId: string; milestoneId: string | null; name: string; description: string | null; createdBy: string; createdAt: string; updatedAt: string };
 export type CaseType = { id: string; projectId: string | null; name: string; sortOrder: number };
 export type Priority = { id: string; projectId: string | null; name: string; sortOrder: number };
 export type ConfigGroup = { id: string; projectId: string; name: string; options?: ConfigOption[] };
@@ -143,6 +141,18 @@ export type Dataset = {
   rows?: { id: string; datasetId: string; data: Record<string, string> }[];
 };
 
+export type RunActivityEntry = {
+  id: string;
+  type: "result" | "comment";
+  resultId: string;
+  testId: string;
+  caseTitle: string;
+  status?: string;
+  comment?: string | null;
+  createdByName: string;
+  createdAt: string;
+};
+
 export type RunTest = {
   id: string;
   runId: string;
@@ -152,5 +162,7 @@ export type RunTest = {
   sectionName?: string | null;
   datasetRowId?: string;
   datasetRow?: Record<string, string>;
+  assignedTo?: string | null;
+  assignedToName?: string | null;
   latestResult: { id: string; status: string; comment: string | null; elapsedSeconds: number | null; createdAt: string } | null;
 };

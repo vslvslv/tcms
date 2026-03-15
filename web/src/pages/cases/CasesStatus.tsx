@@ -6,7 +6,7 @@ import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { PageTitle } from "../../components/ui/PageTitle";
-import { Select } from "../../components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/Select";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 
 type StatusFilter = "all" | "draft" | "ready" | "approved";
@@ -54,32 +54,35 @@ export default function CasesStatus() {
   return (
     <div className="max-w-4xl">
       <PageTitle className="mb-2">Test cases — Status</PageTitle>
-      <p className="mb-6 text-muted">View test cases by status (draft, ready, approved).</p>
+      <p className="mb-6 text-muted-foreground">View test cases by status (draft, ready, approved).</p>
 
       <Card className="mb-6">
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Project</span>
-            <Select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-            >
-              <option value="">— Select project —</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
+            <span className="text-sm font-medium text-foreground">Project</span>
+            <Select value={projectId} onValueChange={setProjectId}>
+              <SelectTrigger>
+                <SelectValue placeholder="— Select project —" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </label>
           <label className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-700">Status</span>
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-            >
-              <option value="all">All</option>
-              <option value="draft">Draft</option>
-              <option value="ready">Ready</option>
-              <option value="approved">Approved</option>
+            <span className="text-sm font-medium text-foreground">Status</span>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="ready">Ready</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+              </SelectContent>
             </Select>
           </label>
         </div>
@@ -97,24 +100,24 @@ export default function CasesStatus() {
 
       {projectId && !loading && (
         <Card className="overflow-hidden p-0">
-          <div className="border-b border-border bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700">
+          <div className="border-b border-border bg-muted/50 px-4 py-2 text-sm font-semibold text-foreground">
             {currentProject?.name} — {statusFilter === "all" ? "All statuses" : statusFilter}
           </div>
           {cases.length === 0 ? (
-            <div className="p-6 text-center text-muted">No cases match the selected filter.</div>
+            <div className="p-6 text-center text-muted-foreground">No cases match the selected filter.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[400px] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-gray-50">
-                    <th className="px-4 py-2 text-left font-semibold text-gray-700">Title</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-700">Status</th>
-                    <th className="w-24 px-4 py-2 text-right font-semibold text-gray-700">Actions</th>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="px-4 py-2 text-left font-semibold text-foreground">Title</th>
+                    <th className="px-4 py-2 text-left font-semibold text-foreground">Status</th>
+                    <th className="w-24 px-4 py-2 text-right font-semibold text-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cases.map((c) => (
-                    <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                    <tr key={c.id} className="border-b border-border hover:bg-muted/40">
                       <td className="px-4 py-2">
                         <Link to={`/cases/${c.id}/edit`} className="font-medium text-primary hover:underline">{c.title || "(Untitled)"}</Link>
                       </td>

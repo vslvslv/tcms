@@ -22,10 +22,15 @@ client.on("error", (err) => {
 });
 
 let connected = false;
+let connectPromise: Promise<void> | null = null;
 export async function getDb() {
   if (!connected) {
-    await client.connect();
-    connected = true;
+    if (!connectPromise) {
+      connectPromise = client.connect().then(() => {
+        connected = true;
+      });
+    }
+    await connectPromise;
   }
   return drizzle(client, { schema });
 }

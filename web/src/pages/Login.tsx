@@ -28,12 +28,12 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-sm">
-        <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
+        <div className="rounded-xl border border-border bg-card p-8 shadow-card">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">TCMS</h1>
-            <p className="mt-1 text-sm text-muted">Test Case Management System</p>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">TCMS</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Test Case Management System</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5" data-testid="login-form">
             {error && (
@@ -72,14 +72,14 @@ export default function Login() {
               {submitting ? "Signing in…" : "Log in"}
             </SubmitButton>
           </form>
-          <p className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Don’t have an account?{" "}
             <Link to="/register" className="font-medium text-primary hover:underline">
               Register
             </Link>
           </p>
         </div>
-        <p className="mt-6 text-center text-xs text-muted">
+        <p className="mt-6 text-center text-xs text-muted-foreground">
           Sign in to manage test cases, runs, and plans.
         </p>
       </div>

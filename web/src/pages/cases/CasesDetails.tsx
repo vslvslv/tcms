@@ -71,7 +71,7 @@ export default function CasesDetails() {
     return (
       <div className="max-w-4xl">
         <PageTitle className="mb-2">Test cases — Details</PageTitle>
-        <p className="mb-6 text-gray-600">Select a project from the sidebar or below to view sections and cases.</p>
+        <p className="mb-6 text-muted-foreground">Select a project from the sidebar or below to view sections and cases.</p>
         <Card>
           <ul className="list-none space-y-2 p-0">
             {projects.map((p) => (
@@ -80,7 +80,7 @@ export default function CasesDetails() {
               </li>
             ))}
           </ul>
-          {projects.length === 0 && <p className="text-muted">No projects.</p>}
+          {projects.length === 0 && <p className="text-muted-foreground">No projects.</p>}
         </Card>
       </div>
     );
@@ -92,14 +92,14 @@ export default function CasesDetails() {
   return (
     <div className="max-w-4xl">
       <PageTitle className="mb-2">Test cases — Details</PageTitle>
-      <p className="mb-6 text-gray-600">
+      <p className="mb-6 text-muted-foreground">
         <Link to="/cases/details" className="text-primary hover:underline">All projects</Link>
         {" → "}
         <span className="font-medium">{project.name}</span>
       </p>
       {suites.length === 0 ? (
         <Card>
-          <p className="text-muted">No suites. Add a suite from the project page.</p>
+          <p className="text-muted-foreground">No suites. Add a suite from the project page.</p>
           <Link to={`/projects/${projectId}`} className="mt-2 inline-block text-sm text-primary hover:underline">Go to project →</Link>
         </Card>
       ) : (
@@ -109,7 +109,7 @@ export default function CasesDetails() {
             const tree = buildSectionTree(sections);
             return (
               <Card key={suite.id}>
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{suite.name}</h2>
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{suite.name}</h2>
                 <SectionList tree={tree} />
               </Card>
             );

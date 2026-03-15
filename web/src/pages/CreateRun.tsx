@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { api, type Run, type Suite, type Milestone, type TestPlan, type ConfigGroup } from "../api";
-import { Select } from "../components/ui/Select";
+import { api, type Run, type Suite, type Milestone, type ConfigGroup } from "../api";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/Select";
 
 export default function CreateRun() {
   const { suiteId } = useParams<{ suiteId: string }>();
   const navigate = useNavigate();
   const [suite, setSuite] = useState<Suite | null>(null);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [plans, setPlans] = useState<TestPlan[]>([]);
   const [configGroups, setConfigGroups] = useState<ConfigGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [planId, setPlanId] = useState("");
   const [milestoneId, setMilestoneId] = useState("");
   const [configOptionIds, setConfigOptionIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -26,13 +24,11 @@ export default function CreateRun() {
         setSuite(s);
         return Promise.all([
           api<Milestone[]>(`/api/projects/${s.projectId}/milestones`),
-          api<TestPlan[]>(`/api/projects/${s.projectId}/plans`),
           api<ConfigGroup[]>(`/api/projects/${s.projectId}/config-groups`),
         ]);
       })
-      .then(([m, p, c]) => {
+      .then(([m, c]) => {
         setMilestones(m);
-        setPlans(p);
         setConfigGroups(c);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
@@ -54,7 +50,6 @@ export default function CreateRun() {
         body: JSON.stringify({
           name,
           description: description || undefined,
-          planId: planId || undefined,
           milestoneId: milestoneId || undefined,
           configOptionIds: configOptionIds.length > 0 ? configOptionIds : undefined,
         }),
@@ -85,24 +80,15 @@ export default function CreateRun() {
             Description <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} style={{ width: "100%" }} />
           </label>
         </div>
-        {plans.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <label>
-              Test plan{" "}
-              <Select value={planId} onChange={(e) => setPlanId(e.target.value)}>
-                <option value="">— None —</option>
-                {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </Select>
-            </label>
-          </div>
-        )}
         {milestones.length > 0 && (
           <div style={{ marginBottom: 12 }}>
             <label>
               Milestone{" "}
-              <Select value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
-                <option value="">— None —</option>
-                {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              <Select value={milestoneId} onValueChange={setMilestoneId}>
+                <SelectTrigger><SelectValue placeholder="— None —" /></SelectTrigger>
+                <SelectContent>
+                  {milestones.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                </SelectContent>
               </Select>
             </label>
           </div>

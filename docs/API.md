@@ -29,7 +29,6 @@ Full CRUD (list, get, create, update, delete) where applicable:
 | **Runs** | `GET /api/suites/:suiteId/runs` | `GET /api/runs/:id` | `POST /api/suites/:suiteId/runs` | `PATCH /api/runs/:id` | `DELETE /api/runs/:id` |
 | **Results** | `GET /api/tests/:id/results` | `GET /api/results/:id` | `POST /api/tests/:id/results` | `PATCH /api/results/:id` | — |
 | **Milestones** | `GET /api/projects/:projectId/milestones` | `GET /api/milestones/:id` | `POST /api/projects/:projectId/milestones` | `PATCH /api/milestones/:id` | `DELETE /api/milestones/:id` |
-| **Plans** | `GET /api/projects/:projectId/plans` | `GET /api/plans/:id` | `POST /api/projects/:projectId/plans` | `PATCH /api/plans/:id` | `DELETE /api/plans/:id` |
 | **Config groups** | `GET /api/projects/:projectId/config-groups` | `GET /api/config-groups/:id` | `POST /api/projects/:projectId/config-groups` | `PATCH /api/config-groups/:id` | `DELETE /api/config-groups/:id` |
 | **Config options** | (nested in group) | `GET /api/config-options/:id` | `POST /api/config-groups/:groupId/options` | `PATCH /api/config-options/:id` | `DELETE /api/config-options/:id` |
 | **Case types** | `GET /api/projects/:projectId/case-types` | `GET /api/case-types/:id` | `POST /api/projects/:projectId/case-types` | `PATCH /api/case-types/:id` | `DELETE /api/case-types/:id` |
@@ -44,7 +43,6 @@ Full CRUD (list, get, create, update, delete) where applicable:
 Other:
 
 - **Import results:** `POST /api/runs/:runId/import/results` — body `application/xml` (JUnit) or `application/json` (Playwright).
-- **Plan summary:** `GET /api/plans/:id/summary`
 - **Milestone progress:** `GET /api/milestones/:id/progress`
 - **Users / roles:** `GET /api/users`, `GET /api/roles`
 

@@ -16,7 +16,8 @@ import {
   type Webhook,
   type AuditLogEntry,
 } from "../api";
-import { Select } from "../components/ui/Select";
+import { useDialog } from "../components/ui/Dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/Select";
 
 type ProjectMemberWithDetails = {
   id: string;
@@ -28,6 +29,7 @@ type ProjectMemberWithDetails = {
 };
 
 export default function ProjectSettings() {
+  const dialog = useDialog();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
@@ -240,7 +242,13 @@ export default function ProjectSettings() {
 
   async function removeMember(userId: string) {
     if (!projectId) return;
-    if (!confirm("Remove this member?")) return;
+    const ok = await dialog.confirm({
+      title: "Remove member",
+      message: "Remove this member?",
+      icon: "warning",
+      confirmLabel: "Remove",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await api(`/api/projects/${projectId}/members/${userId}`, { method: "DELETE" });
@@ -288,7 +296,13 @@ export default function ProjectSettings() {
   }
 
   async function deleteSharedStep(id: string) {
-    if (!confirm("Delete this shared step? Cases will keep a copy as inline.")) return;
+    const ok = await dialog.confirm({
+      title: "Delete shared step",
+      message: "Delete this shared step? Cases will keep a copy as inline.",
+      icon: "delete",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await api(`/api/shared-steps/${id}`, { method: "DELETE" });
@@ -328,7 +342,13 @@ export default function ProjectSettings() {
   }
 
   async function deleteCaseTemplate(id: string) {
-    if (!confirm("Delete this template?")) return;
+    const ok = await dialog.confirm({
+      title: "Delete template",
+      message: "Delete this template?",
+      icon: "delete",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await api(`/api/case-templates/${id}`, { method: "DELETE" });
@@ -380,7 +400,13 @@ export default function ProjectSettings() {
   }
 
   async function deleteDataset(id: string) {
-    if (!confirm("Delete this dataset?")) return;
+    const ok = await dialog.confirm({
+      title: "Delete dataset",
+      message: "Delete this dataset?",
+      icon: "delete",
+      confirmLabel: "Delete",
+    });
+    if (!ok) return;
     setSaving(true);
     try {
       await api(`/api/datasets/${id}`, { method: "DELETE" });
@@ -648,11 +674,16 @@ export default function ProjectSettings() {
         <form onSubmit={addCaseField} style={{ marginBottom: 8 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             <input value={newCaseFieldName} onChange={(e) => setNewCaseFieldName(e.target.value)} placeholder="Field name" />
-            <Select value={newCaseFieldType} onChange={(e) => setNewCaseFieldType(e.target.value as typeof newCaseFieldType)}>
-              <option value="text">Text</option>
-              <option value="multiline">Multiline</option>
-              <option value="number">Number</option>
-              <option value="dropdown">Dropdown</option>
+            <Select value={newCaseFieldType} onValueChange={(v) => setNewCaseFieldType(v as typeof newCaseFieldType)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="text">Text</SelectItem>
+                <SelectItem value="multiline">Multiline</SelectItem>
+                <SelectItem value="number">Number</SelectItem>
+                <SelectItem value="dropdown">Dropdown</SelectItem>
+              </SelectContent>
             </Select>
             {newCaseFieldType === "dropdown" && (
               <input value={newCaseFieldOptions} onChange={(e) => setNewCaseFieldOptions(e.target.value)} placeholder="Options (comma-separated)" size={24} />
@@ -671,7 +702,15 @@ export default function ProjectSettings() {
             type="button"
             style={{ background: "#c00", color: "#fff", border: "none", padding: "8px 12px" }}
             onClick={async () => {
-              if (!projectId || !confirm("Delete this project and all its data? This cannot be undone.")) return;
+              if (!projectId) return;
+              const ok = await dialog.confirm({
+                title: "Delete project",
+                message: "Delete this project and all its data? This cannot be undone.",
+                icon: "delete",
+                confirmLabel: "Delete",
+                variant: "danger",
+              });
+              if (!ok) return;
               try {
                 await api(`/api/projects/${projectId}`, { method: "DELETE" });
                 navigate("/projects");
@@ -697,15 +736,23 @@ export default function ProjectSettings() {
             ))}
           </ul>
           <form onSubmit={addMember} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 8 }}>
-            <Select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)} required>
-              <option value="">Select user</option>
-              {users.filter((u) => !members.some((m) => m.userId === u.id)).map((u) => (
-                <option key={u.id} value={u.id}>{u.email} ({u.name})</option>
-              ))}
+            <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select user" />
+              </SelectTrigger>
+              <SelectContent>
+                {users.filter((u) => !members.some((m) => m.userId === u.id)).map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.email} ({u.name})</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
-            <Select value={addMemberRoleId} onChange={(e) => setAddMemberRoleId(e.target.value)} required>
-              <option value="">Role</option>
-              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            <Select value={addMemberRoleId} onValueChange={setAddMemberRoleId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+              </SelectContent>
             </Select>
             <button type="submit" disabled={saving}>Add member</button>
           </form>

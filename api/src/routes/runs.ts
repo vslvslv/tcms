@@ -10,7 +10,6 @@ import {
   tests,
   results,
   runConfigs,
-  testPlans,
   milestones,
   datasetRows,
 } from "../db/schema.js";
@@ -31,7 +30,6 @@ const projectRunsQuery = z.object({
 const createRunBody = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  planId: z.string().uuid().optional(),
   milestoneId: z.string().uuid().optional(),
   configOptionIds: z.array(z.string().uuid()).optional(),
 });
@@ -156,21 +154,17 @@ export default async function runRoutes(app: FastifyInstance) {
     }
     const suiteById = new Map((await db.select().from(suites).where(inArray(suites.id, suiteIds))).map((s) => [s.id, s]));
     const creatorIds = [...new Set(runsList.map((r) => r.createdBy))];
-    const planIds = [...new Set(runsList.map((r) => r.planId).filter(Boolean))] as string[];
     const milestoneIds = [...new Set(runsList.map((r) => r.milestoneId).filter(Boolean))] as string[];
-    const [usersList, plansList, milestonesList] = await Promise.all([
+    const [usersList, milestonesList] = await Promise.all([
       creatorIds.length > 0 ? db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, creatorIds)) : Promise.resolve([]),
-      planIds.length > 0 ? db.select({ id: testPlans.id, name: testPlans.name }).from(testPlans).where(inArray(testPlans.id, planIds)) : Promise.resolve([]),
       milestoneIds.length > 0 ? db.select({ id: milestones.id, name: milestones.name }).from(milestones).where(inArray(milestones.id, milestoneIds)) : Promise.resolve([]),
     ]);
     const userById = new Map((usersList as { id: string; name: string }[]).map((u) => [u.id, u.name]));
-    const planById = new Map((plansList as { id: string; name: string }[]).map((p) => [p.id, p.name]));
     const milestoneById = new Map((milestonesList as { id: string; name: string }[]).map((m) => [m.id, m.name]));
     const out = runsList.map((r) => ({
       ...r,
       suiteName: suiteById.get(r.suiteId)?.name ?? null,
       createdByName: userById.get(r.createdBy) ?? null,
-      planName: r.planId ? planById.get(r.planId) ?? null : null,
       milestoneName: r.milestoneId ? milestoneById.get(r.milestoneId) ?? null : null,
       summary: summaryByRunId.get(r.id) ?? { passed: 0, failed: 0, blocked: 0, skipped: 0, untested: 0 },
     }));
@@ -190,10 +184,6 @@ export default async function runRoutes(app: FastifyInstance) {
     }
     const [suite] = await db.select().from(suites).where(eq(suites.id, paramsResult.data.suiteId)).limit(1);
     if (!suite) return replyError(reply, 404, "Suite not found", "NOT_FOUND");
-    if (bodyResult.data.planId) {
-      const [plan] = await db.select().from(testPlans).where(eq(testPlans.id, bodyResult.data.planId)).limit(1);
-      if (!plan || plan.projectId !== suite.projectId) return replyError(reply, 400, "Plan not found or wrong project", "VALIDATION_ERROR");
-    }
     if (bodyResult.data.milestoneId) {
       const [m] = await db.select().from(milestones).where(eq(milestones.id, bodyResult.data.milestoneId)).limit(1);
       if (!m || m.projectId !== suite.projectId) return replyError(reply, 400, "Milestone not found or wrong project", "VALIDATION_ERROR");
@@ -203,7 +193,6 @@ export default async function runRoutes(app: FastifyInstance) {
       .insert(runs)
       .values({
         suiteId: paramsResult.data.suiteId,
-        planId: bodyResult.data.planId ?? null,
         milestoneId: bodyResult.data.milestoneId ?? null,
         name: bodyResult.data.name,
         description: bodyResult.data.description ?? null,
@@ -273,7 +262,13 @@ export default async function runRoutes(app: FastifyInstance) {
     }
     const [run] = await db.select().from(runs).where(eq(runs.id, parsed.data.id)).limit(1);
     if (!run) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    const [suite] = await db.select().from(suites).where(eq(suites.id, run.suiteId)).limit(1);
+    const projectId = suite?.projectId ?? null;
     const runTests = await db.select().from(tests).where(eq(tests.runId, run.id));
+    const assignedToIds = [...new Set(runTests.map((t) => t.assignedTo).filter(Boolean))] as string[];
+    const assigneeUsers =
+      assignedToIds.length === 0 ? [] : await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, assignedToIds));
+    const assigneeByName = new Map(assigneeUsers.map((u) => [u.id, u.name]));
     const caseIds = runTests.map((t) => t.testCaseId);
     const casesRows =
       caseIds.length === 0
@@ -322,6 +317,8 @@ export default async function runRoutes(app: FastifyInstance) {
         sectionName: caseInfo?.sectionName ?? null,
         datasetRowId: t.datasetRowId ?? undefined,
         datasetRow: t.datasetRowId ? datasetRowById.get(t.datasetRowId) ?? undefined : undefined,
+        assignedTo: t.assignedTo ?? undefined,
+        assignedToName: t.assignedTo ? assigneeByName.get(t.assignedTo) ?? null : null,
         latestResult: latest
           ? {
               id: latest.id,
@@ -335,9 +332,87 @@ export default async function runRoutes(app: FastifyInstance) {
     });
     return reply.send({
       ...run,
+      projectId,
       tests: testList,
       summary,
     });
+  });
+
+  app.get("/api/runs/:id/activity", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertRunAccess(db, parsed.data.id, payload.sub))) {
+      return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    }
+    const runTests = await db.select().from(tests).where(eq(tests.runId, parsed.data.id));
+    if (runTests.length === 0) {
+      return reply.send({ activity: [] });
+    }
+    const testIds = runTests.map((t) => t.id);
+    const rows = await db
+      .select({
+        resultId: results.id,
+        testId: results.testId,
+        caseTitle: testCases.title,
+        status: results.status,
+        comment: results.comment,
+        createdByName: users.name,
+        createdAt: results.createdAt,
+      })
+      .from(results)
+      .innerJoin(tests, eq(results.testId, tests.id))
+      .innerJoin(testCases, eq(tests.testCaseId, testCases.id))
+      .innerJoin(users, eq(results.createdBy, users.id))
+      .where(inArray(results.testId, testIds))
+      .orderBy(desc(results.createdAt))
+      .limit(100);
+    type ActivityEntry = {
+      id: string;
+      type: "result" | "comment";
+      resultId: string;
+      testId: string;
+      caseTitle: string;
+      status?: string;
+      comment?: string | null;
+      createdByName: string;
+      createdAt: string;
+    };
+    const activity: ActivityEntry[] = [];
+    for (const r of rows) {
+      const createdAt = r.createdAt.toISOString();
+      const caseTitle = r.caseTitle ?? "";
+      activity.push({
+        id: r.resultId,
+        type: "result",
+        resultId: r.resultId,
+        testId: r.testId,
+        caseTitle,
+        status: r.status,
+        createdByName: r.createdByName,
+        createdAt,
+      });
+      if (r.comment != null && r.comment.trim() !== "") {
+        activity.push({
+          id: `${r.resultId}-comment`,
+          type: "comment",
+          resultId: r.resultId,
+          testId: r.testId,
+          caseTitle,
+          comment: r.comment,
+          createdByName: r.createdByName,
+          createdAt,
+        });
+      }
+    }
+    activity.sort((a, b) => {
+      const t = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      if (t !== 0) return t;
+      return a.type === "comment" && b.type === "result" ? 1 : a.type === "result" && b.type === "comment" ? -1 : 0;
+    });
+    return reply.send({ activity });
   });
 
   app.patch("/api/runs/:id", async (req: FastifyRequest, reply: FastifyReply) => {

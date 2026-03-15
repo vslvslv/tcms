@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./AuthContext";
+import { ThemeProvider } from "./ThemeContext";
+import { DialogProvider } from "./components/ui/Dialog";
 import { ProjectProvider } from "./ProjectContext";
 import { RequireAuth } from "./RequireAuth";
 import Layout from "./components/Layout";
@@ -13,7 +15,6 @@ import SectionCases from "./pages/SectionCases";
 import RunView from "./pages/RunView";
 import CreateRun from "./pages/CreateRun";
 import MilestoneProgress from "./pages/MilestoneProgress";
-import PlanSummary from "./pages/PlanSummary";
 import ProjectSettings from "./pages/ProjectSettings";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
@@ -49,7 +50,6 @@ function AppRoutes() {
         <Route path="cases/defects" element={<CasesDefects />} />
         <Route path="projects/:projectId/settings" element={<ProjectSettings />} />
         <Route path="milestones/:milestoneId/progress" element={<MilestoneProgress />} />
-        <Route path="plans/:planId/summary" element={<PlanSummary />} />
         <Route path="suites/:suiteId" element={<SuiteView />} />
         <Route path="sections/:sectionId/cases" element={<SectionCases />} />
         <Route path="sections/:sectionId/cases/new" element={<CaseEditor />} />
@@ -74,11 +74,15 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <ProjectProvider>
-          <AppRoutes />
-        </ProjectProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <ProjectProvider>
+            <DialogProvider>
+              <AppRoutes />
+            </DialogProvider>
+          </ProjectProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

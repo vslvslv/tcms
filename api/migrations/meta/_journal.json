@@ -85,6 +85,20 @@
       "when": 1772750400000,
       "tag": "0011_share_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1772750500000,
+      "tag": "0012_tests_assigned_to",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1772750600000,
+      "tag": "0013_remove_test_plans",
+      "breakpoints": true
     }
   ]
 }

@@ -1,43 +1,30 @@
-import { type ButtonHTMLAttributes } from "react";
-import { cn } from "../../lib/cn";
+import type { ButtonHTMLAttributes } from "react";
+import { ButtonRoot, type ButtonVariantProps } from "./shadcn-button";
 
-type Variant = "primary" | "secondary" | "ghost";
+type ShadcnVariant = NonNullable<ButtonVariantProps["variant"]>;
+
+const variantMap: Record<"primary" | "secondary" | "ghost" | "danger", ShadcnVariant> = {
+  primary: "default",
+  secondary: "outline",
+  ghost: "ghost",
+  danger: "destructive",
+};
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: Variant;
+  variant?: "primary" | "secondary" | "ghost" | "danger";
 };
 
-const variantClasses: Record<Variant, string> = {
-  primary: "border-transparent bg-primary text-white hover:bg-primary-hover",
-  secondary: "border-border bg-surface text-gray-700 hover:bg-gray-50",
-  ghost: "border-transparent bg-transparent text-gray-700 hover:bg-gray-100",
-};
-
-export function Button({ variant = "secondary", className, disabled, ...props }: ButtonProps) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      className={cn(
-        "inline-flex items-center justify-center rounded border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
-        variantClasses[variant],
-        className
-      )}
-      {...props}
-    />
-  );
+export function Button({
+  variant = "secondary",
+  type = "button",
+  ...props
+}: ButtonProps) {
+  return <ButtonRoot type={type} variant={variantMap[variant]} {...props} />;
 }
 
-export function SubmitButton({ variant = "primary", className, disabled, ...props }: ButtonProps) {
-  return (
-    <button
-      type="submit"
-      disabled={disabled}
-      className={cn(
-        "inline-flex items-center justify-center rounded border border-transparent bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50",
-        className
-      )}
-      {...props}
-    />
-  );
+export function SubmitButton({
+  variant = "primary",
+  ...props
+}: ButtonProps) {
+  return <ButtonRoot type="submit" variant={variantMap[variant]} {...props} />;
 }

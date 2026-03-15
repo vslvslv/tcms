@@ -4,10 +4,12 @@ import { getDb } from "../db/index.js";
 import { projects, suites, runs, tests, results } from "../db/schema.js";
 import { eq, desc } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 import { dispatchWebhooks } from "../lib/webhooks.js";
 
 const paramsTestId = z.object({ id: z.string().uuid() });
+const patchTestBody = z.object({ assignedTo: z.string().uuid().nullable() });
 const paramsResultId = z.object({ id: z.string().uuid() });
 const createResultBody = z.object({
   status: z.enum(["untested", "passed", "failed", "blocked", "skipped"]),
@@ -35,6 +37,15 @@ async function assertResultAccess(db: Awaited<ReturnType<typeof getDb>>, resultI
   const [res] = await db.select().from(results).where(eq(results.id, resultId)).limit(1);
   if (!res) return false;
   return assertTestAccess(db, res.testId, userId);
+}
+
+async function getTestProjectId(db: Awaited<ReturnType<typeof getDb>>, testId: string): Promise<string | null> {
+  const [t] = await db.select().from(tests).where(eq(tests.id, testId)).limit(1);
+  if (!t) return null;
+  const [r] = await db.select().from(runs).where(eq(runs.id, t.runId)).limit(1);
+  if (!r) return null;
+  const [s] = await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1);
+  return s?.projectId ?? null;
 }
 
 export default async function resultRoutes(app: FastifyInstance) {
@@ -133,6 +144,26 @@ export default async function resultRoutes(app: FastifyInstance) {
     const [r] = t ? await db.select().from(runs).where(eq(runs.id, t.runId)).limit(1) : [null];
     const [s] = r ? await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1) : [null];
     await writeAuditLog(db, payload.sub, "result.updated", "result", paramsResult.data.id, s?.projectId ?? null);
+    return reply.send(updated);
+  });
+
+  app.patch("/api/tests/:id", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsTestId.safeParse((req as FastifyRequest<{ Params: { id: string } }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid test id", "VALIDATION_ERROR");
+    const bodyResult = patchTestBody.safeParse((req as FastifyRequest<{ Body: unknown }>).body);
+    if (!bodyResult.success) return replyError(reply, 400, bodyResult.error.message, "VALIDATION_ERROR");
+    const db = await getDb();
+    const projectId = await getTestProjectId(db, paramsResult.data.id);
+    if (!projectId || !(await assertProjectAccess(db, projectId, payload.sub))) {
+      return replyError(reply, 404, "Test not found", "NOT_FOUND");
+    }
+    const [updated] = await db
+      .update(tests)
+      .set({ assignedTo: bodyResult.data.assignedTo })
+      .where(eq(tests.id, paramsResult.data.id))
+      .returning();
     return reply.send(updated);
   });
 }

@@ -1,18 +1,23 @@
 import { useEffect, useState, useCallback } from "react";
 import { Outlet, Link, useNavigate, useParams, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListTodo, FolderOpen, FlaskConical, Flag, BarChart2, ChevronRight } from "lucide-react";
+import { LayoutDashboard, ListTodo, FolderOpen, FlaskConical, Flag, BarChart2, ChevronRight, Check, Sun, Moon, Palette } from "lucide-react";
 import { useAuth } from "../AuthContext";
 import { useProject } from "../ProjectContext";
+import { useTheme, type ThemeId } from "../ThemeContext";
 import { api, type Project } from "../api";
-import { Dropdown, DropdownItem } from "./ui/Dropdown";
-import { Button } from "./ui/Button";
-import { Select } from "./ui/Select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
+import { cn } from "../lib/cn";
 
 const iconSize = 18;
 
 type NavSection = "cases" | "runs" | "milestones";
-
-type ProjectRunSummary = { id: string; isCompleted: boolean };
 
 function SidebarNav({
   location,
@@ -34,10 +39,6 @@ function SidebarNav({
     if (path.startsWith("/milestones")) return "milestones";
     return null;
   });
-  const [projectRuns, setProjectRuns] = useState<ProjectRunSummary[]>([]);
-  const [runsSummaryLoading, setRunsSummaryLoading] = useState(false);
-  const [groupBy, setGroupBy] = useState<string>("none");
-  const [orderBy, setOrderBy] = useState<string>("date");
 
   useEffect(() => {
     if (path.startsWith("/projects") && !path.includes("/settings") || path.startsWith("/cases/")) setExpanded("cases");
@@ -45,22 +46,8 @@ function SidebarNav({
     else if (path.startsWith("/milestones")) setExpanded("milestones");
   }, [path]);
 
-  useEffect(() => {
-    if (!projectId || !isRunsOverview) return;
-    setRunsSummaryLoading(true);
-    api<ProjectRunSummary[]>(`/api/projects/${projectId}/runs?limit=500`)
-      .then((list) => setProjectRuns(list))
-      .catch(() => setProjectRuns([]))
-      .finally(() => setRunsSummaryLoading(false));
-  }, [projectId, isRunsOverview]);
-
-  const openCount = projectRuns.filter((r) => !r.isCompleted).length;
-  const completedCount = projectRuns.filter((r) => r.isCompleted).length;
-
-  const linkClass = (active: boolean) =>
-    `block rounded px-3 py-2 text-sm no-underline ${active ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`;
   const subLinkClass = (active: boolean) =>
-    `block rounded py-1.5 pl-8 pr-3 text-sm no-underline ${active ? "font-medium text-primary" : "text-muted hover:bg-gray-100 hover:text-gray-900"}`;
+    `block rounded py-1.5 pl-8 pr-3 text-sm no-underline ${active ? "font-medium text-primary" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`;
 
   const toggle = (section: NavSection) => setExpanded((s) => (s === section ? null : section));
 
@@ -72,13 +59,13 @@ function SidebarNav({
         <Link
           to={`/projects/${projectId}`}
           onClick={onNavigate}
-          className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline ${isProjectOverview ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline ${isProjectOverview ? "font-semibold text-foreground bg-accent" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
         >
           <LayoutDashboard size={iconSize} className="shrink-0" />
           Overview
         </Link>
       )}
-      <span className="flex items-center gap-2 rounded px-3 py-2 text-sm text-gray-400 cursor-not-allowed" aria-disabled="true" title="To Do is being refactored">
+      <span className="flex items-center gap-2 rounded px-3 py-2 text-sm text-muted-foreground cursor-not-allowed" aria-disabled="true" title="To Do is being refactored">
         <ListTodo size={iconSize} className="shrink-0" />
         To Do
       </span>
@@ -88,7 +75,7 @@ function SidebarNav({
         <button
           type="button"
           onClick={() => toggle("cases")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${(path.startsWith("/projects") && !path.includes("/settings")) || path.startsWith("/cases/") ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${(path.startsWith("/projects") && !path.includes("/settings")) || path.startsWith("/cases/") ? "font-semibold text-foreground bg-accent" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
           aria-expanded={expanded === "cases"}
         >
           <span className="flex items-center gap-2">
@@ -120,7 +107,7 @@ function SidebarNav({
         <button
           type="button"
           onClick={() => toggle("runs")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${path.startsWith("/runs") ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${path.startsWith("/runs") ? "font-semibold text-foreground bg-accent" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
           aria-expanded={expanded === "runs"}
         >
           <span className="flex items-center gap-2">
@@ -150,38 +137,6 @@ function SidebarNav({
                 </Link>
               </>
             )}
-            {/* Overview-only: Add buttons, summary, Group By / Order By */}
-            {isRunsOverview && (
-              <div className="mt-2 space-y-2 border-t border-border pt-2">
-                <div className="flex flex-col gap-1.5">
-                  <Link to="/runs/new" onClick={onNavigate}>
-                    <Button variant="primary" className="w-full justify-center text-sm">+ Add Test Run</Button>
-                  </Link>
-                  <Link to={projectId ? `/projects/${projectId}` : "/projects"} onClick={onNavigate}>
-                    <Button variant="secondary" className="w-full justify-center text-sm">+ Add Test Plan</Button>
-                  </Link>
-                </div>
-                {!runsSummaryLoading && (openCount > 0 || completedCount > 0) && (
-                  <p className="px-2 text-xs text-muted">
-                    {openCount} open and {completedCount} completed test run{openCount + completedCount !== 1 ? "s" : ""} in this project.
-                  </p>
-                )}
-                <div className="space-y-1 px-2">
-                  <label className="block text-xs text-muted">Group By</label>
-                  <Select value={groupBy} onChange={(e) => setGroupBy(e.target.value)} className="w-full text-sm">
-                    <option value="none">None</option>
-                    <option value="milestone">Milestone</option>
-                  </Select>
-                </div>
-                <div className="space-y-1 px-2">
-                  <label className="block text-xs text-muted">Order By</label>
-                  <Select value={orderBy} onChange={(e) => setOrderBy(e.target.value)} className="w-full text-sm">
-                    <option value="date">Date</option>
-                    <option value="name">Name</option>
-                  </Select>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -191,7 +146,7 @@ function SidebarNav({
         <button
           type="button"
           onClick={() => toggle("milestones")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${path.startsWith("/milestones") ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${path.startsWith("/milestones") ? "font-semibold text-foreground bg-accent" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}
           aria-expanded={expanded === "milestones"}
         >
           <span className="flex items-center gap-2">
@@ -218,7 +173,7 @@ function SidebarNav({
         )}
       </div>
 
-      <Link to="/reports" onClick={onNavigate} className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline ${path === "/reports" ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}>
+      <Link to="/reports" onClick={onNavigate} className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline ${path === "/reports" ? "font-semibold text-foreground bg-accent" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"}`}>
         <BarChart2 size={iconSize} className="shrink-0" />
         Reports
       </Link>
@@ -226,9 +181,16 @@ function SidebarNav({
   );
 }
 
+const THEME_OPTIONS: { id: ThemeId; label: string; icon: typeof Sun }[] = [
+  { id: "light", label: "Light", icon: Sun },
+  { id: "dark", label: "Dark", icon: Moon },
+  { id: "slate", label: "Slate", icon: Palette },
+];
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const { projectId, setProjectId } = useProject();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
@@ -280,37 +242,74 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-gray-50 px-4">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-card px-4">
         <div className="flex items-center gap-4">
           {showSidebar && (
             <button
               type="button"
               onClick={() => setSidebarOpen((o) => !o)}
-              className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded border border-border bg-surface text-gray-700 hover:bg-gray-100"
+              className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded border border-border bg-surface text-foreground hover:bg-accent"
               aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               aria-expanded={sidebarOpen}
             >
               <span className="text-lg">{sidebarOpen ? "×" : "☰"}</span>
             </button>
           )}
-          <Link to="/dashboard" className="font-bold text-gray-900 no-underline hover:underline">
+          <Link to="/dashboard" className="font-bold text-foreground no-underline hover:underline">
             TCMS
           </Link>
         </div>
-        <Dropdown
-          trigger={<>{user?.name ?? user?.email ?? "User"}</>}
-          align="right"
+        <DropdownMenu
           open={userMenuOpen}
-          onOpenChange={(open) => { setUserMenuOpen(open); if (open) { setProjectSwitcherOpen(false); } }}
+          onOpenChange={(open) => {
+            setUserMenuOpen(open);
+            if (open) setProjectSwitcherOpen(false);
+          }}
         >
-          <DropdownItem onClick={() => { setUserMenuOpen(false); logout(); }}>Log out</DropdownItem>
-        </Dropdown>
+          <DropdownMenuTrigger
+            className={cn(
+              "inline-flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-left text-sm font-medium text-foreground",
+              "hover:bg-accent hover:text-accent-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            )}
+          >
+            <span className="min-w-0 truncate">{user?.name ?? user?.email ?? "User"}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[160px]">
+            <span className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Theme</span>
+            {THEME_OPTIONS.map((opt) => {
+              const Icon = opt.icon;
+              return (
+                <DropdownMenuItem
+                  key={opt.id}
+                  onSelect={() => {
+                    setTheme(opt.id);
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  <Icon className="mr-2 size-4" aria-hidden />
+                  <span className="flex-1">{opt.label}</span>
+                  {theme === opt.id && <Check className="size-4" aria-hidden />}
+                </DropdownMenuItem>
+              );
+            })}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => {
+                setUserMenuOpen(false);
+                logout();
+              }}
+            >
+              Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
       <div className="relative flex flex-1 overflow-hidden">
         {showSidebar && (
           <>
             <aside
-              className={`fixed left-0 top-12 z-30 flex h-[calc(100vh-3rem)] w-52 flex-col overflow-y-auto border-r border-border bg-gray-50/95 backdrop-blur md:relative md:top-0 md:h-auto md:z-auto md:shrink-0 md:border-r md:bg-gray-50/80 ${
+              className={`fixed left-0 top-12 z-30 flex h-[calc(100vh-3rem)] w-52 flex-col overflow-y-auto border-r border-border bg-muted/80 backdrop-blur md:relative md:top-0 md:h-auto md:z-auto md:shrink-0 md:border-r ${
                 sidebarOpen ? "block" : "hidden md:flex"
               }`}
               aria-label="Main navigation"
@@ -318,34 +317,53 @@ export default function Layout() {
             >
               {/* Project switcher */}
               <div className="border-b border-border p-3 pb-3" data-testid="project-switcher">
-                <div className="mb-1 text-xs font-medium text-muted">Project</div>
-                <Dropdown
-                  trigger={<>{currentProject ? currentProject.name : projects.length === 0 ? "No projects" : "Select project…"}</>}
-                  aria-haspopup="listbox"
+                <div className="mb-1 text-xs font-medium text-muted-foreground">Project</div>
+                <DropdownMenu
                   open={projectSwitcherOpen}
-                  onOpenChange={(open) => { setProjectSwitcherOpen(open); if (open) { setUserMenuOpen(false); } }}
-                  disabled={projectsLoading}
-                  triggerClassName="w-full justify-between"
-                  panelClassName="left-0 right-0 min-w-0"
-                  panelMaxHeight="max-h-72"
+                  onOpenChange={(open) => {
+                    setProjectSwitcherOpen(open);
+                    if (open) setUserMenuOpen(false);
+                  }}
                 >
-                  <DropdownItem
-                    role="option"
-                    onClick={() => { setProjectId(null); setProjectSwitcherOpen(false); navigate("/projects"); setSidebarOpen(false); }}
+                  <DropdownMenuTrigger
+                    disabled={projectsLoading}
+                    className={cn(
+                      "inline-flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-sm font-medium text-foreground",
+                      "hover:bg-accent hover:text-accent-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:pointer-events-none disabled:opacity-60"
+                    )}
                   >
-                    — All projects —
-                  </DropdownItem>
-                  {projects.map((p) => (
-                    <DropdownItem
-                      key={p.id}
-                      role="option"
-                      selected={p.id === projectId}
-                      onClick={() => { setProjectId(p.id); setProjectSwitcherOpen(false); navigate(`/projects/${p.id}`); setSidebarOpen(false); }}
+                    <span className="min-w-0 truncate">
+                      {currentProject ? currentProject.name : projects.length === 0 ? "No projects" : "Select project…"}
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="left-0 right-0 min-w-0 max-h-72 overflow-y-auto" sideOffset={8}>
+                    <DropdownMenuItem
+                      onSelect={() => {
+                        setProjectId(null);
+                        setProjectSwitcherOpen(false);
+                        navigate("/projects");
+                        setSidebarOpen(false);
+                      }}
                     >
-                      {p.name}
-                    </DropdownItem>
-                  ))}
-                </Dropdown>
+                      — All projects —
+                    </DropdownMenuItem>
+                    {projects.map((p) => (
+                      <DropdownMenuItem
+                        key={p.id}
+                        onSelect={() => {
+                          setProjectId(p.id);
+                          setProjectSwitcherOpen(false);
+                          navigate(`/projects/${p.id}`);
+                          setSidebarOpen(false);
+                        }}
+                        className={cn(p.id === projectId && "bg-primary/10 font-medium text-primary")}
+                      >
+                        {p.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
 
               <SidebarNav location={location} onNavigate={closeSidebar} projectId={projectId} />

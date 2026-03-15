@@ -5,7 +5,7 @@ import { projects, projectMembers, users, roles } from "../db/schema.js";
 import { eq, and, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { writeAuditLog } from "../lib/auditLog.js";
-import { assertProjectRole } from "../lib/projectAccess.js";
+import { assertProjectAccess, assertProjectRole } from "../lib/projectAccess.js";
 
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
 const paramsId = z.object({ id: z.string().uuid() });
@@ -31,6 +31,22 @@ export default async function projectMemberRoutes(app: FastifyInstance) {
     const db = await getDb();
     const list = await db.select().from(roles);
     return reply.send(list);
+  });
+
+  app.get("/api/projects/:projectId/assignable-users", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsProjectId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid projectId", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertProjectAccess(db, parsed.data.projectId, payload.sub))) {
+      return replyError(reply, 404, "Project not found", "NOT_FOUND");
+    }
+    const members = await db.select({ userId: projectMembers.userId }).from(projectMembers).where(eq(projectMembers.projectId, parsed.data.projectId));
+    const userIds = [...new Set(members.map((m) => m.userId))];
+    if (userIds.length === 0) return reply.send([]);
+    const userList = await db.select({ id: users.id, email: users.email, name: users.name }).from(users).where(inArray(users.id, userIds));
+    return reply.send(userList);
   });
 
   app.get("/api/projects/:projectId/members", async (req: FastifyRequest, reply: FastifyReply) => {

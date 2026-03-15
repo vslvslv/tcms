@@ -1,14 +1,14 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { Flag, FolderOpen, Activity, Layers, ClipboardList } from "lucide-react";
-import { api, type Project, type Suite, type Milestone, type TestPlan, type ProjectRun, type AuditLogEntry } from "../api";
+import { Bar } from "react-chartjs-2";
+import type { ChartOptions } from "chart.js";
+import { getChartThemeOptions } from "../charts/register";
+import { Flag, FolderOpen, Activity, Layers } from "lucide-react";
+import { api, type Project, type Suite, type Milestone, type ProjectRun, type AuditLogEntry } from "../api";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
-import { Select } from "../components/ui/Select";
-
 function last7Days(): { date: string; displayDate: string }[] {
   const out: { date: string; displayDate: string }[] = [];
   for (let i = 6; i >= 0; i--) {
@@ -39,7 +39,6 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null);
   const [suites, setSuites] = useState<Suite[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [plans, setPlans] = useState<TestPlan[]>([]);
   const [recentRuns, setRecentRuns] = useState<ProjectRun[]>([]);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,9 +48,6 @@ export default function ProjectDetail() {
   const [showNewMilestone, setShowNewMilestone] = useState(false);
   const [newMilestoneName, setNewMilestoneName] = useState("");
   const [newMilestoneDue, setNewMilestoneDue] = useState("");
-  const [showNewPlan, setShowNewPlan] = useState(false);
-  const [newPlanName, setNewPlanName] = useState("");
-  const [newPlanMilestoneId, setNewPlanMilestoneId] = useState("");
   const [saving, setSaving] = useState(false);
 
   function load() {
@@ -60,14 +56,12 @@ export default function ProjectDetail() {
       api<Project>(`/api/projects/${projectId}`),
       api<Suite[]>(`/api/projects/${projectId}/suites`),
       api<Milestone[]>(`/api/projects/${projectId}/milestones`),
-      api<TestPlan[]>(`/api/projects/${projectId}/plans`),
       api<ProjectRun[]>(`/api/projects/${projectId}/runs?limit=50`),
     ])
-      .then(([p, s, m, pl, runs]) => {
+      .then(([p, s, m, runs]) => {
         setProject(p);
         setSuites(s);
         setMilestones(m);
-        setPlans(pl);
         setRecentRuns(runs);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
@@ -149,30 +143,6 @@ export default function ProjectDetail() {
     }
   }
 
-  async function createPlan(e: React.FormEvent) {
-    e.preventDefault();
-    if (!projectId || !newPlanName.trim()) return;
-    setSaving(true);
-    setError("");
-    try {
-      await api<TestPlan>(`/api/projects/${projectId}/plans`, {
-        method: "POST",
-        body: JSON.stringify({
-          name: newPlanName.trim(),
-          milestoneId: newPlanMilestoneId.trim() || null,
-        }),
-      });
-      setNewPlanName("");
-      setNewPlanMilestoneId("");
-      setShowNewPlan(false);
-      load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create plan");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   if (!projectId) return null;
   if (loading) return <LoadingSpinner />;
   if (error || !project) return <p className="text-error">{error || "Project not found"}</p>;
@@ -190,38 +160,51 @@ export default function ProjectDetail() {
       {/* Tests in the past 7 days */}
       <Card className="mb-6">
         <div className="mb-2 flex items-center gap-2">
-          <Activity size={20} className="shrink-0 text-muted" />
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Tests in the past 7 days</h2>
+          <Activity size={20} className="shrink-0 text-muted-foreground" />
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Tests in the past 7 days</h2>
         </div>
-        <p className="mb-4 text-sm text-muted">Test runs created by day.</p>
+        <p className="mb-4 text-sm text-muted-foreground">Test runs created by day.</p>
         <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-              <XAxis
-                dataKey="displayDate"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                axisLine={{ stroke: "#e5e7eb" }}
-                tickLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                axisLine={false}
-                tickLine={false}
-                width={28}
-              />
-              <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
-                labelFormatter={(_, payload) => payload[0]?.payload?.displayDate ?? ""}
-                formatter={(value: number | undefined) => [`${value ?? 0} run${(value ?? 0) !== 1 ? "s" : ""}`, "Runs"]}
-              />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]} name="Runs">
-                {chartData.map((_, i) => (
-                  <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <Bar
+            data={{
+              labels: chartData.map((d) => d.displayDate),
+              datasets: [
+                {
+                  label: "Runs",
+                  data: chartData.map((d) => d.count),
+                  backgroundColor: chartData.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+                  borderRadius: { topLeft: 4, topRight: 4 },
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  ...getChartThemeOptions().plugins?.tooltip,
+                  callbacks: {
+                    label: (ctx) => `${ctx.raw} run${Number(ctx.raw) !== 1 ? "s" : ""}`,
+                  },
+                },
+              },
+              scales: {
+                x: {
+                  ...getChartThemeOptions().scales?.x,
+                  ticks: { font: { size: 11 }, ...getChartThemeOptions().scales?.x?.ticks },
+                  grid: { display: false },
+                },
+                y: {
+                  ...getChartThemeOptions().scales?.y,
+                  beginAtZero: true,
+                  ticks: { font: { size: 11 }, stepSize: 1, ...getChartThemeOptions().scales?.y?.ticks },
+                  grid: { ...getChartThemeOptions().scales?.y?.grid },
+                  border: { display: false },
+                },
+              },
+            } as ChartOptions<"bar">}
+          />
         </div>
       </Card>
 
@@ -229,16 +212,16 @@ export default function ProjectDetail() {
         {/* Milestones */}
         <Card>
           <div className="mb-3 flex items-center gap-2">
-            <Flag size={18} className="shrink-0 text-muted" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Milestones</h2>
+            <Flag size={18} className="shrink-0 text-muted-foreground" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Milestones</h2>
           </div>
           {showNewMilestone && (
-            <form onSubmit={createMilestone} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-gray-50 p-4">
+            <form onSubmit={createMilestone} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-muted/50 p-4">
               <label className="flex items-center gap-2">
-                Name <input value={newMilestoneName} onChange={(e) => setNewMilestoneName(e.target.value)} required className="rounded border border-gray-300 px-2 py-1 text-sm" />
+                Name <input value={newMilestoneName} onChange={(e) => setNewMilestoneName(e.target.value)} required className="rounded border border-input px-2 py-1 text-sm" />
               </label>
               <label className="flex items-center gap-2">
-                Due date <input type="date" value={newMilestoneDue} onChange={(e) => setNewMilestoneDue(e.target.value)} className="rounded border border-gray-300 px-2 py-1 text-sm" />
+                Due date <input type="date" value={newMilestoneDue} onChange={(e) => setNewMilestoneDue(e.target.value)} className="rounded border border-input px-2 py-1 text-sm" />
               </label>
               <Button type="submit" variant="primary" disabled={saving}>Create</Button>
               <Button type="button" onClick={() => { setShowNewMilestone(false); setNewMilestoneName(""); setNewMilestoneDue(""); }}>Cancel</Button>
@@ -250,19 +233,19 @@ export default function ProjectDetail() {
               <li key={m.id} className="flex items-center gap-2 py-1.5">
                 <Flag size={14} className="shrink-0 text-violet-500" />
                 <Link to={`/milestones/${m.id}/progress`} className="text-primary hover:underline">{m.name}</Link>
-                <span className="text-xs text-muted">{m.dueDate ? `Due: ${new Date(m.dueDate).toLocaleDateString()}` : "No due date"}</span>
+                <span className="text-xs text-muted-foreground">{m.dueDate ? `Due: ${new Date(m.dueDate).toLocaleDateString()}` : "No due date"}</span>
               </li>
             ))}
           </ul>
-          {milestones.length === 0 && !showNewMilestone && <p className="text-sm text-muted">No milestones.</p>}
+          {milestones.length === 0 && !showNewMilestone && <p className="text-sm text-muted-foreground">No milestones.</p>}
         </Card>
 
         {/* Test Runs */}
         <Card>
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <FolderOpen size={18} className="shrink-0 text-muted" />
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Test Runs</h2>
+              <FolderOpen size={18} className="shrink-0 text-muted-foreground" />
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Test Runs</h2>
             </div>
             <div className="flex gap-2">
               <Link to="/runs/new">
@@ -276,28 +259,28 @@ export default function ProjectDetail() {
           <ul className="list-none p-0">
             {recentRuns.slice(0, 5).map((r) => (
               <li key={r.id} className="flex items-center gap-2 py-1.5">
-                <FolderOpen size={14} className="shrink-0 text-slate-400" />
+                <FolderOpen size={14} className="shrink-0 text-muted-foreground" />
                 <Link to={`/runs/${r.id}`} className="text-primary hover:underline">{r.name}</Link>
-                <span className="text-xs text-muted">
+                <span className="text-xs text-muted-foreground">
                   By {r.createdByName ?? "—"} on {r.createdAt ? new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: "short" }) : "—"}
                 </span>
               </li>
             ))}
           </ul>
-          {recentRuns.length === 0 && <p className="text-sm text-muted">No test runs yet.</p>}
+          {recentRuns.length === 0 && <p className="text-sm text-muted-foreground">No test runs yet.</p>}
         </Card>
       </div>
 
       {/* Activity */}
       <Card className="mt-6">
         <div className="mb-3 flex items-center gap-2">
-          <Activity size={18} className="shrink-0 text-muted" />
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Activity</h2>
+          <Activity size={18} className="shrink-0 text-muted-foreground" />
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Activity</h2>
         </div>
         {auditLog.length > 0 ? (
           <ul className="list-none space-y-2 p-0">
             {auditLog.map((entry) => (
-              <li key={entry.id} className="flex flex-wrap items-center gap-2 rounded border border-gray-100 bg-gray-50/50 px-2 py-1.5 text-sm">
+              <li key={entry.id} className="flex flex-wrap items-center gap-2 rounded border border-border bg-muted/50 px-2 py-1.5 text-sm">
                 <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{entry.entityType}</span>
                 {entry.action} · {new Date(entry.createdAt).toLocaleString()} · {entry.userId.slice(0, 8)}
               </li>
@@ -306,27 +289,27 @@ export default function ProjectDetail() {
         ) : (
           <ul className="list-none space-y-2 p-0">
             {activityFromRuns.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-2 rounded border border-gray-100 bg-gray-50/50 px-2 py-1.5 text-sm">
+              <li key={a.id} className="flex flex-wrap items-center gap-2 rounded border border-border bg-muted/50 px-2 py-1.5 text-sm">
                 <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">Test Run</span>
                 {a.description} · {new Date(a.date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} · {a.by}
               </li>
             ))}
           </ul>
         )}
-        {auditLog.length === 0 && activityFromRuns.length === 0 && <p className="text-sm text-muted">No recent activity.</p>}
+        {auditLog.length === 0 && activityFromRuns.length === 0 && <p className="text-sm text-muted-foreground">No recent activity.</p>}
       </Card>
 
-      {/* Suites and Test plans */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      {/* Suites */}
+      <div className="mt-6">
         <Card>
           <div className="mb-3 flex items-center gap-2">
-            <Layers size={18} className="shrink-0 text-muted" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Suites</h2>
+            <Layers size={18} className="shrink-0 text-muted-foreground" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Suites</h2>
           </div>
           {showNewSuite && (
-            <form onSubmit={createSuite} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-gray-50 p-4">
+            <form onSubmit={createSuite} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-muted/50 p-4">
               <label className="flex items-center gap-2">
-                Name <input value={newSuiteName} onChange={(e) => setNewSuiteName(e.target.value)} required className="rounded border border-gray-300 px-2 py-1 text-sm" />
+                Name <input value={newSuiteName} onChange={(e) => setNewSuiteName(e.target.value)} required className="rounded border border-input px-2 py-1 text-sm" />
               </label>
               <Button type="submit" variant="primary" disabled={saving}>Create</Button>
               <Button type="button" onClick={() => { setShowNewSuite(false); setNewSuiteName(""); }}>Cancel</Button>
@@ -340,39 +323,7 @@ export default function ProjectDetail() {
               </li>
             ))}
           </ul>
-          {suites.length === 0 && !showNewSuite && <p className="text-sm text-muted">No suites. Add one above.</p>}
-        </Card>
-
-        <Card>
-          <div className="mb-3 flex items-center gap-2">
-            <ClipboardList size={18} className="shrink-0 text-muted" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Test plans</h2>
-          </div>
-          {showNewPlan && (
-            <form onSubmit={createPlan} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-gray-50 p-4">
-              <label className="flex items-center gap-2">
-                Name <input value={newPlanName} onChange={(e) => setNewPlanName(e.target.value)} required className="rounded border border-gray-300 px-2 py-1 text-sm" />
-              </label>
-              <label className="flex items-center gap-2">
-                Milestone
-                <Select value={newPlanMilestoneId} onChange={(e) => setNewPlanMilestoneId(e.target.value)} className="text-sm">
-                  <option value="">— None —</option>
-                  {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </Select>
-              </label>
-              <Button type="submit" variant="primary" disabled={saving}>Create</Button>
-              <Button type="button" onClick={() => { setShowNewPlan(false); setNewPlanName(""); setNewPlanMilestoneId(""); }}>Cancel</Button>
-            </form>
-          )}
-          {!showNewPlan && <Button type="button" variant="primary" onClick={() => setShowNewPlan(true)} className="mb-3 text-sm">New plan</Button>}
-          <ul className="list-none p-0">
-            {plans.map((p) => (
-              <li key={p.id} className="py-1.5">
-                <Link to={`/plans/${p.id}/summary`} className="text-primary hover:underline">{p.name}</Link>
-              </li>
-            ))}
-          </ul>
-          {plans.length === 0 && !showNewPlan && <p className="text-sm text-muted">No test plans.</p>}
+          {suites.length === 0 && !showNewSuite && <p className="text-sm text-muted-foreground">No suites. Add one above.</p>}
         </Card>
       </div>
     </div>

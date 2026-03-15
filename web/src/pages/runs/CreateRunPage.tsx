@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../../ProjectContext";
-import { api, type Run, type Suite, type Milestone, type TestPlan, type ConfigGroup } from "../../api";
+import { api, type Run, type Suite, type Milestone, type ConfigGroup } from "../../api";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { PageTitle } from "../../components/ui/PageTitle";
-import { Select } from "../../components/ui/Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/Select";
 import { Input } from "../../components/ui/Input";
 import { Label } from "../../components/ui/Label";
 
@@ -15,13 +15,11 @@ export default function CreateRunPage() {
   const navigate = useNavigate();
   const [suites, setSuites] = useState<Suite[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
-  const [plans, setPlans] = useState<TestPlan[]>([]);
   const [configGroups, setConfigGroups] = useState<ConfigGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [suiteId, setSuiteId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [planId, setPlanId] = useState("");
   const [milestoneId, setMilestoneId] = useState("");
   const [configOptionIds, setConfigOptionIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -35,13 +33,11 @@ export default function CreateRunPage() {
     Promise.all([
       api<Suite[]>(`/api/projects/${projectId}/suites`),
       api<Milestone[]>(`/api/projects/${projectId}/milestones`),
-      api<TestPlan[]>(`/api/projects/${projectId}/plans`),
       api<ConfigGroup[]>(`/api/projects/${projectId}/config-groups`),
     ])
-      .then(([s, m, p, c]) => {
+      .then(([s, m, c]) => {
         setSuites(s);
         setMilestones(m);
-        setPlans(p);
         setConfigGroups(c);
         if (s.length === 1) setSuiteId(s[0].id);
       })
@@ -64,7 +60,6 @@ export default function CreateRunPage() {
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim() || undefined,
-          planId: planId || undefined,
           milestoneId: milestoneId || undefined,
           configOptionIds: configOptionIds.length > 0 ? configOptionIds : undefined,
         }),
@@ -110,11 +105,15 @@ export default function CreateRunPage() {
       <form onSubmit={handleSubmit} className="space-y-4" data-testid="create-run-form">
         <div>
           <Label htmlFor="suite">Suite</Label>
-          <Select id="suite" value={suiteId} onChange={(e) => setSuiteId(e.target.value)} required className="mt-1 w-full">
-            <option value="">— Select suite —</option>
-            {suites.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
+          <Select value={suiteId} onValueChange={setSuiteId} required>
+            <SelectTrigger id="suite" className="mt-1 w-full">
+              <SelectValue placeholder="— Select suite —" />
+            </SelectTrigger>
+            <SelectContent>
+              {suites.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
           </Select>
         </div>
         <div>
@@ -131,21 +130,16 @@ export default function CreateRunPage() {
             className="mt-1 w-full rounded border border-border px-2 py-1.5 text-sm focus:ring-2 focus:ring-primary"
           />
         </div>
-        {plans.length > 0 && (
-          <div>
-            <Label htmlFor="plan">Test plan</Label>
-            <Select id="plan" value={planId} onChange={(e) => setPlanId(e.target.value)} className="mt-1 w-full">
-              <option value="">— None —</option>
-              {plans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </Select>
-          </div>
-        )}
         {milestones.length > 0 && (
           <div>
             <Label htmlFor="milestone">Milestone</Label>
-            <Select id="milestone" value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)} className="mt-1 w-full">
-              <option value="">— None —</option>
-              {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            <Select value={milestoneId} onValueChange={setMilestoneId}>
+              <SelectTrigger id="milestone" className="mt-1 w-full">
+                <SelectValue placeholder="— None —" />
+              </SelectTrigger>
+              <SelectContent>
+                {milestones.map((m) => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+              </SelectContent>
             </Select>
           </div>
         )}
@@ -155,7 +149,7 @@ export default function CreateRunPage() {
             <div className="mt-2 space-y-1">
               {configGroups.map((g) => (
                 <div key={g.id}>
-                  <span className="text-sm font-medium text-muted">{g.name}:</span>
+                  <span className="text-sm font-medium text-muted-foreground">{g.name}:</span>
                   <div className="mt-1 flex flex-wrap gap-2">
                     {g.options?.map((o) => (
                       <label key={o.id} className="flex items-center gap-1.5 text-sm">
