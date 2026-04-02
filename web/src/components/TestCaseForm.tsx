@@ -22,6 +22,7 @@ import { LoadingSpinner } from "./ui/LoadingSpinner";
 import { Select } from "./ui/Select";
 import { StatusBadge } from "./ui/StatusBadge";
 import { CaseVersionHistory } from "./CaseVersionHistory";
+import { AttachmentPanel } from "./AttachmentPanel";
 
 type StepRow = { content: string; expected: string; sharedStepId?: string };
 
@@ -689,6 +690,8 @@ export function TestCaseForm({
               <Button type="submit" variant="primary">Add requirement</Button>
             </form>
           </Card>
+
+          <AttachmentPanel entityType="case" entityId={caseId} />
 
           <CaseVersionHistory caseId={caseId} />
         </>

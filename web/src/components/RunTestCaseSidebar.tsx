@@ -12,6 +12,7 @@ import {
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
+import { AttachmentPanel } from "./AttachmentPanel";
 import {
   Table,
   TableBody,
@@ -66,6 +67,7 @@ export function RunTestCaseSidebar({
   const [caseData, setCaseData] = useState<TestCase & { steps?: TestStep[] } | null>(null);
   const [caseLoading, setCaseLoading] = useState(true);
   const [resultHistory, setResultHistory] = useState<TestResult[]>([]);
+  const latestResultId = resultHistory[0]?.id ?? null;
   const [resultStatus, setResultStatus] = useState<string>(test.latestResult?.status ?? "passed");
   const [resultComment, setResultComment] = useState("");
   const [resultElapsed, setResultElapsed] = useState("");
@@ -409,6 +411,13 @@ export function RunTestCaseSidebar({
               )}
             </div>
           </>
+        )}
+
+        {/* Attachments for the latest result */}
+        {latestResultId && (
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <AttachmentPanel entityType="result" entityId={latestResultId} />
+          </div>
         )}
       </div>
 

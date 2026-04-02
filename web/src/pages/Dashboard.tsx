@@ -35,15 +35,17 @@ function StatCard({
   label,
   value,
   href,
-}: { label: string; value: number; href?: string }) {
+  color = "text-gray-900",
+  bgColor = "",
+}: { label: string; value: number | string; href?: string; color?: string; bgColor?: string }) {
   const content = (
     <>
-      <span className="text-2xl font-bold tabular-nums text-gray-900">{value}</span>
+      <span className={`text-2xl font-bold tabular-nums ${color}`}>{value}</span>
       <span className="text-sm font-medium text-muted">{label}</span>
     </>
   );
   return (
-    <Card className="flex flex-col gap-1 p-4 transition-shadow hover:shadow-md">
+    <Card className={`flex flex-col gap-1 p-4 transition-shadow hover:shadow-md ${bgColor}`}>
       {href ? (
         <Link to={href} className="flex flex-col gap-1 no-underline hover:underline-offset-2 [&>span:first-child]:hover:text-primary">
           {content}
@@ -93,12 +95,12 @@ export default function Dashboard() {
         Overview of your projects, milestones, test plans, and recent activity.
       </p>
 
-      {/* Stats strip – TestRail-style summary */}
+      {/* Stats strip – colored cards with context */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Projects" value={data.projects.length} href={data.projects.length > 0 ? "/projects" : undefined} />
-        <StatCard label="Milestones" value={data.milestones.length} />
-        <StatCard label="Test plans" value={data.plans.length} />
-        <StatCard label="Recent runs" value={data.recentRuns.length} />
+        <StatCard label="Projects" value={data.projects.length} href={data.projects.length > 0 ? "/projects" : undefined} color="text-blue-600" bgColor="bg-blue-50/50" />
+        <StatCard label="Milestones" value={data.milestones.length} color="text-violet-600" bgColor="bg-violet-50/50" />
+        <StatCard label="Test plans" value={data.plans.length} color="text-slate-700" />
+        <StatCard label="Recent runs" value={data.recentRuns.length} color="text-emerald-600" bgColor="bg-emerald-50/50" />
       </div>
 
       {/* Activity chart – TestRail shows activity by date */}
@@ -151,10 +153,10 @@ export default function Dashboard() {
             <ul className="list-none space-y-2 p-0">
               {data.projects.slice(0, 8).map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-2">
-                  <Link to={`/projects/${p.id}`} className="font-medium text-primary hover:underline">
+                  <Link to={`/projects/${p.id}`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
                     {p.name}
                   </Link>
-                  <Link to={`/projects/${p.id}/settings`} className="text-xs text-muted hover:text-gray-700 hover:underline">
+                  <Link to={`/projects/${p.id}/settings`} className="min-h-[44px] flex items-center text-xs text-muted hover:text-gray-700 hover:underline">
                     Settings
                   </Link>
                 </li>
@@ -185,7 +187,7 @@ export default function Dashboard() {
             <ul className="list-none space-y-2 p-0">
               {data.milestones.slice(0, 6).map((m) => (
                 <li key={m.id} className="flex items-center justify-between gap-2">
-                  <Link to={`/milestones/${m.id}/progress`} className="font-medium text-primary hover:underline">
+                  <Link to={`/milestones/${m.id}/progress`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
                     {m.name}
                   </Link>
                   {m.dueDate && (
@@ -195,7 +197,10 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <p className="text-muted">No milestones.</p>
+            <div className="py-4 text-center">
+              <p className="text-muted">No milestones yet.</p>
+              <p className="mt-1 text-xs text-muted">Milestones help track progress toward release dates.</p>
+            </div>
           )}
           {data.milestones.length > 6 && (
             <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
@@ -210,14 +215,17 @@ export default function Dashboard() {
             <ul className="list-none space-y-2 p-0">
               {data.plans.slice(0, 6).map((p) => (
                 <li key={p.id}>
-                  <Link to={`/plans/${p.id}/summary`} className="font-medium text-primary hover:underline">
+                  <Link to={`/plans/${p.id}/summary`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
                     {p.name}
                   </Link>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-muted">No test plans.</p>
+            <div className="py-4 text-center">
+              <p className="text-muted">No test plans yet.</p>
+              <p className="mt-1 text-xs text-muted">Test plans group multiple test runs for organized execution.</p>
+            </div>
           )}
           {data.plans.length > 6 && (
             <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
@@ -232,7 +240,7 @@ export default function Dashboard() {
             <ul className="list-none space-y-2 p-0">
               {data.recentRuns.slice(0, 6).map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-2">
-                  <Link to={`/runs/${r.id}`} className="font-medium text-primary hover:underline">
+                  <Link to={`/runs/${r.id}`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
                     {r.name}
                   </Link>
                   <span className="text-xs text-muted">
@@ -242,7 +250,10 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <p className="text-muted">No runs yet.</p>
+            <div className="py-4 text-center">
+              <p className="text-muted">No runs yet.</p>
+              <p className="mt-1 text-xs text-muted">Create a test run to start executing test cases.</p>
+            </div>
           )}
           {data.recentRuns.length > 6 && (
             <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
