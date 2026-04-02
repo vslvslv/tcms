@@ -63,8 +63,6 @@ export default function ProjectSettings() {
   const [newTemplateSteps, setNewTemplateSteps] = useState("");
   const [datasetsList, setDatasetsList] = useState<Dataset[]>([]);
   const [newDatasetName, setNewDatasetName] = useState("");
-  const [newRowData, setNewRowData] = useState("");
-  const [addingRowDatasetId, setAddingRowDatasetId] = useState<string | null>(null);
   const [expandedDatasetId, setExpandedDatasetId] = useState<string | null>(null);
   const [requirementsCoverage, setRequirementsCoverage] = useState<RequirementsCoverageItem[]>([]);
   const [webhooksList, setWebhooksList] = useState<Webhook[]>([]);
@@ -353,27 +351,6 @@ export default function ProjectSettings() {
         body: JSON.stringify({ name: newDatasetName.trim() }),
       });
       setNewDatasetName("");
-      load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function addDatasetRow(datasetId: string) {
-    let data: Record<string, string> = {};
-    try {
-      data = JSON.parse(newRowData || "{}");
-    } catch {
-      setError("Invalid JSON for row data");
-      return;
-    }
-    setSaving(true);
-    try {
-      await api(`/api/datasets/${datasetId}/rows`, { method: "POST", body: JSON.stringify({ data }) });
-      setNewRowData("");
-      setAddingRowDatasetId(null);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");

@@ -40,7 +40,12 @@ export function DatasetEditor({
   async function addColumn(e: React.FormEvent) {
     e.preventDefault();
     if (!newColumnName.trim()) return;
+    if (columns.some((c) => c.name.toLowerCase() === newColumnName.trim().toLowerCase())) {
+      setError("Column name already exists");
+      return;
+    }
     setSaving(true);
+    setError("");
     try {
       await api<DatasetColumn>(`/api/datasets/${datasetId}/columns`, {
         method: "POST",
@@ -59,6 +64,7 @@ export function DatasetEditor({
     const hasData = Object.values(newRowData).some((v) => v.trim());
     if (!hasData) return;
     setSaving(true);
+    setError("");
     try {
       await api<DatasetRow>(`/api/datasets/${datasetId}/rows`, {
         method: "POST",
