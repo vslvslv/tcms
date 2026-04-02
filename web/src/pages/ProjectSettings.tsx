@@ -68,6 +68,7 @@ export default function ProjectSettings() {
   const [webhooksList, setWebhooksList] = useState<Webhook[]>([]);
   const [newWebhookUrl, setNewWebhookUrl] = useState("");
   const [newWebhookEvents, setNewWebhookEvents] = useState<string[]>([]);
+  const [webhookTemplate, setWebhookTemplate] = useState<"custom" | "slack" | "teams">("custom");
   const [saving, setSaving] = useState(false);
   const [myRole, setMyRole] = useState<string | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
@@ -580,6 +581,7 @@ export default function ProjectSettings() {
               setWebhooksList((prev) => [...prev, created]);
               setNewWebhookUrl("");
               setNewWebhookEvents([]);
+              setWebhookTemplate("custom");
             } catch (err) {
               setError(err instanceof Error ? err.message : "Add webhook failed");
             } finally {
@@ -587,6 +589,21 @@ export default function ProjectSettings() {
             }
           }}
         >
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ marginRight: 12 }}><input type="radio" name="wh-tpl" checked={webhookTemplate === "custom"} onChange={() => { setWebhookTemplate("custom"); }} /> Custom</label>
+            <label style={{ marginRight: 12 }}><input type="radio" name="wh-tpl" checked={webhookTemplate === "slack"} onChange={() => { setWebhookTemplate("slack"); setNewWebhookEvents(["run.completed"]); }} /> Slack</label>
+            <label><input type="radio" name="wh-tpl" checked={webhookTemplate === "teams"} onChange={() => { setWebhookTemplate("teams"); setNewWebhookEvents(["run.completed"]); }} /> Microsoft Teams</label>
+          </div>
+          {webhookTemplate === "slack" && (
+            <div style={{ marginBottom: 8, padding: 8, background: "#f8f8f8", borderRadius: 4, fontSize: 12 }}>
+              <strong>Slack Incoming Webhook</strong> — Paste your Slack incoming webhook URL below. On <code>run.completed</code>, TCMS will POST a Block Kit message with run name, pass rate, and failure count.
+            </div>
+          )}
+          {webhookTemplate === "teams" && (
+            <div style={{ marginBottom: 8, padding: 8, background: "#f8f8f8", borderRadius: 4, fontSize: 12 }}>
+              <strong>Teams Incoming Webhook</strong> — Paste your Teams connector URL below. On <code>run.completed</code>, TCMS will POST an Adaptive Card with run name, pass rate, and failure count.
+            </div>
+          )}
           <div style={{ marginBottom: 8 }}>
             <input value={newWebhookUrl} onChange={(e) => setNewWebhookUrl(e.target.value)} placeholder="https://..." style={{ width: 320, marginRight: 8 }} required />
           </div>
