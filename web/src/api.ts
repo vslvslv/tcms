@@ -191,6 +191,24 @@ export type ReportResult = {
   runName: string;
 };
 
+export type AdminUser = {
+  id: string;
+  email: string;
+  name: string;
+  globalRole: "user" | "admin";
+  isActive: boolean;
+  createdAt: string;
+};
+
+export type ApiToken = {
+  id: string;
+  name: string;
+  token?: string;
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+};
+
 export type Dataset = {
   id: string;
   projectId: string;
