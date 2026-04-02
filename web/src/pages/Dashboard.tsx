@@ -111,8 +111,8 @@ export default function Dashboard() {
           <p className="mb-4 text-sm text-muted">
             Dates and quantity of test runs. Automatically updates as new runs are added.
           </p>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-56" style={{ minWidth: 0, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <BarChart data={activityData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                 <XAxis
                   dataKey="displayDate"
