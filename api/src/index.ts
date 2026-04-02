@@ -30,6 +30,7 @@ import webhookRoutes from "./routes/webhooks.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import shareRoutes from "./routes/shares.js";
 import attachmentRoutes from "./routes/attachments.js";
+import analyticsRoutes from "./routes/analytics.js";
 
 const app = Fastify({ logger: true });
 
@@ -90,6 +91,7 @@ await app.register(webhookRoutes);
 await app.register(dashboardRoutes);
 await app.register(shareRoutes);
 await app.register(attachmentRoutes);
+await app.register(analyticsRoutes);
 
 app.get("/health", async () => {
   try {
