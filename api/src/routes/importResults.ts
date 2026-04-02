@@ -99,11 +99,14 @@ function parsePlaywrightJson(body: unknown): NormalizedTestResult[] {
 
     // Extract attachments (base64-encoded screenshots from Playwright)
     const atts: NormalizedAttachment[] = [];
+    const maxAttachmentSize = Number(process.env.MAX_FILE_SIZE ?? 10_485_760);
     const rawAtts = firstResult?.attachments ?? (t as { attachments?: unknown[] }).attachments ?? [];
     if (Array.isArray(rawAtts)) {
       for (const a of rawAtts) {
         const att = a as { name?: string; contentType?: string; body?: string; path?: string };
         if (att.body && att.contentType) {
+          // Skip attachments that are too large (base64 is ~33% overhead)
+          if (att.body.length > maxAttachmentSize * 1.4) continue;
           atts.push({
             name: att.name ?? "attachment",
             contentType: att.contentType,
