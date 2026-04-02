@@ -31,6 +31,8 @@ import dashboardRoutes from "./routes/dashboard.js";
 import shareRoutes from "./routes/shares.js";
 import attachmentRoutes from "./routes/attachments.js";
 import analyticsRoutes from "./routes/analytics.js";
+import adminRoutes from "./routes/admin.js";
+import tokenRoutes from "./routes/tokens.js";
 
 const app = Fastify({ logger: true });
 
@@ -92,6 +94,8 @@ await app.register(dashboardRoutes);
 await app.register(shareRoutes);
 await app.register(attachmentRoutes);
 await app.register(analyticsRoutes);
+await app.register(adminRoutes);
+await app.register(tokenRoutes);
 
 app.get("/health", async () => {
   try {

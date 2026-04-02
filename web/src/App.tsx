@@ -18,6 +18,9 @@ import ProjectSettings from "./pages/ProjectSettings";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
 import ReportBuilder from "./pages/ReportBuilder";
+import AdminUsers from "./pages/AdminUsers";
+import Profile from "./pages/Profile";
+import ApiTokens from "./pages/ApiTokens";
 import CasesOverview from "./pages/cases/CasesOverview";
 import CasesDetails from "./pages/cases/CasesDetails";
 import CasesStatus from "./pages/cases/CasesStatus";
@@ -69,6 +72,9 @@ function AppRoutes() {
         <Route path="runs/:runId/defects" element={<RunView />} />
         <Route path="reports" element={<Reports />} />
         <Route path="reports/builder" element={<ReportBuilder />} />
+        <Route path="admin/users" element={<AdminUsers />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="tokens" element={<ApiTokens />} />
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

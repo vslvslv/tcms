@@ -73,6 +73,45 @@ export default async function authRoutes(app: FastifyInstance) {
     }
   );
 
+  // Update profile (name, password)
+  const updateProfileBody = z.object({
+    name: z.string().min(1).optional(),
+    currentPassword: z.string().optional(),
+    newPassword: z.string().min(8).optional(),
+  });
+
+  app.patch("/api/auth/me", { preValidation: [app.authenticate] }, async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const body = updateProfileBody.safeParse((req as FastifyRequest<{ Body: unknown }>).body);
+    if (!body.success) return replyError(reply, 400, body.error.message, "VALIDATION_ERROR");
+    const db = await getDb();
+
+    const [user] = await db.select().from(users).where(eq(users.id, payload.sub)).limit(1);
+    if (!user) return replyError(reply, 404, "User not found", "NOT_FOUND");
+
+    const updates: Record<string, unknown> = {};
+    if (body.data.name) updates.name = body.data.name;
+
+    if (body.data.newPassword) {
+      if (!body.data.currentPassword) {
+        return replyError(reply, 400, "Current password required", "VALIDATION_ERROR");
+      }
+      const bcrypt = await import("bcrypt");
+      const valid = await bcrypt.default.compare(body.data.currentPassword, user.passwordHash);
+      if (!valid) return replyError(reply, 400, "Current password is incorrect", "VALIDATION_ERROR");
+      updates.passwordHash = await bcrypt.default.hash(body.data.newPassword, 10);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return replyError(reply, 400, "No fields to update", "VALIDATION_ERROR");
+    }
+
+    updates.updatedAt = new Date();
+    await db.update(users).set(updates).where(eq(users.id, payload.sub));
+    return reply.send({ ok: true });
+  });
+
   // Password reset request: generates a token. Returns it in the response (no email in MVP).
   const resetRequestBody = z.object({ email: z.string().email() });
 

@@ -23,6 +23,7 @@ async function run() {
     email: "admin@tcms.local",
     passwordHash,
     name: "Admin",
+    globalRole: "admin",
   });
   console.log("Seeded user admin@tcms.local / password123");
 }
