@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Outlet, Link, useNavigate, useParams, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListTodo, FolderOpen, FlaskConical, Flag, BarChart2, ChevronRight } from "lucide-react";
+import { LayoutDashboard, ListTodo, FolderOpen, FlaskConical, Flag, BarChart2, ChevronRight, Shield } from "lucide-react";
 import { useAuth } from "../AuthContext";
 import { useProject } from "../ProjectContext";
 import { api, type Project } from "../api";
@@ -293,7 +293,8 @@ export default function Layout() {
               <span className="text-lg">{sidebarOpen ? "×" : "☰"}</span>
             </button>
           )}
-          <Link to="/dashboard" className="font-bold text-gray-900 no-underline hover:underline">
+          <Link to="/dashboard" className="flex items-center gap-2 font-bold text-gray-900 no-underline hover:underline">
+            <Shield size={20} className="text-primary" />
             TCMS
           </Link>
         </div>
