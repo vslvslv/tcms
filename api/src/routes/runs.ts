@@ -435,13 +435,15 @@ export default async function runRoutes(app: FastifyInstance) {
       milestoneId: runRow.milestoneId,
     }).returning();
 
-    // Create tests in the new run for each failed case
-    for (const t of failedTests) {
-      await db.insert(tests).values({
-        runId: newRun.id,
-        caseId: t.caseId,
-        datasetRowId: t.datasetRowId,
-      });
+    // Create tests in the new run for each failed case (batch insert)
+    if (failedTests.length > 0) {
+      await db.insert(tests).values(
+        failedTests.map((t) => ({
+          runId: newRun.id,
+          caseId: t.caseId,
+          datasetRowId: t.datasetRowId,
+        }))
+      );
     }
 
     const [s] = await db.select().from(suites).where(eq(suites.id, runRow.suiteId)).limit(1);

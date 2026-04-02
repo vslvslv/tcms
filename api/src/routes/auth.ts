@@ -82,7 +82,8 @@ export default async function authRoutes(app: FastifyInstance) {
     const db = await getDb();
     const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
     if (!user) {
-      // Return 200 regardless to prevent email enumeration
+      // Fixed delay to mask timing difference from DB insert path
+      await new Promise((r) => setTimeout(r, 200));
       return reply.send({ message: "If the email exists, a reset link has been generated." });
     }
     const token = randomBytes(32).toString("hex");
