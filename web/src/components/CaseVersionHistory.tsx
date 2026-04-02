@@ -168,9 +168,13 @@ export function CaseVersionHistory({ caseId }: { caseId: string }) {
           )}
           {diffResult.changes.map((c, i) => {
             if (c.field === "steps") {
-              const oldSteps: StepSnapshot[] = c.old ? JSON.parse(c.old) : [];
-              const newSteps: StepSnapshot[] = c.new ? JSON.parse(c.new) : [];
-              return <StepsDiff key={i} oldSteps={oldSteps} newSteps={newSteps} />;
+              try {
+                const oldSteps: StepSnapshot[] = c.old ? JSON.parse(c.old) : [];
+                const newSteps: StepSnapshot[] = c.new ? JSON.parse(c.new) : [];
+                return <StepsDiff key={i} oldSteps={oldSteps} newSteps={newSteps} />;
+              } catch {
+                return <DiffRow key={i} label="steps (raw)" oldVal={c.old} newVal={c.new} />;
+              }
             }
             return <DiffRow key={i} label={c.field} oldVal={c.old} newVal={c.new} />;
           })}
