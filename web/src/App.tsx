@@ -21,6 +21,7 @@ import ReportBuilder from "./pages/ReportBuilder";
 import AdminUsers from "./pages/AdminUsers";
 import Profile from "./pages/Profile";
 import ApiTokens from "./pages/ApiTokens";
+import NotificationSettings from "./pages/NotificationSettings";
 import CasesOverview from "./pages/cases/CasesOverview";
 import CasesDetails from "./pages/cases/CasesDetails";
 import CasesStatus from "./pages/cases/CasesStatus";
@@ -75,6 +76,7 @@ function AppRoutes() {
         <Route path="admin/users" element={<AdminUsers />} />
         <Route path="profile" element={<Profile />} />
         <Route path="tokens" element={<ApiTokens />} />
+        <Route path="notifications" element={<NotificationSettings />} />
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

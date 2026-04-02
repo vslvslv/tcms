@@ -3,7 +3,7 @@ import { z } from "zod";
 import { XMLParser } from "fast-xml-parser";
 import crypto from "crypto";
 import { getDb } from "../db/index.js";
-import { runs, tests, results, testCases, sections, suites, attachments } from "../db/schema.js";
+import { runs, tests, results, testCases, sections, suites, attachments, fileFailureCorrelations } from "../db/schema.js";
 import { eq, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
@@ -207,6 +207,43 @@ export default async function importResultsRoutes(app: FastifyInstance) {
         }
       }
     }
-    return reply.send({ imported: items.length, added, updated, attachments: attachmentCount });
+    // Smart test selection: record file-failure correlations
+    let correlationsAdded = 0;
+    const changedFiles = (req as FastifyRequest<{ Body: { changedFiles?: string[] } }>).body &&
+      typeof (req as FastifyRequest<{ Body: { changedFiles?: string[] } }>).body === "object" &&
+      Array.isArray(((req as FastifyRequest<{ Body: { changedFiles?: string[] } }>).body as { changedFiles?: string[] }).changedFiles)
+      ? ((req as FastifyRequest<{ Body: { changedFiles?: string[] } }>).body as { changedFiles: string[] }).changedFiles
+      : undefined;
+
+    if (changedFiles && changedFiles.length > 0) {
+      // Find which cases failed in this import
+      const failedCaseIds = new Set<string>();
+      for (const item of items) {
+        if (item.status === "failed") {
+          const key = item.title.trim().toLowerCase();
+          const caseId = titleToCaseId.get(key) ?? casesInSuite.find((c) => c.title.trim().toLowerCase().includes(key) || key.includes(c.title.trim().toLowerCase()))?.id;
+          if (caseId) failedCaseIds.add(caseId);
+        }
+      }
+      // Record correlations
+      if (failedCaseIds.size > 0) {
+        const correlationValues = [];
+        for (const caseId of failedCaseIds) {
+          for (const filePath of changedFiles) {
+            correlationValues.push({
+              caseId,
+              filePath,
+              runId: paramsResult.data.runId,
+            });
+          }
+        }
+        if (correlationValues.length > 0) {
+          await db.insert(fileFailureCorrelations).values(correlationValues);
+          correlationsAdded = correlationValues.length;
+        }
+      }
+    }
+
+    return reply.send({ imported: items.length, added, updated, attachments: attachmentCount, correlations: correlationsAdded });
   });
 }

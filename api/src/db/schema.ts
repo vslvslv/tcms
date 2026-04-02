@@ -43,6 +43,8 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   globalRole: globalRoleEnum("global_role").default("user").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  oauthProvider: text("oauth_provider"),
+  oauthId: text("oauth_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -452,5 +454,23 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
   token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at").notNull(),
   usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Smart test selection — file-failure correlations
+export const fileFailureCorrelations = pgTable("file_failure_correlations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  caseId: uuid("case_id").notNull().references(() => testCases.id, { onDelete: "cascade" }),
+  filePath: text("file_path").notNull(),
+  runId: uuid("run_id").notNull().references(() => runs.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Notification preferences
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  event: text("event").notNull(),
+  enabled: boolean("enabled").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

@@ -229,3 +229,7 @@ export type RunTest = {
   datasetRow?: Record<string, string>;
   latestResult: { id: string; status: string; comment: string | null; elapsedSeconds: number | null; createdAt: string } | null;
 };
+
+export type NotificationPref = { event: string; enabled: boolean };
+
+export type SuggestedTest = { caseId: string; caseTitle: string; score: number };

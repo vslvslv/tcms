@@ -13,10 +13,12 @@ import {
   testPlans,
   milestones,
   datasetRows,
+  fileFailureCorrelations,
 } from "../db/schema.js";
-import { eq, inArray, desc, and } from "drizzle-orm";
+import { eq, inArray, desc, and, gte } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
-import { assertProjectAccess, assertProjectRole } from "../lib/projectAccess.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
+import { can } from "../lib/permissions.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 import { dispatchWebhooks } from "../lib/webhooks.js";
 
@@ -386,8 +388,8 @@ export default async function runRoutes(app: FastifyInstance) {
     }
     const [runRow] = await db.select().from(runs).where(eq(runs.id, paramsResult.data.id)).limit(1);
     const [s] = runRow ? await db.select().from(suites).where(eq(suites.id, runRow.suiteId)).limit(1) : [null];
-    if (s && !(await assertProjectRole(db, s.projectId, payload.sub, ["admin", "lead"]))) {
-      return replyError(reply, 403, "Only admin or lead can delete run", "FORBIDDEN");
+    if (s && !(await can(payload.sub, s.projectId, "runs.delete"))) {
+      return replyError(reply, 403, "Insufficient permissions to delete run", "FORBIDDEN");
     }
     await db.delete(runs).where(eq(runs.id, paramsResult.data.id));
     await writeAuditLog(db, payload.sub, "run.deleted", "run", paramsResult.data.id, s?.projectId ?? null);
@@ -459,5 +461,70 @@ export default async function runRoutes(app: FastifyInstance) {
     }
 
     return reply.status(201).send(newRun);
+  });
+
+  // Smart test selection: suggest test cases based on changed files
+  const suggestQuery = z.object({ changedFiles: z.string().min(1) });
+
+  app.get("/api/projects/:projectId/suggest-tests", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsProjectId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid projectId", "VALIDATION_ERROR");
+    const queryResult = suggestQuery.safeParse((req as FastifyRequest<{ Querystring: unknown }>).query);
+    if (!queryResult.success) return replyError(reply, 400, "changedFiles query parameter required (comma-separated)", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertProjectAccess(db, paramsResult.data.projectId, payload.sub))) {
+      return replyError(reply, 404, "Project not found", "NOT_FOUND");
+    }
+
+    const changedFiles = queryResult.data.changedFiles.split(",").map((f) => f.trim()).filter(Boolean);
+    if (changedFiles.length === 0) return reply.send([]);
+
+    // Look at correlations from the last 90 days
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const correlations = await db
+      .select()
+      .from(fileFailureCorrelations)
+      .where(
+        and(
+          inArray(fileFailureCorrelations.filePath, changedFiles),
+          gte(fileFailureCorrelations.createdAt, ninetyDaysAgo)
+        )
+      );
+
+    if (correlations.length === 0) return reply.send([]);
+
+    // Count how many times each caseId appears in correlations (higher = more correlated)
+    const caseScores = new Map<string, number>();
+    for (const c of correlations) {
+      caseScores.set(c.caseId, (caseScores.get(c.caseId) ?? 0) + 1);
+    }
+
+    // Get case details and filter to this project's cases
+    const caseIds = [...caseScores.keys()];
+    const cases = caseIds.length === 0
+      ? []
+      : await db
+          .select({ id: testCases.id, title: testCases.title, sectionId: testCases.sectionId })
+          .from(testCases)
+          .innerJoin(sections, eq(testCases.sectionId, sections.id))
+          .innerJoin(suites, eq(sections.suiteId, suites.id))
+          .where(
+            and(
+              inArray(testCases.id, caseIds),
+              eq(suites.projectId, paramsResult.data.projectId)
+            )
+          );
+
+    const ranked = cases
+      .map((c) => ({
+        caseId: c.id,
+        caseTitle: c.title,
+        score: caseScores.get(c.id) ?? 0,
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    return reply.send(ranked);
   });
 }

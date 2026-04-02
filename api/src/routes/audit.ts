@@ -4,7 +4,8 @@ import { getDb } from "../db/index.js";
 import { auditLog } from "../db/schema.js";
 import { eq, desc, and } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
-import { assertProjectAccess, assertProjectRole } from "../lib/projectAccess.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
+import { can } from "../lib/permissions.js";
 
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
 
@@ -23,8 +24,8 @@ export default async function auditRoutes(app: FastifyInstance) {
     if (!(await assertProjectAccess(db, parsed.data.projectId, payload.sub))) {
       return replyError(reply, 404, "Project not found", "NOT_FOUND");
     }
-    if (!(await assertProjectRole(db, parsed.data.projectId, payload.sub, ["admin", "lead"]))) {
-      return replyError(reply, 403, "Only admin or lead can view audit log", "FORBIDDEN");
+    if (!(await can(payload.sub, parsed.data.projectId, "audit.view"))) {
+      return replyError(reply, 403, "Insufficient permissions to view audit log", "FORBIDDEN");
     }
     const conditions = [eq(auditLog.projectId, parsed.data.projectId)];
     if (q.entityType) conditions.push(eq(auditLog.entityType, q.entityType));

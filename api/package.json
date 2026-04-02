@@ -25,12 +25,14 @@
     "drizzle-orm": "^0.36.0",
     "fast-xml-parser": "^5.4.2",
     "fastify": "^5.1.0",
+    "nodemailer": "^8.0.4",
     "pg": "^8.13.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^22.10.0",
+    "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.18.0",
     "drizzle-kit": "^0.28.0",
     "tsx": "^4.19.2",
