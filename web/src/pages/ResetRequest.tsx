@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { SubmitButton } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { Label } from "../components/ui/Label";
 
 export default function ResetRequest() {
   const [email, setEmail] = useState("");
@@ -25,44 +28,68 @@ export default function ResetRequest() {
 
   if (submitted) {
     return (
-      <div style={{ maxWidth: 400, margin: "80px auto", padding: 24 }}>
-        <h2>Check your email</h2>
-        <p>If an account exists with that email, a reset link has been generated.</p>
-        {resetUrl && (
-          <div style={{ marginTop: 16, padding: 12, background: "#f0f9ff", borderRadius: 4, fontSize: 13 }}>
-            <strong>MVP mode:</strong> No email configured. Use this link directly:
-            <br />
-            <Link to={resetUrl}>{resetUrl}</Link>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+        <div className="w-full max-w-sm">
+          <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
+            <h2 className="mb-2 text-xl font-bold text-gray-900">Check your email</h2>
+            <p className="text-sm text-muted">
+              If an account exists with that email, a reset link has been generated.
+            </p>
+            {resetUrl && (
+              <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm">
+                <strong>MVP mode:</strong> No email configured. Use this link directly:
+                <br />
+                <Link to={resetUrl} className="mt-1 block break-all font-medium text-primary hover:underline">
+                  {resetUrl}
+                </Link>
+              </div>
+            )}
+            <p className="mt-6 text-center text-sm text-gray-600">
+              <Link to="/login" className="font-medium text-primary hover:underline">
+                Back to login
+              </Link>
+            </p>
           </div>
-        )}
-        <p style={{ marginTop: 16 }}>
-          <Link to="/login">Back to login</Link>
-        </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: "80px auto", padding: 24 }}>
-      <h2>Reset Password</h2>
-      <p style={{ color: "#666", fontSize: 14 }}>Enter your email to receive a password reset link.</p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email address"
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+      <div className="w-full max-w-sm">
+        <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
+          <div className="mb-6">
+            <h1 className="text-xl font-bold text-gray-900">Reset Password</h1>
+            <p className="mt-1 text-sm text-muted">Enter your email to receive a password reset link.</p>
+          </div>
+          {error && (
+            <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-sm text-error" role="alert">
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <Label htmlFor="reset-email">Email address</Label>
+              <Input
+                id="reset-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                autoComplete="email"
+              />
+            </div>
+            <SubmitButton className="w-full py-2.5 text-base">Send Reset Link</SubmitButton>
+          </form>
+          <p className="mt-6 text-center text-sm text-gray-600">
+            <Link to="/login" className="font-medium text-primary hover:underline">
+              Back to login
+            </Link>
+          </p>
         </div>
-        <button type="submit" style={{ width: "100%", padding: 8 }}>Send Reset Link</button>
-      </form>
-      <p style={{ marginTop: 16, fontSize: 14 }}>
-        <Link to="/login">Back to login</Link>
-      </p>
+      </div>
     </div>
   );
 }

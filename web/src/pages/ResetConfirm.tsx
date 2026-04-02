@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { SubmitButton } from "../components/ui/Button";
+import { Input } from "../components/ui/Input";
+import { Label } from "../components/ui/Label";
 
 export default function ResetConfirm() {
   const { token } = useParams<{ token: string }>();
@@ -36,44 +39,64 @@ export default function ResetConfirm() {
 
   if (success) {
     return (
-      <div style={{ maxWidth: 400, margin: "80px auto", padding: 24 }}>
-        <h2>Password Reset</h2>
-        <p style={{ color: "green" }}>Password reset successfully. Redirecting to login...</p>
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+        <div className="w-full max-w-sm">
+          <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
+            <h2 className="mb-2 text-xl font-bold text-gray-900">Password Reset</h2>
+            <p className="text-sm text-green-600">
+              Password reset successfully. Redirecting to login...
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: "80px auto", padding: 24 }}>
-      <h2>Set New Password</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 12 }}>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="New password (min 8 chars)"
-            required
-            minLength={8}
-            style={{ width: "100%", padding: 8 }}
-          />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+      <div className="w-full max-w-sm">
+        <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
+          <h1 className="mb-6 text-xl font-bold text-gray-900">Set New Password</h1>
+          {error && (
+            <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-sm text-error" role="alert">
+              {error}
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <Label htmlFor="new-password">New password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min 8 characters"
+                required
+                minLength={8}
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <Label htmlFor="confirm-password">Confirm password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+                required
+                autoComplete="new-password"
+              />
+            </div>
+            <SubmitButton className="w-full py-2.5 text-base">Reset Password</SubmitButton>
+          </form>
+          <p className="mt-6 text-center text-sm text-gray-600">
+            <Link to="/login" className="font-medium text-primary hover:underline">
+              Back to login
+            </Link>
+          </p>
         </div>
-        <div style={{ marginBottom: 12 }}>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm new password"
-            required
-            style={{ width: "100%", padding: 8 }}
-          />
-        </div>
-        <button type="submit" style={{ width: "100%", padding: 8 }}>Reset Password</button>
-      </form>
-      <p style={{ marginTop: 16, fontSize: 14 }}>
-        <Link to="/login">Back to login</Link>
-      </p>
+      </div>
     </div>
   );
 }
