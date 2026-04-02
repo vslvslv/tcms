@@ -24,6 +24,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+    // Check if token is expired before making a network request
+    try {
+      const payload = JSON.parse(atob(t.split(".")[1]));
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        localStorage.removeItem("tcms_token");
+        setToken(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // Malformed token — clear it
+      localStorage.removeItem("tcms_token");
+      setToken(null);
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
       const u = await api<User>("/api/auth/me", { token: t });
       setUser(u);

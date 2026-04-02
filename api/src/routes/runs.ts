@@ -440,7 +440,7 @@ export default async function runRoutes(app: FastifyInstance) {
       await db.insert(tests).values(
         failedTests.map((t) => ({
           runId: newRun.id,
-          caseId: t.caseId,
+          testCaseId: t.testCaseId,
           datasetRowId: t.datasetRowId,
         }))
       );
