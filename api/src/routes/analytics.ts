@@ -154,6 +154,9 @@ export default async function analyticsRoutes(app: FastifyInstance) {
 
     const [milestone] = await db.select().from(milestones).where(eq(milestones.id, params.data.id)).limit(1);
     if (!milestone) return replyError(reply, 404, "Milestone not found", "NOT_FOUND");
+    if (!(await assertProjectAccess(db, milestone.projectId, payload.sub))) {
+      return replyError(reply, 404, "Milestone not found", "NOT_FOUND");
+    }
 
     // Find all runs linked to this milestone
     const milestoneRuns = await db.select({ id: runs.id }).from(runs).where(eq(runs.milestoneId, milestone.id));
@@ -214,6 +217,10 @@ export default async function analyticsRoutes(app: FastifyInstance) {
     const fromDate = query.from ? new Date(query.from) : undefined;
     const toDate = query.to ? new Date(query.to) : undefined;
     const statusFilter = query.status as string | undefined;
+
+    // Validate dates
+    if (fromDate && isNaN(fromDate.getTime())) return replyError(reply, 400, "Invalid 'from' date", "VALIDATION_ERROR");
+    if (toDate && isNaN(toDate.getTime())) return replyError(reply, 400, "Invalid 'to' date", "VALIDATION_ERROR");
 
     const suiteIds = await projectSuiteIds(db, params.data.projectId);
     if (suiteIds.length === 0) return [];
