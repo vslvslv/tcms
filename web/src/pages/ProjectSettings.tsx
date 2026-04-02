@@ -17,6 +17,7 @@ import {
   type AuditLogEntry,
 } from "../api";
 import { Select } from "../components/ui/Select";
+import { DatasetEditor } from "../components/DatasetEditor";
 
 type ProjectMemberWithDetails = {
   id: string;
@@ -64,6 +65,7 @@ export default function ProjectSettings() {
   const [newDatasetName, setNewDatasetName] = useState("");
   const [newRowData, setNewRowData] = useState("");
   const [addingRowDatasetId, setAddingRowDatasetId] = useState<string | null>(null);
+  const [expandedDatasetId, setExpandedDatasetId] = useState<string | null>(null);
   const [requirementsCoverage, setRequirementsCoverage] = useState<RequirementsCoverageItem[]>([]);
   const [webhooksList, setWebhooksList] = useState<Webhook[]>([]);
   const [newWebhookUrl, setNewWebhookUrl] = useState("");
@@ -472,29 +474,30 @@ export default function ProjectSettings() {
 
       <section style={{ marginBottom: 32 }}>
         <h3>Datasets</h3>
-        <p style={{ fontSize: 12, color: "#666" }}>Parameterize cases: one test per row when running. Add rows as JSON.</p>
-        <form onSubmit={addDataset} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          <input value={newDatasetName} onChange={(e) => setNewDatasetName(e.target.value)} placeholder="Dataset name" />
-          <button type="submit" disabled={saving}>Add dataset</button>
-        </form>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {datasetsList.map((d) => (
-            <li key={d.id} style={{ marginBottom: 12, padding: 8, border: "1px solid #eee" }}>
-              <strong>{d.name}</strong>
-              <button type="button" style={{ marginLeft: 8 }} onClick={() => deleteDataset(d.id)}>Delete</button>
-              <div style={{ fontSize: 12, marginTop: 4 }}>Rows: {d.rows?.length ?? 0}</div>
-              {addingRowDatasetId === d.id ? (
-                <div style={{ marginTop: 8 }}>
-                  <input value={newRowData} onChange={(e) => setNewRowData(e.target.value)} placeholder='{"Browser":"Chrome"}' style={{ width: 200 }} />
-                  <button type="button" onClick={() => addDatasetRow(d.id)} disabled={saving}>Add row</button>
-                  <button type="button" onClick={() => { setAddingRowDatasetId(null); setNewRowData(""); }}>Cancel</button>
-                </div>
-              ) : (
-                <button type="button" style={{ marginTop: 4 }} onClick={() => setAddingRowDatasetId(d.id)}>+ Add row</button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <p style={{ fontSize: 12, color: "#666" }}>Parameterize cases: one test per row when running.</p>
+        {expandedDatasetId ? (
+          <DatasetEditor
+            datasetId={expandedDatasetId}
+            onBack={() => { setExpandedDatasetId(null); load(); }}
+          />
+        ) : (
+          <>
+            <form onSubmit={addDataset} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <input value={newDatasetName} onChange={(e) => setNewDatasetName(e.target.value)} placeholder="Dataset name" />
+              <button type="submit" disabled={saving}>Add dataset</button>
+            </form>
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {datasetsList.map((d) => (
+                <li key={d.id} style={{ marginBottom: 8, padding: 8, border: "1px solid #eee", borderRadius: 8, display: "flex", alignItems: "center", gap: 12 }}>
+                  <strong style={{ flex: 1 }}>{d.name}</strong>
+                  <span style={{ fontSize: 12, color: "#666" }}>{d.columns?.length ?? 0} cols, {d.rows?.length ?? 0} rows</span>
+                  <button type="button" onClick={() => setExpandedDatasetId(d.id)} style={{ fontSize: 13 }}>Manage</button>
+                  <button type="button" onClick={() => deleteDataset(d.id)} style={{ fontSize: 13, color: "#c00" }}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
 
       <section style={{ marginBottom: 32 }}>
