@@ -9,27 +9,26 @@ import {
   type CaseFieldDefinition,
   type SharedStep,
   type CaseTemplate,
-  type CaseVersion,
   type IssueLink,
   type RequirementLink,
   type Dataset,
   type Section,
   type Suite,
+  type User,
 } from "../api";
 import { Button } from "./ui/Button";
 import { Card } from "./ui/Card";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
 import { Select } from "./ui/Select";
+import { StatusBadge } from "./ui/StatusBadge";
+import { CaseVersionHistory } from "./CaseVersionHistory";
 
 type StepRow = { content: string; expected: string; sharedStepId?: string };
 
 export type TestCaseFormProps = {
-  /** For creating a new case */
   sectionId?: string;
-  /** For editing an existing case (takes precedence over sectionId) */
   caseId?: string;
   templateId?: string | null;
-  /** Called after successful save; if not provided, create navigates to edit page, edit navigates back */
   onSuccess?: (caseData: TestCase) => void;
   onCancel?: () => void;
   compact?: boolean;
@@ -64,20 +63,19 @@ export function TestCaseForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Approval
+  const [approvedById, setApprovedById] = useState<string | null>(null);
+  const [approvedAt, setApprovedAt] = useState<string | null>(null);
+  const [approverName, setApproverName] = useState<string | null>(null);
+
   const [issueLinksList, setIssueLinksList] = useState<IssueLink[]>([]);
   const [newIssueUrl, setNewIssueUrl] = useState("");
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [requirementLinksList, setRequirementLinksList] = useState<RequirementLink[]>([]);
   const [newRequirementRef, setNewRequirementRef] = useState("");
   const [newRequirementTitle, setNewRequirementTitle] = useState("");
-  const [versions, setVersions] = useState<CaseVersion[]>([]);
-  const [diffFrom, setDiffFrom] = useState("");
-  const [diffTo, setDiffTo] = useState("");
-  const [diffResult, setDiffResult] = useState<{
-    from: CaseVersion;
-    to: CaseVersion;
-    changes: { field: string; old: string | null; new: string | null }[];
-  } | null>(null);
+
+  const canApprove = myRole === "admin" || myRole === "lead";
 
   useEffect(() => {
     let cancelled = false;
@@ -92,6 +90,8 @@ export function TestCaseForm({
           setPriorityId(c.priorityId ?? "");
           setStatus((c.status ?? "draft") as "draft" | "ready" | "approved");
           setDatasetId((c as { datasetId?: string | null }).datasetId ?? "");
+          setApprovedById((c as { approvedById?: string | null }).approvedById ?? null);
+          setApprovedAt((c as { approvedAt?: string | null }).approvedAt ?? null);
           setSteps(
             c.steps?.length
               ? c.steps.map((s) => ({
@@ -140,15 +140,13 @@ export function TestCaseForm({
           setSharedStepsList(ss);
           setDatasetsList(ds);
           return Promise.all([
-            api<CaseVersion[]>(`/api/cases/${caseId}/versions`),
             api<IssueLink[]>(`/api/cases/${caseId}/issue-links`),
             api<RequirementLink[]>(`/api/cases/${caseId}/requirement-links`),
           ]);
         })
         .then((res) => {
           if (cancelled) return;
-          const [ver = [], issues = [], reqs = []] = res ?? [];
-          setVersions(ver);
+          const [issues = [], reqs = []] = res ?? [];
           setIssueLinksList(issues);
           setRequirementLinksList(reqs);
         })
@@ -219,6 +217,20 @@ export function TestCaseForm({
     };
   }, [caseId, sectionIdProp, templateId, isEdit]);
 
+  // Resolve approver name
+  useEffect(() => {
+    if (!approvedById) {
+      setApproverName(null);
+      return;
+    }
+    api<User[]>("/api/users")
+      .then((users) => {
+        const u = users.find((u) => u.id === approvedById);
+        setApproverName(u?.name || u?.email || null);
+      })
+      .catch(() => {});
+  }, [approvedById]);
+
   const customFieldsPayload = useMemo(() => {
     return caseFields
       .filter((f) => customValues[f.id] !== undefined && customValues[f.id] !== "")
@@ -275,6 +287,31 @@ export function TestCaseForm({
     }
   }
 
+  async function handleApproval(newStatus: "approved" | "ready") {
+    if (!caseId) return;
+    setSaving(true);
+    setError("");
+    try {
+      await api(`/api/cases/${caseId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: newStatus }),
+      });
+      setStatus(newStatus);
+      if (newStatus === "approved") {
+        const updated = await api<TestCase & { approvedById?: string; approvedAt?: string }>(`/api/cases/${caseId}`);
+        setApprovedById(updated.approvedById ?? null);
+        setApprovedAt(updated.approvedAt ?? null);
+      } else {
+        setApprovedById(null);
+        setApprovedAt(null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Approval failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function setCustomValue(fieldId: string, value: string) {
     setCustomValues((prev) => ({ ...prev, [fieldId]: value }));
   }
@@ -287,17 +324,11 @@ export function TestCaseForm({
   function removeStep(i: number) {
     setSteps((s) => s.filter((_, idx) => idx !== i));
   }
+  function unlinkSharedStep(i: number) {
+    setSteps((s) => s.map((step, idx) => (idx === i ? { content: step.content, expected: step.expected } : step)));
+  }
   function updateStep(i: number, field: "content" | "expected", value: string) {
     setSteps((s) => s.map((step, idx) => (idx === i ? { ...step, [field]: value } : step)));
-  }
-
-  function loadDiff() {
-    if (!caseId || !diffFrom || !diffTo) return;
-    api<{ from: CaseVersion; to: CaseVersion; changes: { field: string; old: string | null; new: string | null }[] }>(
-      `/api/cases/${caseId}/versions/diff?from=${encodeURIComponent(diffFrom)}&to=${encodeURIComponent(diffTo)}`
-    )
-      .then(setDiffResult)
-      .catch(() => setDiffResult(null));
   }
 
   async function addIssueLink(e: React.FormEvent) {
@@ -361,9 +392,12 @@ export function TestCaseForm({
   return (
     <div className="max-w-2xl space-y-8">
       <Card className={compact ? "p-4" : "p-6"}>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          {isEdit ? "Edit test case" : "New test case"}
-        </h2>
+        <div className="mb-4 flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-slate-900">
+            {isEdit ? "Edit test case" : "New test case"}
+          </h2>
+          {isEdit && <StatusBadge status={status} />}
+        </div>
         <form onSubmit={handleSubmit} className={formClass}>
           {error && <p className="text-sm text-error">{error}</p>}
           <div>
@@ -417,10 +451,31 @@ export function TestCaseForm({
             >
               <option value="draft">Draft</option>
               <option value="ready">Ready</option>
-              <option value="approved" disabled={isEdit && myRole !== "admin" && myRole !== "lead"}>
-                Approved {isEdit && myRole !== "admin" && myRole !== "lead" ? "(admin/lead only)" : ""}
+              <option value="approved" disabled={isEdit && !canApprove}>
+                Approved {isEdit && !canApprove ? "(admin/lead only)" : ""}
               </option>
             </Select>
+            {/* Approval actions */}
+            {isEdit && canApprove && (
+              <div className="mt-2 flex items-center gap-2">
+                {status === "ready" && (
+                  <Button type="button" variant="primary" onClick={() => handleApproval("approved")} disabled={saving}>
+                    Approve
+                  </Button>
+                )}
+                {status === "approved" && (
+                  <Button type="button" variant="ghost" onClick={() => handleApproval("ready")} disabled={saving}>
+                    Revoke approval
+                  </Button>
+                )}
+              </div>
+            )}
+            {/* Approval info */}
+            {status === "approved" && approverName && approvedAt && (
+              <p className="mt-1 text-xs text-muted">
+                Approved by {approverName} on {new Date(approvedAt).toLocaleDateString()}
+              </p>
+            )}
           </div>
           {datasetsList.length > 0 && (
             <div>
@@ -484,14 +539,25 @@ export function TestCaseForm({
             <h4 className="mb-2 text-sm font-medium text-slate-700">Steps</h4>
             <div className="space-y-2">
               {steps.map((step, i) => (
-                <div key={i} className="rounded-lg border border-slate-200 bg-slate-50/50 p-3">
-                  {step.sharedStepId && <div className="mb-2 text-xs text-muted">Shared step</div>}
+                <div
+                  key={i}
+                  className={`rounded-lg border p-3 ${
+                    step.sharedStepId
+                      ? "border-blue-200 bg-blue-50/50"
+                      : "border-slate-200 bg-slate-50/50"
+                  }`}
+                >
+                  {step.sharedStepId && (
+                    <span className="mb-2 inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                      Shared step
+                    </span>
+                  )}
                   <div className="mb-2">
                     <label className="mb-0.5 block text-xs text-slate-600">Action</label>
                     <input
                       value={step.content}
                       onChange={(e) => updateStep(i, "content", e.target.value)}
-                      className={inputClass}
+                      className={`${inputClass} ${step.sharedStepId ? "cursor-not-allowed bg-slate-100" : ""}`}
                       readOnly={!!step.sharedStepId}
                     />
                   </div>
@@ -500,13 +566,20 @@ export function TestCaseForm({
                     <input
                       value={step.expected}
                       onChange={(e) => updateStep(i, "expected", e.target.value)}
-                      className={inputClass}
+                      className={`${inputClass} ${step.sharedStepId ? "cursor-not-allowed bg-slate-100" : ""}`}
                       readOnly={!!step.sharedStepId}
                     />
                   </div>
-                  <button type="button" onClick={() => removeStep(i)} className="mt-2 text-sm text-muted hover:text-error">
-                    Remove step
-                  </button>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button type="button" onClick={() => removeStep(i)} className="text-sm text-muted hover:text-error">
+                      Remove step
+                    </button>
+                    {step.sharedStepId && (
+                      <button type="button" onClick={() => unlinkSharedStep(i)} className="text-sm text-muted hover:text-primary">
+                        Unlink
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -532,7 +605,7 @@ export function TestCaseForm({
                     <option value="">— Choose —</option>
                     {sharedStepsList.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.content.slice(0, 50)}{s.content.length > 50 ? "…" : ""}
+                        {s.content.slice(0, 40)}{s.expected ? ` → ${s.expected.slice(0, 20)}` : ""}{s.content.length > 40 ? "..." : ""}
                       </option>
                     ))}
                   </Select>
@@ -542,7 +615,7 @@ export function TestCaseForm({
           </div>
           <div className="flex flex-wrap items-center gap-2 pt-2">
             <Button type="submit" variant="primary" disabled={saving}>
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Saving..." : "Save"}
             </Button>
             {onCancel && (
               <Button type="button" variant="secondary" onClick={onCancel}>
@@ -617,62 +690,7 @@ export function TestCaseForm({
             </form>
           </Card>
 
-          {versions.length > 0 && (
-            <Card className="p-6">
-              <h3 className="mb-3 text-sm font-semibold text-slate-800">History</h3>
-              <ul className="list-none space-y-1 p-0 text-sm text-slate-600">
-                {versions.map((v) => (
-                  <li key={v.id}>
-                    {new Date(v.createdAt).toLocaleString()} — v {v.id.slice(0, 8)}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <label className="text-sm text-slate-600">Compare:</label>
-                <Select
-                  value={diffFrom}
-                  onChange={(e) => {
-                    setDiffFrom(e.target.value);
-                    setDiffResult(null);
-                  }}
-                  className="rounded-lg border border-border px-2 py-1.5 text-sm"
-                >
-                  <option value="">— From —</option>
-                  {versions.map((v) => (
-                    <option key={v.id} value={v.id}>{new Date(v.createdAt).toLocaleString()}</option>
-                  ))}
-                </Select>
-                <Select
-                  value={diffTo}
-                  onChange={(e) => {
-                    setDiffTo(e.target.value);
-                    setDiffResult(null);
-                  }}
-                  className="rounded-lg border border-border px-2 py-1.5 text-sm"
-                >
-                  <option value="">— To —</option>
-                  {versions.map((v) => (
-                    <option key={v.id} value={v.id}>{new Date(v.createdAt).toLocaleString()}</option>
-                  ))}
-                </Select>
-                <Button type="button" onClick={loadDiff} disabled={!diffFrom || !diffTo}>
-                  Show diff
-                </Button>
-              </div>
-              {diffResult && (
-                <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                  <strong>Changes:</strong>
-                  <ul className="mt-2 list-inside list-disc pl-2">
-                    {diffResult.changes.map((c, i) => (
-                      <li key={i}>
-                        <strong>{c.field}:</strong> {c.old ?? "(empty)"} → {c.new ?? "(empty)"}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </Card>
-          )}
+          <CaseVersionHistory caseId={caseId} />
         </>
       )}
     </div>

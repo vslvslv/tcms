@@ -134,6 +134,15 @@ export type CaseVersion = {
   createdAt: string;
 };
 
+export type VersionDiffResult = {
+  from: CaseVersion;
+  to: CaseVersion;
+  changes: { field: string; old: string | null; new: string | null }[];
+};
+
+export type DatasetColumn = { id: string; datasetId: string; name: string; sortOrder: number; createdAt: string };
+export type DatasetRow = { id: string; datasetId: string; data: Record<string, string>; createdAt: string };
+
 export type Dataset = {
   id: string;
   projectId: string;

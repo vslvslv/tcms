@@ -6,6 +6,7 @@ import { EmptyState } from "../components/ui/EmptyState";
 import { Select } from "../components/ui/Select";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
+import { StatusBadge } from "../components/ui/StatusBadge";
 
 export default function SectionCases() {
   const { sectionId } = useParams<{ sectionId: string }>();
@@ -144,9 +145,7 @@ export default function SectionCases() {
                 </td>
                 <td className="px-3 py-2">
                   {c.status ? (
-                    <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${c.status === "approved" ? "bg-green-100 text-green-800" : c.status === "ready" ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-700"}`}>
-                      {c.status}
-                    </span>
+                    <StatusBadge status={c.status as "draft" | "ready" | "approved"} />
                   ) : (
                     <span className="text-gray-400">—</span>
                   )}
