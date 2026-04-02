@@ -143,6 +143,18 @@ export type VersionDiffResult = {
 export type DatasetColumn = { id: string; datasetId: string; name: string; sortOrder: number; createdAt: string };
 export type DatasetRow = { id: string; datasetId: string; data: Record<string, string>; createdAt: string };
 
+export type Attachment = {
+  id: string;
+  entityType: "case" | "result";
+  entityId: string;
+  filePath: string;
+  fileName: string;
+  contentType: string | null;
+  size: number;
+  uploadedBy: string;
+  createdAt: string;
+};
+
 export type Dataset = {
   id: string;
   projectId: string;

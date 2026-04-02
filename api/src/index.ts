@@ -1,6 +1,7 @@
 import Fastify, { FastifyRequest, FastifyReply } from "fastify";
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import { sql } from "drizzle-orm";
 import { getDb } from "./db/index.js";
 import authRoutes from "./routes/auth.js";
@@ -28,6 +29,7 @@ import requirementLinkRoutes from "./routes/requirementLinks.js";
 import webhookRoutes from "./routes/webhooks.js";
 import dashboardRoutes from "./routes/dashboard.js";
 import shareRoutes from "./routes/shares.js";
+import attachmentRoutes from "./routes/attachments.js";
 
 const app = Fastify({ logger: true });
 
@@ -42,6 +44,10 @@ await app.register(cors, {
 
 await app.register(jwt, {
   secret: process.env.JWT_SECRET ?? "dev-secret-change-in-production",
+});
+
+await app.register(multipart, {
+  limits: { fileSize: Number(process.env.MAX_FILE_SIZE ?? 10_485_760) },
 });
 
 app.decorate("authenticate", async function (req: FastifyRequest, reply: FastifyReply) {
@@ -83,6 +89,7 @@ await app.register(requirementLinkRoutes);
 await app.register(webhookRoutes);
 await app.register(dashboardRoutes);
 await app.register(shareRoutes);
+await app.register(attachmentRoutes);
 
 app.get("/health", async () => {
   try {
