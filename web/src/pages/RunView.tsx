@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { useParams, useLocation } from "react-router-dom";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { api, type Run, type RunTest } from "../api";
 import { RunTestCaseSidebar } from "../components/RunTestCaseSidebar";
 import { Button } from "../components/ui/Button";
@@ -53,6 +53,7 @@ function groupTestsBySection(tests: RunTest[]): { sectionName: string; tests: Ru
 export default function RunView() {
   const { runId } = useParams<{ runId: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
   const tab = runId ? getRunTab(location.pathname) : "tests";
   const [run, setRun] = useState<Run | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,6 +83,51 @@ export default function RunView() {
     [sections]
   );
   const selectedTest = selectedTestId ? allTestsInOrder.find((t) => t.id === selectedTestId) : null;
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+
+  // Keyboard shortcuts: j/k navigate, p/f/b/s set status, n next untested, ? help
+  const setStatusViaShortcut = useCallback(async (testId: string, status: string) => {
+    try {
+      await api(`/api/tests/${testId}/results`, {
+        method: "POST",
+        body: JSON.stringify({ status }),
+      });
+      loadRun();
+    } catch { /* ignore shortcut errors */ }
+  }, [runId]);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const key = e.key.toLowerCase();
+      if (key === "?") { setShowShortcutHelp((v) => !v); return; }
+
+      const idx = selectedTestId ? allTestsInOrder.findIndex((t) => t.id === selectedTestId) : -1;
+
+      if (key === "j") {
+        e.preventDefault();
+        const next = idx < allTestsInOrder.length - 1 ? idx + 1 : 0;
+        setSelectedTestId(allTestsInOrder[next]?.id ?? null);
+      } else if (key === "k") {
+        e.preventDefault();
+        const prev = idx > 0 ? idx - 1 : allTestsInOrder.length - 1;
+        setSelectedTestId(allTestsInOrder[prev]?.id ?? null);
+      } else if (key === "n") {
+        e.preventDefault();
+        const untested = allTestsInOrder.find((t) => !t.latestResult || t.latestResult.status === "untested");
+        if (untested) setSelectedTestId(untested.id);
+      } else if (selectedTestId && "pfbs".includes(key)) {
+        e.preventDefault();
+        const statusMap: Record<string, string> = { p: "passed", f: "failed", b: "blocked", s: "skipped" };
+        setStatusViaShortcut(selectedTestId, statusMap[key]);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedTestId, allTestsInOrder, setStatusViaShortcut]);
 
   async function importResults(file: File) {
     if (!runId) return;
@@ -203,10 +249,50 @@ export default function RunView() {
             disabled={importing}
           />
         </label>
+        {summary.failed > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              try {
+                const newRun = await api<{ id: string }>(`/api/runs/${runId}/rerun-failures`, { method: "POST" });
+                navigate(`/runs/${newRun.id}`);
+              } catch (err) {
+                setError(err instanceof Error ? err.message : "Re-run failed");
+              }
+            }}
+          >
+            Re-run {summary.failed} failed
+          </Button>
+        )}
         {importMessage && (
           <span className={cn("text-sm", importMessage.startsWith("Imported") ? "text-success" : "text-error")}>{importMessage}</span>
         )}
+        <button
+          type="button"
+          onClick={() => setShowShortcutHelp((v) => !v)}
+          className="ml-auto rounded border border-border px-2 py-1 text-xs text-muted hover:bg-gray-50"
+          title="Keyboard shortcuts (?)"
+        >
+          ? Shortcuts
+        </button>
       </div>
+
+      {showShortcutHelp && (
+        <Card className="mb-4 p-4 text-sm">
+          <div className="mb-2 font-semibold">Keyboard Shortcuts</div>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">j</kbd> Next test</div>
+            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">k</kbd> Previous test</div>
+            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">p</kbd> Mark passed</div>
+            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">f</kbd> Mark failed</div>
+            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">b</kbd> Mark blocked</div>
+            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">s</kbd> Mark skipped</div>
+            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">n</kbd> Next untested</div>
+            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">?</kbd> Toggle this help</div>
+          </div>
+        </Card>
+      )}
 
       {/* Tests table + execution sidebar */}
       <div className="flex gap-0">

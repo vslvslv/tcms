@@ -393,4 +393,69 @@ export default async function runRoutes(app: FastifyInstance) {
     await writeAuditLog(db, payload.sub, "run.deleted", "run", paramsResult.data.id, s?.projectId ?? null);
     return reply.status(204).send();
   });
+
+  // Re-run failed tests: create a new run with only the failed tests from a given run
+  app.post("/api/runs/:id/rerun-failures", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertRunAccess(db, paramsResult.data.id, payload.sub))) {
+      return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    }
+    const [runRow] = await db.select().from(runs).where(eq(runs.id, paramsResult.data.id)).limit(1);
+    if (!runRow) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+
+    // Find all tests in this run
+    const runTests = await db.select().from(tests).where(eq(tests.runId, runRow.id));
+    if (runTests.length === 0) return replyError(reply, 400, "Run has no tests", "VALIDATION_ERROR");
+
+    // Get latest result for each test
+    const allResults = await db.select().from(results).where(inArray(results.testId, runTests.map((t) => t.id)));
+    const latestByTestId = new Map<string, (typeof allResults)[0]>();
+    for (const r of allResults.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())) {
+      if (!latestByTestId.has(r.testId)) latestByTestId.set(r.testId, r);
+    }
+
+    // Filter to failed tests only
+    const failedTests = runTests.filter((t) => {
+      const latest = latestByTestId.get(t.id);
+      return latest && latest.status === "failed";
+    });
+    if (failedTests.length === 0) return replyError(reply, 400, "No failed tests to re-run", "VALIDATION_ERROR");
+
+    // Create new run in the same suite
+    const [newRun] = await db.insert(runs).values({
+      suiteId: runRow.suiteId,
+      name: `${runRow.name} (re-run failures)`,
+      description: `Re-run of ${failedTests.length} failed tests from ${runRow.name}`,
+      createdBy: payload.sub,
+      planId: runRow.planId,
+      milestoneId: runRow.milestoneId,
+    }).returning();
+
+    // Create tests in the new run for each failed case
+    for (const t of failedTests) {
+      await db.insert(tests).values({
+        runId: newRun.id,
+        caseId: t.caseId,
+        datasetRowId: t.datasetRowId,
+      });
+    }
+
+    const [s] = await db.select().from(suites).where(eq(suites.id, runRow.suiteId)).limit(1);
+    if (s) {
+      await writeAuditLog(db, payload.sub, "run.created", "run", newRun.id, s.projectId);
+      dispatchWebhooks(s.projectId, "run.created", {
+        event: "run.created",
+        entityType: "run",
+        entityId: newRun.id,
+        projectId: s.projectId,
+        timestamp: new Date().toISOString(),
+      }).catch(() => {});
+    }
+
+    return reply.status(201).send(newRun);
+  });
 }
