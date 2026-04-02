@@ -155,6 +155,42 @@ export type Attachment = {
   createdAt: string;
 };
 
+export type FlakyTest = {
+  caseId: string;
+  caseTitle: string;
+  flakinessScore: number;
+  lastResults: string[];
+};
+
+export type PassRateTrend = {
+  date: string;
+  passRate: number;
+  totalTests: number;
+  passed: number;
+  failed: number;
+};
+
+export type MilestoneReadiness = {
+  passRate: number | null;
+  blockerRate: number | null;
+  flakyPct: number | null;
+  runsAnalyzed: number;
+  totalResults: number;
+  passed?: number;
+  failed?: number;
+  blocked?: number;
+};
+
+export type ReportResult = {
+  id: string;
+  status: string;
+  comment: string | null;
+  elapsedSeconds: number | null;
+  createdAt: string;
+  caseTitle: string;
+  runName: string;
+};
+
 export type Dataset = {
   id: string;
   projectId: string;

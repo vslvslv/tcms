@@ -17,6 +17,7 @@ import PlanSummary from "./pages/PlanSummary";
 import ProjectSettings from "./pages/ProjectSettings";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
+import ReportBuilder from "./pages/ReportBuilder";
 import CasesOverview from "./pages/cases/CasesOverview";
 import CasesDetails from "./pages/cases/CasesDetails";
 import CasesStatus from "./pages/cases/CasesStatus";
@@ -67,6 +68,7 @@ function AppRoutes() {
         <Route path="runs/:runId/progress" element={<RunView />} />
         <Route path="runs/:runId/defects" element={<RunView />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="reports/builder" element={<ReportBuilder />} />
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

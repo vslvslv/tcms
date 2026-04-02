@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { api } from "../api";
+import { api, type FlakyTest } from "../api";
 import { Card } from "../components/ui/Card";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
@@ -59,12 +59,21 @@ function StatCard({
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [flakyTests, setFlakyTests] = useState<FlakyTest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     api<DashboardData>("/api/dashboard")
-      .then(setData)
+      .then((d) => {
+        setData(d);
+        // Load flaky tests for the first project
+        if (d.projects.length > 0) {
+          api<FlakyTest[]>(`/api/projects/${d.projects[0].id}/flaky-tests`)
+            .then(setFlakyTests)
+            .catch(() => {});
+        }
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load"))
       .finally(() => setLoading(false));
   }, []);
@@ -141,6 +150,31 @@ export default function Dashboard() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+
+      {/* Flaky tests panel */}
+      {flakyTests.length > 0 && (
+        <Card className="mb-8">
+          <h2 className="mb-1 text-base font-semibold text-gray-900">Top Flaky Tests</h2>
+          <p className="mb-3 text-xs text-muted">Tests with alternating pass/fail results. Higher score = more inconsistent.</p>
+          <div className="space-y-1">
+            {flakyTests.slice(0, 8).map((f) => (
+              <div key={f.caseId} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50">
+                <span className="inline-flex min-w-[28px] items-center justify-center rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold tabular-nums text-amber-800">
+                  {f.flakinessScore}
+                </span>
+                <span className="flex-1 truncate text-sm font-medium">{f.caseTitle}</span>
+                <div className="flex gap-0.5">
+                  {f.lastResults.slice(0, 8).map((s, i) => (
+                    <span key={i} className={`h-2 w-2 rounded-full ${
+                      s === "passed" ? "bg-green-500" : s === "failed" ? "bg-red-500" : "bg-gray-300"
+                    }`} title={s} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </Card>
       )}

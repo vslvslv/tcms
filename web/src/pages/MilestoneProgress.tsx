@@ -5,6 +5,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
+import { ReadinessScore } from "../components/ReadinessScore";
 
 type Progress = {
   milestone: Milestone;
@@ -67,6 +68,8 @@ export default function MilestoneProgress() {
           </ul>
         )}
       </Card>
+
+      {milestoneId && <ReadinessScore milestoneId={milestoneId} />}
     </div>
   );
 }
