@@ -473,4 +473,4 @@ export const notificationPreferences = pgTable("notification_preferences", {
   event: text("event").notNull(),
   enabled: boolean("enabled").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => [uniqueIndex("notification_prefs_user_event_idx").on(t.userId, t.event)]);

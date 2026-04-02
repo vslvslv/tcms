@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { getDb } from "../db/index.js";
 import { projectMembers, roles, users } from "../db/schema.js";
 
@@ -37,7 +37,7 @@ export async function can(userId: string, projectId: string, action: Action): Pr
   // Check project-level role
   const [membership] = await db.select({ roleId: projectMembers.roleId })
     .from(projectMembers)
-    .where(eq(projectMembers.userId, userId))
+    .where(and(eq(projectMembers.userId, userId), eq(projectMembers.projectId, projectId)))
     .limit(1);
   if (!membership) return false;
 

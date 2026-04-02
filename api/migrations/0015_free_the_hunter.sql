@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS "notification_prefs_user_event_idx" ON "notification_preferences" USING btree ("user_id","event");

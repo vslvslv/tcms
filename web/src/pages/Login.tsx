@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../AuthContext";
+import { api } from "../api";
 import { SubmitButton } from "../components/ui/Button";
 import { Input } from "../components/ui/Input";
 import { Label } from "../components/ui/Label";
@@ -14,12 +15,20 @@ export default function Login() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  // Handle OAuth callback token
+  // Handle OAuth callback: exchange one-time code for JWT
   useEffect(() => {
-    const token = searchParams.get("token");
-    if (token) {
-      setToken(token);
-      navigate("/dashboard", { replace: true });
+    const code = searchParams.get("code");
+    if (code) {
+      api<{ token: string }>("/api/auth/oauth/exchange", {
+        method: "POST",
+        body: JSON.stringify({ code }),
+        token: null,
+      })
+        .then((res) => {
+          setToken(res.token);
+          navigate("/dashboard", { replace: true });
+        })
+        .catch(() => setError("OAuth login failed. Please try again."));
     }
   }, [searchParams, setToken, navigate]);
 
