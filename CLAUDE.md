@@ -8,6 +8,17 @@ TCMS is a TestRail-like test case management system built as a monorepo with thr
 
 ## Commands
 
+### Docker (recommended)
+```bash
+docker compose up --build    # Start all services (db + api + web) with hot reload
+docker compose down          # Stop all services
+docker compose down -v       # Stop and delete database volume
+docker compose logs api      # View API logs
+docker compose exec api sh   # Shell into API container
+docker compose exec db psql -U postgres tcms  # Connect to PostgreSQL
+```
+On first run, the API container automatically runs migrations and seeds the default user (`admin@tcms.local` / `password123`).
+
 ### API (`cd api`)
 ```bash
 npm run dev               # Start Fastify dev server on :3001 with hot reload (tsx watch)
