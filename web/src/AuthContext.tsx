@@ -7,6 +7,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
+  setToken: (token: string) => void;
   loading: boolean;
 };
 
@@ -86,8 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const setTokenExternal = useCallback((t: string) => {
+    localStorage.setItem("tcms_token", t);
+    setToken(t);
+    loadUser();
+  }, [loadUser]);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, setToken: setTokenExternal, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -304,6 +304,9 @@ export default function Layout() {
           open={userMenuOpen}
           onOpenChange={(open) => { setUserMenuOpen(open); if (open) { setProjectSwitcherOpen(false); } }}
         >
+          <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/profile"); }}>Profile</DropdownItem>
+          <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/tokens"); }}>API Tokens</DropdownItem>
+          <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/notifications"); }}>Notifications</DropdownItem>
           <DropdownItem onClick={() => { setUserMenuOpen(false); logout(); }}>Log out</DropdownItem>
         </Dropdown>
       </header>

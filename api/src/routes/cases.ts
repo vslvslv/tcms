@@ -4,7 +4,8 @@ import { getDb } from "../db/index.js";
 import { projects, suites, sections, testCases, testSteps, sharedSteps, caseFieldValues, caseVersions, caseTemplates } from "../db/schema.js";
 import { eq, inArray, desc, and } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
-import { assertProjectAccess, assertProjectRole } from "../lib/projectAccess.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
+import { can } from "../lib/permissions.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 import { dispatchWebhooks } from "../lib/webhooks.js";
 
@@ -334,8 +335,8 @@ export default async function caseRoutes(app: FastifyInstance) {
           const [sec] = await db.select().from(sections).where(eq(sections.id, c.sectionId)).limit(1);
           if (sec) {
             const [s] = await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1);
-            if (s && !(await assertProjectRole(db, s.projectId, payload.sub, ["admin", "lead"]))) {
-              return replyError(reply, 403, "Only admin or lead can approve cases", "FORBIDDEN");
+            if (s && !(await can(payload.sub, s.projectId, "cases.delete"))) {
+              return replyError(reply, 403, "Insufficient permissions to approve cases", "FORBIDDEN");
             }
           }
         }
