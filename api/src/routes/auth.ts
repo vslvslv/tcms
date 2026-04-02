@@ -1,9 +1,10 @@
 import bcrypt from "bcrypt";
+import { randomBytes } from "crypto";
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
-import { users } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { users, passwordResetTokens } from "../db/schema.js";
+import { eq, and, isNull, gt } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 
 const registerBody = z.object({
@@ -71,4 +72,58 @@ export default async function authRoutes(app: FastifyInstance) {
       return reply.send(user);
     }
   );
+
+  // Password reset request: generates a token. Returns it in the response (no email in MVP).
+  const resetRequestBody = z.object({ email: z.string().email() });
+
+  app.post("/api/auth/reset-request", async (req: FastifyRequest, reply: FastifyReply) => {
+    const parsed = resetRequestBody.safeParse((req as FastifyRequest<{ Body: unknown }>).body);
+    if (!parsed.success) return replyError(reply, 400, parsed.error.message, "VALIDATION_ERROR");
+    const db = await getDb();
+    const [user] = await db.select().from(users).where(eq(users.email, parsed.data.email)).limit(1);
+    if (!user) {
+      // Return 200 regardless to prevent email enumeration
+      return reply.send({ message: "If the email exists, a reset link has been generated." });
+    }
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await db.insert(passwordResetTokens).values({ userId: user.id, token, expiresAt });
+    // In MVP, return the token directly (no email). In production, send via email.
+    return reply.send({
+      message: "If the email exists, a reset link has been generated.",
+      resetToken: token,
+      resetUrl: `/reset-password/${token}`,
+    });
+  });
+
+  // Password reset confirm: validates token, updates password
+  const resetConfirmBody = z.object({
+    token: z.string().min(1),
+    newPassword: z.string().min(8),
+  });
+
+  app.post("/api/auth/reset-confirm", async (req: FastifyRequest, reply: FastifyReply) => {
+    const parsed = resetConfirmBody.safeParse((req as FastifyRequest<{ Body: unknown }>).body);
+    if (!parsed.success) return replyError(reply, 400, parsed.error.message, "VALIDATION_ERROR");
+    const db = await getDb();
+    const [resetRow] = await db
+      .select()
+      .from(passwordResetTokens)
+      .where(
+        and(
+          eq(passwordResetTokens.token, parsed.data.token),
+          isNull(passwordResetTokens.usedAt),
+          gt(passwordResetTokens.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+    if (!resetRow) {
+      return replyError(reply, 400, "Invalid or expired reset token", "INVALID_TOKEN");
+    }
+    const passwordHash = await bcrypt.hash(parsed.data.newPassword, 10);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, resetRow.userId));
+    // Mark token as used to prevent replay
+    await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, resetRow.id));
+    return reply.send({ message: "Password reset successfully" });
+  });
 }

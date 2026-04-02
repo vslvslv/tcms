@@ -24,12 +24,16 @@ import CasesDefects from "./pages/cases/CasesDefects";
 import RunsOverview from "./pages/runs/RunsOverview";
 import CreateRunPage from "./pages/runs/CreateRunPage";
 import ShareView from "./pages/ShareView";
+import ResetRequest from "./pages/ResetRequest";
+import ResetConfirm from "./pages/ResetConfirm";
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/reset-password" element={<ResetRequest />} />
+      <Route path="/reset-password/:token" element={<ResetConfirm />} />
       <Route path="/shares/:token" element={<ShareView />} />
       <Route
         path="/"
