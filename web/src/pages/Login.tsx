@@ -78,6 +78,11 @@ export default function Login() {
               Register
             </Link>
           </p>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            <Link to="/reset-password" className="font-medium text-primary hover:underline">
+              Forgot password?
+            </Link>
+          </p>
         </div>
         <p className="mt-6 text-center text-xs text-muted">
           Sign in to manage test cases, runs, and plans.
