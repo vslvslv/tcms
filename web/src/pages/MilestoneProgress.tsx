@@ -53,17 +53,17 @@ export default function MilestoneProgress() {
           Share
         </Button>
       </div>
-      {milestone.description && <p className="mb-2 text-gray-600">{milestone.description}</p>}
+      {milestone.description && <p className="mb-2 text-muted">{milestone.description}</p>}
       {milestone.dueDate && <p className="mb-6 text-sm text-muted">Due: {new Date(milestone.dueDate).toLocaleDateString()}</p>}
       <Card>
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Progress</h3>
         <p className="mb-2">Runs: {completedRuns} / {runsCount} completed</p>
         {total > 0 && (
           <ul className="list-none p-0 text-sm">
-            <li className="text-green-700">Passed: {summary.passed}</li>
-            <li className="text-red-700">Failed: {summary.failed}</li>
-            <li className="text-amber-700">Blocked: {summary.blocked}</li>
-            <li className="text-gray-600">Skipped: {summary.skipped}</li>
+            <li className="text-success">Passed: {summary.passed}</li>
+            <li className="text-error">Failed: {summary.failed}</li>
+            <li className="text-warning">Blocked: {summary.blocked}</li>
+            <li className="text-muted">Skipped: {summary.skipped}</li>
             <li className="text-muted">Untested: {summary.untested}</li>
           </ul>
         )}

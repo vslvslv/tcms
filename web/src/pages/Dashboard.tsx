@@ -29,13 +29,13 @@ function groupRunsByDate(runs: { createdAt: string }[]): { date: string; count: 
     }));
 }
 
-const CHART_COLORS = ["#2563eb", "#3b82f6", "#60a5fa", "#93c5fd"];
+const CHART_COLORS = ["#22C55E", "#34D399", "#6EE7B7", "#A7F3D0"];
 
 function StatCard({
   label,
   value,
   href,
-  color = "text-gray-900",
+  color = "text-text",
   bgColor = "",
 }: { label: string; value: number | string; href?: string; color?: string; bgColor?: string }) {
   const content = (
@@ -87,7 +87,7 @@ export default function Dashboard() {
   if (error) {
     return (
       <div className="max-w-5xl">
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error" role="alert">
           {error}
         </div>
       </div>
@@ -100,23 +100,23 @@ export default function Dashboard() {
   return (
     <div className="max-w-5xl">
       <PageTitle className="mb-6">Dashboard</PageTitle>
-      <p className="mb-8 text-gray-600">
+      <p className="mb-8 text-muted">
         Overview of your projects, milestones, test plans, and recent activity.
       </p>
 
       {/* Stats strip – colored cards with context */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Projects" value={data.projects.length} href={data.projects.length > 0 ? "/projects" : undefined} color="text-blue-600" bgColor="bg-blue-50/50" />
-        <StatCard label="Milestones" value={data.milestones.length} color="text-violet-600" bgColor="bg-violet-50/50" />
-        <StatCard label="Test plans" value={data.plans.length} color="text-slate-700" />
-        <StatCard label="Recent runs" value={data.recentRuns.length} color="text-emerald-600" bgColor="bg-emerald-50/50" />
+        <StatCard label="Projects" value={data.projects.length} href={data.projects.length > 0 ? "/projects" : undefined} color="text-primary" bgColor="bg-primary/10" />
+        <StatCard label="Milestones" value={data.milestones.length} color="text-text" bgColor="bg-surface-raised" />
+        <StatCard label="Test plans" value={data.plans.length} color="text-muted" />
+        <StatCard label="Recent runs" value={data.recentRuns.length} color="text-success" bgColor="bg-success/10" />
       </div>
 
       {/* Activity chart – TestRail shows activity by date */}
       {activityData.length > 0 && (
         <Card className="mb-8">
           <div className="mb-1 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-900">Activity</h2>
+            <h2 className="font-mono text-base font-semibold text-text">Activity</h2>
             <span className="text-xs text-muted">Test runs created by day</span>
           </div>
           <p className="mb-4 text-sm text-muted">
@@ -127,19 +127,19 @@ export default function Dashboard() {
               <BarChart data={activityData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
                 <XAxis
                   dataKey="displayDate"
-                  tick={{ fontSize: 11, fill: "#6b7280" }}
-                  axisLine={{ stroke: "#e5e7eb" }}
+                  tick={{ fontSize: 11, fill: "#94A3B8" }}
+                  axisLine={{ stroke: "rgba(71,85,105,0.5)" }}
                   tickLine={false}
                 />
                 <YAxis
                   allowDecimals={false}
-                  tick={{ fontSize: 11, fill: "#6b7280" }}
+                  tick={{ fontSize: 11, fill: "#94A3B8" }}
                   axisLine={false}
                   tickLine={false}
                   width={28}
                 />
                 <Tooltip
-                  contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                  contentStyle={{ borderRadius: 8, border: "1px solid rgba(71,85,105,0.5)", background: "#1E293B", color: "#F1F5F9", fontSize: 12 }}
                   labelFormatter={(_, payload) => payload[0]?.payload?.displayDate ?? ""}
                   formatter={(value: number | undefined) => [`${value ?? 0} run${(value ?? 0) !== 1 ? "s" : ""}`, "Runs"]}
                 />
@@ -157,19 +157,19 @@ export default function Dashboard() {
       {/* Flaky tests panel */}
       {flakyTests.length > 0 && (
         <Card className="mb-8">
-          <h2 className="mb-1 text-base font-semibold text-gray-900">Top Flaky Tests</h2>
+          <h2 className="mb-1 font-mono text-base font-semibold text-text">Top Flaky Tests</h2>
           <p className="mb-3 text-xs text-muted">Tests with alternating pass/fail results. Higher score = more inconsistent.</p>
           <div className="space-y-1">
             {flakyTests.slice(0, 8).map((f) => (
-              <div key={f.caseId} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50">
-                <span className="inline-flex min-w-[28px] items-center justify-center rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold tabular-nums text-amber-800">
+              <div key={f.caseId} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-surface-raised transition-colors duration-150">
+                <span className="inline-flex min-w-[28px] items-center justify-center rounded bg-warning/20 px-1.5 py-0.5 text-xs font-bold tabular-nums text-warning">
                   {f.flakinessScore}
                 </span>
                 <span className="flex-1 truncate text-sm font-medium">{f.caseTitle}</span>
                 <div className="flex gap-0.5">
                   {f.lastResults.slice(0, 8).map((s, i) => (
                     <span key={i} className={`h-2 w-2 rounded-full ${
-                      s === "passed" ? "bg-green-500" : s === "failed" ? "bg-red-500" : "bg-gray-300"
+                      s === "passed" ? "bg-success" : s === "failed" ? "bg-error" : "bg-muted/40"
                     }`} title={s} />
                   ))}
                 </div>
@@ -190,7 +190,7 @@ export default function Dashboard() {
                   <Link to={`/projects/${p.id}`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
                     {p.name}
                   </Link>
-                  <Link to={`/projects/${p.id}/settings`} className="min-h-[44px] flex items-center text-xs text-muted hover:text-gray-700 hover:underline">
+                  <Link to={`/projects/${p.id}/settings`} className="min-h-[44px] flex items-center text-xs text-muted hover:text-text hover:underline">
                     Settings
                   </Link>
                 </li>
@@ -200,14 +200,14 @@ export default function Dashboard() {
             <p className="text-muted">No projects.</p>
           )}
           {data.projects.length > 8 && (
-            <p className="mt-3 border-t border-gray-100 pt-3">
+            <p className="mt-3 border-t border-border pt-3">
               <Link to="/projects" className="text-sm text-primary hover:underline">
                 View all projects →
               </Link>
             </p>
           )}
           {data.projects.length > 0 && data.projects.length <= 8 && (
-            <p className="mt-3 border-t border-gray-100 pt-3">
+            <p className="mt-3 border-t border-border pt-3">
               <Link to="/projects" className="text-sm text-primary hover:underline">
                 Go to projects →
               </Link>
@@ -237,7 +237,7 @@ export default function Dashboard() {
             </div>
           )}
           {data.milestones.length > 6 && (
-            <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
+            <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
               +{data.milestones.length - 6} more
             </p>
           )}
@@ -262,7 +262,7 @@ export default function Dashboard() {
             </div>
           )}
           {data.plans.length > 6 && (
-            <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
+            <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
               +{data.plans.length - 6} more
             </p>
           )}
@@ -290,7 +290,7 @@ export default function Dashboard() {
             </div>
           )}
           {data.recentRuns.length > 6 && (
-            <p className="mt-3 border-t border-gray-100 pt-3 text-sm text-muted">
+            <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
               +{data.recentRuns.length - 6} more
             </p>
           )}

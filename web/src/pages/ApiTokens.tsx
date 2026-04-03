@@ -65,9 +65,9 @@ export default function ApiTokens() {
       {error && <p className="mb-4 text-sm text-error">{error}</p>}
 
       {newToken && (
-        <Card className="mb-6 border-green-200 bg-green-50 p-4">
-          <p className="mb-2 text-sm font-semibold text-green-800">Token created. Copy it now — you won't see it again.</p>
-          <code className="block break-all rounded bg-white p-2 text-xs">{newToken}</code>
+        <Card className="mb-6 border-primary/30 bg-primary/10 p-4">
+          <p className="mb-2 text-sm font-semibold text-primary">Token created. Copy it now — you won't see it again.</p>
+          <code className="block break-all rounded bg-surface-raised p-2 text-xs">{newToken}</code>
           <Button variant="secondary" className="mt-2" onClick={() => { navigator.clipboard.writeText(newToken); }}>
             Copy to clipboard
           </Button>
@@ -91,17 +91,17 @@ export default function ApiTokens() {
         <Card className="overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500">Name</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500">Created</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500">Expires</th>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-slate-500">Last used</th>
-                <th className="px-4 py-2 text-right text-xs font-semibold text-slate-500">Actions</th>
+              <tr className="border-b border-border bg-surface-raised">
+                <th className="px-4 py-2 text-left text-xs font-semibold text-muted">Name</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-muted">Created</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-muted">Expires</th>
+                <th className="px-4 py-2 text-left text-xs font-semibold text-muted">Last used</th>
+                <th className="px-4 py-2 text-right text-xs font-semibold text-muted">Actions</th>
               </tr>
             </thead>
             <tbody>
               {tokens.map((t) => (
-                <tr key={t.id} className="border-b border-slate-100">
+                <tr key={t.id} className="border-b border-border">
                   <td className="px-4 py-2 font-medium">{t.name}</td>
                   <td className="px-4 py-2 text-xs text-muted">{new Date(t.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-2 text-xs text-muted">{t.expiresAt ? new Date(t.expiresAt).toLocaleDateString() : "Never"}</td>

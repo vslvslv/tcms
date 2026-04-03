@@ -17,9 +17,9 @@ function ChevronDown({ open }: { open: boolean }) {
 }
 
 const triggerClasses = [
-  "inline-flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-sm font-medium text-gray-700",
-  "transition-all duration-200 hover:border-gray-300 hover:bg-gray-50 hover:shadow-sm",
-  "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:shadow-md",
+  "inline-flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-sm font-medium text-text",
+  "transition-all duration-200 hover:border-border hover:bg-surface-raised hover:shadow-sm",
+  "focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:shadow-md",
   "disabled:pointer-events-none disabled:opacity-60",
 ].join(" ");
 
@@ -28,8 +28,8 @@ const panelClasses = [
 ].join(" ");
 
 const itemClasses = [
-  "w-full cursor-pointer border-none bg-transparent px-3 py-2.5 text-left text-sm text-gray-700 transition-colors duration-150",
-  "hover:bg-gray-100 first:mt-0 last:mb-0",
+  "w-full cursor-pointer border-none bg-transparent px-3 py-2.5 text-left text-sm text-text transition-colors duration-150",
+  "hover:bg-surface-raised first:mt-0 last:mb-0",
 ].join(" ");
 
 type DropdownProps = {
@@ -106,7 +106,7 @@ export function Dropdown({
       {open && (
         <>
           <div
-            className="fixed inset-0 z-10 bg-black/5 backdrop-blur-[2px]"
+            className="fixed inset-0 z-10 bg-black/40"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
@@ -154,7 +154,7 @@ export function DropdownItem({
         className={cn(
           itemClasses,
           "mx-1.5 rounded-lg",
-          selected && "bg-primary/10 font-medium text-primary",
+          selected && "bg-primary/20 font-medium text-primary",
           className
         )}
       >

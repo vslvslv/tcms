@@ -385,7 +385,7 @@ export function TestCaseForm({
 
   const formClass = compact ? "space-y-3" : "space-y-4";
   const inputClass =
-    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+    "w-full rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20";
 
   if (loading) return <LoadingSpinner />;
   if (error && !title) return <p className="text-error">{error}</p>;
@@ -394,7 +394,7 @@ export function TestCaseForm({
     <div className="max-w-2xl space-y-8">
       <Card className={compact ? "p-4" : "p-6"}>
         <div className="mb-4 flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-text font-mono">
             {isEdit ? "Edit test case" : "New test case"}
           </h2>
           {isEdit && <StatusBadge status={status} />}
@@ -402,7 +402,7 @@ export function TestCaseForm({
         <form onSubmit={handleSubmit} className={formClass}>
           {error && <p className="text-sm text-error">{error}</p>}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Title</label>
+            <label className="mb-1 block text-sm font-medium text-muted">Title</label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -412,7 +412,7 @@ export function TestCaseForm({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Prerequisite</label>
+            <label className="mb-1 block text-sm font-medium text-muted">Prerequisite</label>
             <textarea
               value={prerequisite}
               onChange={(e) => setPrerequisite(e.target.value)}
@@ -423,7 +423,7 @@ export function TestCaseForm({
           </div>
           {caseTypes.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Case type</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Case type</label>
               <Select value={caseTypeId} onChange={(e) => setCaseTypeId(e.target.value)} className={inputClass}>
                 <option value="">— None —</option>
                 {caseTypes.map((c) => (
@@ -434,7 +434,7 @@ export function TestCaseForm({
           )}
           {priorities.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Priority</label>
               <Select value={priorityId} onChange={(e) => setPriorityId(e.target.value)} className={inputClass}>
                 <option value="">— None —</option>
                 {priorities.map((p) => (
@@ -444,7 +444,7 @@ export function TestCaseForm({
             </div>
           )}
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
+            <label className="mb-1 block text-sm font-medium text-muted">Status</label>
             <Select
               value={status}
               onChange={(e) => setStatus(e.target.value as "draft" | "ready" | "approved")}
@@ -480,7 +480,7 @@ export function TestCaseForm({
           </div>
           {datasetsList.length > 0 && (
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Dataset</label>
+              <label className="mb-1 block text-sm font-medium text-muted">Dataset</label>
               <Select value={datasetId} onChange={(e) => setDatasetId(e.target.value)} className={inputClass}>
                 <option value="">— None —</option>
                 {datasetsList.map((d) => (
@@ -491,11 +491,11 @@ export function TestCaseForm({
           )}
           {caseFields.length > 0 && (
             <div>
-              <h4 className="mb-2 text-sm font-medium text-slate-700">Custom fields</h4>
+              <h4 className="mb-2 text-sm font-medium text-muted">Custom fields</h4>
               <div className="space-y-2">
                 {caseFields.map((f) => (
                   <div key={f.id}>
-                    <label className="mb-0.5 block text-xs text-slate-600">{f.name}</label>
+                    <label className="mb-0.5 block text-xs text-muted">{f.name}</label>
                     {f.fieldType === "text" && (
                       <input
                         value={customValues[f.id] ?? ""}
@@ -537,37 +537,37 @@ export function TestCaseForm({
             </div>
           )}
           <div>
-            <h4 className="mb-2 text-sm font-medium text-slate-700">Steps</h4>
+            <h4 className="mb-2 text-sm font-medium text-muted">Steps</h4>
             <div className="space-y-2">
               {steps.map((step, i) => (
                 <div
                   key={i}
                   className={`rounded-lg border p-3 ${
                     step.sharedStepId
-                      ? "border-blue-200 bg-blue-50/50"
-                      : "border-slate-200 bg-slate-50/50"
+                      ? "border-primary/30 bg-primary/10"
+                      : "border-border bg-surface-raised/40"
                   }`}
                 >
                   {step.sharedStepId && (
-                    <span className="mb-2 inline-flex items-center gap-1 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                    <span className="mb-2 inline-flex items-center gap-1 rounded bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
                       Shared step
                     </span>
                   )}
                   <div className="mb-2">
-                    <label className="mb-0.5 block text-xs text-slate-600">Action</label>
+                    <label className="mb-0.5 block text-xs text-muted">Action</label>
                     <input
                       value={step.content}
                       onChange={(e) => updateStep(i, "content", e.target.value)}
-                      className={`${inputClass} ${step.sharedStepId ? "cursor-not-allowed bg-slate-100" : ""}`}
+                      className={`${inputClass} ${step.sharedStepId ? "cursor-not-allowed bg-surface-raised" : ""}`}
                       readOnly={!!step.sharedStepId}
                     />
                   </div>
                   <div>
-                    <label className="mb-0.5 block text-xs text-slate-600">Expected</label>
+                    <label className="mb-0.5 block text-xs text-muted">Expected</label>
                     <input
                       value={step.expected}
                       onChange={(e) => updateStep(i, "expected", e.target.value)}
-                      className={`${inputClass} ${step.sharedStepId ? "cursor-not-allowed bg-slate-100" : ""}`}
+                      className={`${inputClass} ${step.sharedStepId ? "cursor-not-allowed bg-surface-raised" : ""}`}
                       readOnly={!!step.sharedStepId}
                     />
                   </div>
@@ -589,7 +589,7 @@ export function TestCaseForm({
                 Add step
               </Button>
               {sharedStepsList.length > 0 && (
-                <span className="text-sm text-slate-600">
+                <span className="text-sm text-muted">
                   Insert shared:{" "}
                   <Select
                     value=""
@@ -630,7 +630,7 @@ export function TestCaseForm({
       {isEdit && caseId && (
         <>
           <Card className="p-6">
-            <h3 className="mb-3 text-sm font-semibold text-slate-800">Defects / Issues</h3>
+            <h3 className="mb-3 text-sm font-semibold text-text font-mono">Defects / Issues</h3>
             <ul className="list-none space-y-2 p-0 text-sm">
               {issueLinksList.map((l) => (
                 <li key={l.id} className="flex items-center gap-2">
@@ -649,20 +649,20 @@ export function TestCaseForm({
                 onChange={(e) => setNewIssueUrl(e.target.value)}
                 placeholder="URL"
                 required
-                className="min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="min-w-[200px] rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm"
               />
               <input
                 value={newIssueTitle}
                 onChange={(e) => setNewIssueTitle(e.target.value)}
                 placeholder="Title (optional)"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm"
               />
               <Button type="submit" variant="primary">Add link</Button>
             </form>
           </Card>
 
           <Card className="p-6">
-            <h3 className="mb-3 text-sm font-semibold text-slate-800">Requirements</h3>
+            <h3 className="mb-3 text-sm font-semibold text-text font-mono">Requirements</h3>
             <ul className="list-none space-y-2 p-0 text-sm">
               {requirementLinksList.map((l) => (
                 <li key={l.id} className="flex items-center gap-2">
@@ -679,13 +679,13 @@ export function TestCaseForm({
                 onChange={(e) => setNewRequirementRef(e.target.value)}
                 placeholder="Requirement ref (e.g. REQ-001)"
                 required
-                className="min-w-[160px] rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="min-w-[160px] rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm"
               />
               <input
                 value={newRequirementTitle}
                 onChange={(e) => setNewRequirementTitle(e.target.value)}
                 placeholder="Title (optional)"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm"
               />
               <Button type="submit" variant="primary">Add requirement</Button>
             </form>

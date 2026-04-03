@@ -7,7 +7,7 @@ function MetricBar({ label, value, color }: { label: string; value: number | nul
   return (
     <div className="flex items-center gap-3">
       <span className="w-24 text-xs text-muted">{label}</span>
-      <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+      <div className="flex-1 h-2 rounded-full bg-surface-raised overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(value, 100)}%` }} />
       </div>
       <span className="w-10 text-right text-xs font-medium tabular-nums">{value}%</span>
@@ -30,19 +30,19 @@ export function ReadinessScore({ milestoneId }: { milestoneId: string }) {
   if (data.passRate === null) {
     return (
       <Card className="p-4">
-        <h3 className="mb-1 text-sm font-semibold text-gray-900">Release Readiness</h3>
+        <h3 className="mb-1 font-mono text-sm font-semibold text-text">Release Readiness</h3>
         <p className="text-sm text-muted">No test results yet for this milestone.</p>
       </Card>
     );
   }
 
-  const passColor = data.passRate >= 80 ? "bg-green-500" : data.passRate >= 60 ? "bg-yellow-500" : "bg-red-500";
-  const blockerColor = (data.blockerRate ?? 0) === 0 ? "bg-green-500" : (data.blockerRate ?? 0) <= 5 ? "bg-yellow-500" : "bg-red-500";
+  const passColor = data.passRate >= 80 ? "bg-success" : data.passRate >= 60 ? "bg-warning" : "bg-error";
+  const blockerColor = (data.blockerRate ?? 0) === 0 ? "bg-success" : (data.blockerRate ?? 0) <= 5 ? "bg-warning" : "bg-error";
 
   return (
     <Card className="p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">Release Readiness</h3>
+        <h3 className="font-mono text-sm font-semibold text-text">Release Readiness</h3>
         <span className="text-xs text-muted">{data.runsAnalyzed} runs, {data.totalResults} tests</span>
       </div>
       <div className="space-y-2">

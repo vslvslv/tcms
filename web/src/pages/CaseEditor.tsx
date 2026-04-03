@@ -29,7 +29,7 @@ export default function CaseEditor() {
   }
 
   return (
-    <p className="text-slate-600">
+    <p className="text-muted">
       No section or case selected. Open a case from the overview or create one from a section.
     </p>
   );

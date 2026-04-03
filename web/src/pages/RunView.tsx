@@ -25,8 +25,8 @@ function statusBadgeClass(s: string): string {
     case "passed": return "bg-success/10 text-success";
     case "failed": return "bg-error/10 text-error";
     case "blocked": return "bg-warning/10 text-warning";
-    case "skipped": return "bg-gray-100 text-gray-600";
-    default: return "bg-gray-100 text-muted";
+    case "skipped": return "bg-surface-raised text-muted";
+    default: return "bg-surface-raised text-muted";
   }
 }
 
@@ -202,13 +202,13 @@ export default function RunView() {
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <Card className="p-4">
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Test Status</h3>
-          <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+          <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-surface-raised">
             <div className="flex h-full">
               {summary.passed > 0 && <div className="bg-success" style={{ width: `${total > 0 ? (summary.passed / total) * 100 : 0}%` }} />}
               {summary.failed > 0 && <div className="bg-error" style={{ width: `${total > 0 ? (summary.failed / total) * 100 : 0}%` }} />}
               {summary.blocked > 0 && <div className="bg-warning" style={{ width: `${total > 0 ? (summary.blocked / total) * 100 : 0}%` }} />}
               {summary.skipped > 0 && <div className="bg-gray-400" style={{ width: `${total > 0 ? (summary.skipped / total) * 100 : 0}%` }} />}
-              {summary.untested > 0 && <div className="bg-gray-200" style={{ width: `${total > 0 ? (summary.untested / total) * 100 : 0}%` }} />}
+              {summary.untested > 0 && <div className="bg-surface-raised" style={{ width: `${total > 0 ? (summary.untested / total) * 100 : 0}%` }} />}
             </div>
           </div>
           <div className="text-sm">
@@ -235,7 +235,7 @@ export default function RunView() {
           <option value="section">Sort: Section</option>
           <option value="status">Sort: Status</option>
         </Select>
-        <label className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface px-3 py-1.5 text-sm hover:bg-gray-50">
+        <label className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface px-3 py-1.5 text-sm hover:bg-surface-raised">
           <span>+ Add Results</span>
           <input
             type="file"
@@ -271,7 +271,7 @@ export default function RunView() {
         <button
           type="button"
           onClick={() => setShowShortcutHelp((v) => !v)}
-          className="ml-auto rounded border border-border px-2 py-1 text-xs text-muted hover:bg-gray-50"
+          className="ml-auto rounded border border-border px-2 py-1 text-xs text-muted hover:bg-surface-raised"
           title="Keyboard shortcuts (?)"
         >
           ? Shortcuts
@@ -282,14 +282,14 @@ export default function RunView() {
         <Card className="mb-4 p-4 text-sm">
           <div className="mb-2 font-semibold">Keyboard Shortcuts</div>
           <div className="grid grid-cols-2 gap-x-8 gap-y-1">
-            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">j</kbd> Next test</div>
-            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">k</kbd> Previous test</div>
-            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">p</kbd> Mark passed</div>
-            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">f</kbd> Mark failed</div>
-            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">b</kbd> Mark blocked</div>
-            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">s</kbd> Mark skipped</div>
-            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">n</kbd> Next untested</div>
-            <div><kbd className="rounded border bg-gray-100 px-1.5 py-0.5 font-mono text-xs">?</kbd> Toggle this help</div>
+            <div><kbd className="rounded border bg-surface-raised px-1.5 py-0.5 font-mono text-xs">j</kbd> Next test</div>
+            <div><kbd className="rounded border bg-surface-raised px-1.5 py-0.5 font-mono text-xs">k</kbd> Previous test</div>
+            <div><kbd className="rounded border bg-surface-raised px-1.5 py-0.5 font-mono text-xs">p</kbd> Mark passed</div>
+            <div><kbd className="rounded border bg-surface-raised px-1.5 py-0.5 font-mono text-xs">f</kbd> Mark failed</div>
+            <div><kbd className="rounded border bg-surface-raised px-1.5 py-0.5 font-mono text-xs">b</kbd> Mark blocked</div>
+            <div><kbd className="rounded border bg-surface-raised px-1.5 py-0.5 font-mono text-xs">s</kbd> Mark skipped</div>
+            <div><kbd className="rounded border bg-surface-raised px-1.5 py-0.5 font-mono text-xs">n</kbd> Next untested</div>
+            <div><kbd className="rounded border bg-surface-raised px-1.5 py-0.5 font-mono text-xs">?</kbd> Toggle this help</div>
           </div>
         </Card>
       )}
@@ -303,7 +303,7 @@ export default function RunView() {
             ) : (
               sections.map(({ sectionName, tests: sectionTests }) => (
                 <div key={sectionName} className="border-b border-border last:border-b-0">
-                  <div className="bg-gray-50 px-4 py-2 text-sm font-medium text-muted">{sectionName}</div>
+                  <div className="bg-surface-raised px-4 py-2 text-sm font-medium text-muted">{sectionName}</div>
                   <Table>
                     <TableHead>
                       <TableHeaderRow>
@@ -337,7 +337,7 @@ export default function RunView() {
                             )}
                           >
                             <TableCell className="font-mono text-xs text-muted">{t.id.slice(0, 8)}</TableCell>
-                            <TableCell className="font-medium text-slate-900">
+                            <TableCell className="font-medium text-text">
                               {t.caseTitle}
                               {t.datasetRow && Object.keys(t.datasetRow).length > 0 && (
                                 <span className="ml-1 text-muted">— {Object.entries(t.datasetRow).map(([k, v]) => `${k}: ${v}`).join(", ")}</span>

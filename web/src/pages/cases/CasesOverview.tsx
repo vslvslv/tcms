@@ -318,10 +318,10 @@ export default function CasesOverview() {
   if (!projectId || !currentProject) {
     return (
       <div className="max-w-4xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Test Cases</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text">Test Cases</h1>
         <p className="mt-1 text-muted">Select a project to view and manage test cases.</p>
         {projects.length === 0 ? (
-          <Card className="mt-8 rounded-xl border-border/80 bg-gray-50/30 shadow-sm">
+          <Card className="mt-8 rounded-xl border-border/80 bg-surface-raised/40 shadow-sm">
             <EmptyState
               message="No projects yet. Create a project to add test cases."
               action={<Link to="/projects" className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-hover">Go to projects</Link>}
@@ -332,31 +332,31 @@ export default function CasesOverview() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[320px] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-gray-50/80">
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Project</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 w-24">Total</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 w-20">Draft</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 w-20">Ready</th>
-                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-slate-600 w-24">Approved</th>
+                  <tr className="border-b border-border bg-surface-raised/40">
+                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted">Project</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted w-24">Total</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted w-20">Draft</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted w-20">Ready</th>
+                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted w-24">Approved</th>
                     <th className="w-28 px-5 py-3" aria-label="Actions" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {projects.map((p) => {
                     const sum = summaries[p.id];
                     return (
-                      <tr key={p.id} className="transition-colors hover:bg-gray-50/60">
+                      <tr key={p.id} className="transition-colors hover:bg-surface-raised/60">
                         <td className="px-5 py-3">
                           <button
                             type="button"
                             onClick={() => setProjectId(p.id)}
-                            className="font-medium text-slate-900 no-underline hover:text-primary hover:underline"
+                            className="font-medium text-text no-underline hover:text-primary hover:underline"
                           >
                             {p.name}
                           </button>
                         </td>
-                        <td className="px-5 py-3 text-right tabular-nums text-gray-700">{sum != null ? sum.total : "—"}</td>
-                        <td className="px-5 py-3 text-right tabular-nums text-slate-600">{sum != null ? sum.draft : "—"}</td>
+                        <td className="px-5 py-3 text-right tabular-nums text-muted">{sum != null ? sum.total : "—"}</td>
+                        <td className="px-5 py-3 text-right tabular-nums text-muted">{sum != null ? sum.draft : "—"}</td>
                         <td className="px-5 py-3 text-right tabular-nums text-primary">{sum != null ? sum.ready : "—"}</td>
                         <td className="px-5 py-3 text-right tabular-nums text-emerald-600">{sum != null ? sum.approved : "—"}</td>
                         <td className="px-5 py-3">
@@ -411,11 +411,11 @@ export default function CasesOverview() {
 
     return (
       <div key={section.id} className="mb-5" style={{ marginLeft: depth * 24 }}>
-        <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-gray-50/50 px-3 py-2 transition hover:bg-gray-50/80">
+        <div className="flex items-center gap-2 rounded-lg border border-border/80 bg-surface-raised/40 px-3 py-2 transition hover:bg-surface-raised/60">
           <button
             type="button"
             onClick={() => toggleSection(section.id)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-gray-200/60 hover:text-gray-700"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition hover:bg-surface-raised hover:text-muted"
             aria-label={isExpanded ? "Collapse" : "Expand"}
           >
             <svg className={`h-5 w-5 transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -430,7 +430,7 @@ export default function CasesOverview() {
               <input
                 value={editingSectionName}
                 onChange={(e) => setEditingSectionName(e.target.value)}
-                className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="min-w-0 flex-1 rounded-lg border border-border bg-surface-raised text-text px-2.5 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                 autoFocus
               />
               <button type="submit" disabled={saving} className="text-sm font-medium text-primary hover:underline">Save</button>
@@ -438,13 +438,13 @@ export default function CasesOverview() {
             </form>
           ) : (
             <>
-              <span className="font-medium text-slate-900">{section.name}</span>
-              <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-xs font-medium tabular-nums text-slate-600">{count}</span>
+              <span className="font-medium text-text">{section.name}</span>
+              <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-xs font-medium tabular-nums text-muted">{count}</span>
               <div className="ml-auto flex items-center gap-0.5">
                 <button
                   type="button"
                   onClick={() => { setEditingSectionId(section.id); setEditingSectionName(section.name); }}
-                  className="rounded p-1.5 text-slate-400 transition hover:bg-gray-200/60 hover:text-slate-600"
+                  className="rounded p-1.5 text-muted transition hover:bg-surface-raised hover:text-muted"
                   aria-label="Edit section"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
@@ -453,7 +453,7 @@ export default function CasesOverview() {
                   type="button"
                   onClick={() => onDeleteSection(section)}
                   disabled={saving}
-                  className="rounded p-1.5 text-slate-400 transition hover:bg-red-100 hover:text-error disabled:opacity-50"
+                  className="rounded p-1.5 text-muted transition hover:bg-error/20 hover:text-error disabled:opacity-50"
                   aria-label="Delete section"
                 >
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
@@ -468,27 +468,27 @@ export default function CasesOverview() {
             <div className="mt-2 overflow-hidden rounded-lg border border-border/80 shadow-sm">
               <table className="w-full min-w-[400px] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-gray-50/80">
+                  <tr className="border-b border-border bg-surface-raised/40">
                     <th className="w-14 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted">ID</th>
                     <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted">Title</th>
                     <th className="w-24 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted">Status</th>
                     <th className="w-32 px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {sectionCases.map((c) => (
-                    <tr key={c.id} className="transition-colors hover:bg-gray-50/60">
+                    <tr key={c.id} className="transition-colors hover:bg-surface-raised/60">
                       <td className="px-4 py-2.5 font-mono text-xs text-muted">{caseDisplayIdsMap.get(c.id) ?? "—"}</td>
                       <td className="px-4 py-2.5">
                         <Link to={`/cases/${c.id}/edit`} className="font-medium text-primary no-underline hover:underline">{c.title || "(Untitled)"}</Link>
                       </td>
                       <td className="px-4 py-2.5">
                         {c.status ? (
-                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${c.status === "approved" ? "bg-emerald-100 text-emerald-800" : c.status === "ready" ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-gray-700"}`}>
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${c.status === "approved" ? "bg-emerald-100 text-emerald-800" : c.status === "ready" ? "bg-primary/20 text-primary" : "bg-surface-raised text-muted"}`}>
                             {c.status}
                           </span>
                         ) : (
-                          <span className="text-slate-400">—</span>
+                          <span className="text-muted">—</span>
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-right">
@@ -511,7 +511,7 @@ export default function CasesOverview() {
               <Link to={`/sections/${section.id}/cases/new`} className="hover:text-primary hover:underline">
                 Add case
               </Link>
-              <span className="text-slate-300">·</span>
+              <span className="text-muted">·</span>
               <button
                 type="button"
                 onClick={() => setAddingSubsectionUnder(section.id)}
@@ -525,7 +525,7 @@ export default function CasesOverview() {
                     value={newSubsectionName}
                     onChange={(e) => setNewSubsectionName(e.target.value)}
                     placeholder="Name"
-                    className="w-32 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
+                    className="w-32 rounded-md border border-border bg-surface-raised text-text px-2 py-1 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
                   />
                   <button type="submit" disabled={saving} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">Add</button>
                   <button type="button" className="text-sm text-muted hover:underline" onClick={() => { setAddingSubsectionUnder(null); setNewSubsectionName(""); }}>Cancel</button>
@@ -545,9 +545,9 @@ export default function CasesOverview() {
     <div className="max-w-5xl">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">Test Cases</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-text font-mono">Test Cases</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-sm font-medium text-gray-700">{currentProject.name}</span>
+            <span className="rounded-md bg-surface-raised px-2 py-0.5 text-sm font-medium text-muted">{currentProject.name}</span>
             {currentSummary != null && (
               <span className="text-sm text-muted">
                 {sections.length} section{sections.length !== 1 ? "s" : ""} · {currentSummary.total} case{currentSummary.total !== 1 ? "s" : ""}
@@ -561,7 +561,7 @@ export default function CasesOverview() {
         <button
           type="button"
           onClick={() => setProjectId(null)}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+          className="rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-sm font-medium text-muted shadow-sm transition hover:bg-surface-raised"
         >
           View all projects
         </button>
@@ -573,11 +573,11 @@ export default function CasesOverview() {
         <>
           <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Card className="rounded-xl border-border/80 p-5 shadow-sm transition hover:shadow">
-              <div className="text-2xl font-bold tabular-nums tracking-tight text-slate-900">{currentSummary?.total ?? "—"}</div>
+              <div className="text-2xl font-bold tabular-nums tracking-tight text-text">{currentSummary?.total ?? "—"}</div>
               <div className="mt-0.5 text-sm font-medium text-muted">Total cases</div>
             </Card>
             <Card className="rounded-xl border-border/80 p-5 shadow-sm transition hover:shadow">
-              <div className="text-2xl font-bold tabular-nums tracking-tight text-slate-600">{currentSummary?.draft ?? "—"}</div>
+              <div className="text-2xl font-bold tabular-nums tracking-tight text-muted">{currentSummary?.draft ?? "—"}</div>
               <div className="mt-0.5 text-sm font-medium text-muted">Draft</div>
             </Card>
             <Card className="rounded-xl border-border/80 p-5 shadow-sm transition hover:shadow">
@@ -590,7 +590,7 @@ export default function CasesOverview() {
             </Card>
           </div>
 
-          <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-border/80 bg-gray-50/50 px-4 py-3 shadow-sm">
+          <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-border/80 bg-surface-raised/40 px-4 py-3 shadow-sm">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted">Sort</span>
               <Select
@@ -604,7 +604,7 @@ export default function CasesOverview() {
                 <option value="priority">Priority</option>
               </Select>
             </div>
-            <div className="h-4 w-px bg-slate-300" aria-hidden />
+            <div className="h-4 w-px bg-border" aria-hidden />
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted">Filter</span>
               <Select
@@ -635,7 +635,7 @@ export default function CasesOverview() {
                 ))}
               </Select>
             </div>
-            <div className="h-4 w-px bg-slate-300" aria-hidden />
+            <div className="h-4 w-px bg-border" aria-hidden />
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted">Search</span>
               <input
@@ -643,7 +643,7 @@ export default function CasesOverview() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Title or prerequisite..."
-                className="w-44 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:w-56"
+                className="w-44 rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm shadow-sm placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-56"
                 aria-label="Search cases by title or prerequisite"
               />
             </div>
@@ -651,18 +651,18 @@ export default function CasesOverview() {
               <button
                 type="button"
                 onClick={() => setCollapseAll((c) => !c)}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+                className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm font-medium text-muted shadow-sm transition hover:bg-surface-raised"
               >
                 {collapseAll ? "Expand All" : "Collapse All"}
               </button>
-              <Link to={suite ? `/suites/${suite.id}` : "#"} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 no-underline shadow-sm transition hover:bg-gray-50">
+              <Link to={suite ? `/suites/${suite.id}` : "#"} className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm font-medium text-muted no-underline shadow-sm transition hover:bg-surface-raised">
                 Manage sections
               </Link>
             </div>
           </div>
 
           {overviewError && (
-            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
               {overviewError}
             </div>
           )}
@@ -684,7 +684,7 @@ export default function CasesOverview() {
                       value={newSectionName}
                       onChange={(e) => setNewSectionName(e.target.value)}
                       placeholder="New section name"
-                      className="rounded-md border border-slate-300 px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/20"
+                      className="rounded-md border border-border bg-surface-raised text-text px-2.5 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/20"
                       autoFocus
                     />
                     <button type="submit" disabled={saving} className="text-sm font-medium text-primary hover:underline disabled:opacity-50">
@@ -709,7 +709,7 @@ export default function CasesOverview() {
                 )}
               </div>
               {treeForMemo.length === 0 && !showAddSection ? (
-                <div className="rounded-lg border border-dashed border-border bg-gray-50/30 py-12 text-center text-sm text-muted">
+                <div className="rounded-lg border border-dashed border-border bg-surface-raised/40 py-12 text-center text-sm text-muted">
                   No sections yet. Click &quot;+ Add section&quot; above to create one.
                 </div>
               ) : (

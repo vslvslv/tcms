@@ -48,11 +48,11 @@ export default function CasesDefects() {
   return (
     <div className="max-w-4xl">
       <PageTitle className="mb-2">Test cases — Defects</PageTitle>
-      <p className="mb-6 text-gray-600">Test cases that have at least one defect or issue link.</p>
+      <p className="mb-6 text-muted">Test cases that have at least one defect or issue link.</p>
 
       <Card className="mb-6">
         <label className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">Project</span>
+          <span className="text-sm font-medium text-muted">Project</span>
           <Select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
@@ -77,7 +77,7 @@ export default function CasesDefects() {
 
       {projectId && !loading && (
         <Card className="overflow-hidden p-0">
-          <div className="border-b border-border bg-gray-50 px-4 py-2 text-sm font-semibold text-gray-700">
+          <div className="border-b border-border bg-surface-raised px-4 py-2 text-sm font-semibold text-muted">
             {currentProject?.name} — Cases with defects
           </div>
           {cases.length === 0 ? (
@@ -86,14 +86,14 @@ export default function CasesDefects() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[400px] border-collapse text-sm">
                 <thead>
-                  <tr className="border-b border-border bg-gray-50">
-                    <th className="px-4 py-2 text-left font-semibold text-gray-700">Title</th>
-                    <th className="w-24 px-4 py-2 text-right font-semibold text-gray-700">Actions</th>
+                  <tr className="border-b border-border bg-surface-raised">
+                    <th className="px-4 py-2 text-left font-semibold text-muted">Title</th>
+                    <th className="w-24 px-4 py-2 text-right font-semibold text-muted">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cases.map((c) => (
-                    <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                    <tr key={c.id} className="border-b border-border hover:bg-surface-raised/60">
                       <td className="px-4 py-2">
                         <Link to={`/cases/${c.id}/edit`} className="font-medium text-primary hover:underline">{c.title || "(Untitled)"}</Link>
                       </td>

@@ -28,15 +28,15 @@ export default function ResetRequest() {
 
   if (submitted) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-surface-raised px-4 py-8">
         <div className="w-full max-w-sm">
           <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
-            <h2 className="mb-2 text-xl font-bold text-gray-900">Check your email</h2>
+            <h2 className="mb-2 text-xl font-bold text-text font-mono">Check your email</h2>
             <p className="text-sm text-muted">
               If an account exists with that email, a reset link has been generated.
             </p>
             {resetUrl && (
-              <div className="mt-4 rounded-lg bg-blue-50 p-3 text-sm">
+              <div className="mt-4 rounded-lg bg-primary/10 p-3 text-sm">
                 <strong>MVP mode:</strong> No email configured. Use this link directly:
                 <br />
                 <Link to={resetUrl} className="mt-1 block break-all font-medium text-primary hover:underline">
@@ -44,7 +44,7 @@ export default function ResetRequest() {
                 </Link>
               </div>
             )}
-            <p className="mt-6 text-center text-sm text-gray-600">
+            <p className="mt-6 text-center text-sm text-muted">
               <Link to="/login" className="font-medium text-primary hover:underline">
                 Back to login
               </Link>
@@ -56,11 +56,11 @@ export default function ResetRequest() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-raised px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
           <div className="mb-6">
-            <h1 className="text-xl font-bold text-gray-900">Reset Password</h1>
+            <h1 className="text-xl font-bold text-text font-mono">Reset Password</h1>
             <p className="mt-1 text-sm text-muted">Enter your email to receive a password reset link.</p>
           </div>
           {error && (
@@ -83,7 +83,7 @@ export default function ResetRequest() {
             </div>
             <SubmitButton className="w-full py-2.5 text-base">Send Reset Link</SubmitButton>
           </form>
-          <p className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-6 text-center text-sm text-muted">
             <Link to="/login" className="font-medium text-primary hover:underline">
               Back to login
             </Link>

@@ -71,7 +71,7 @@ export default function CasesDetails() {
     return (
       <div className="max-w-4xl">
         <PageTitle className="mb-2">Test cases — Details</PageTitle>
-        <p className="mb-6 text-gray-600">Select a project from the sidebar or below to view sections and cases.</p>
+        <p className="mb-6 text-muted">Select a project from the sidebar or below to view sections and cases.</p>
         <Card>
           <ul className="list-none space-y-2 p-0">
             {projects.map((p) => (
@@ -92,7 +92,7 @@ export default function CasesDetails() {
   return (
     <div className="max-w-4xl">
       <PageTitle className="mb-2">Test cases — Details</PageTitle>
-      <p className="mb-6 text-gray-600">
+      <p className="mb-6 text-muted">
         <Link to="/cases/details" className="text-primary hover:underline">All projects</Link>
         {" → "}
         <span className="font-medium">{project.name}</span>

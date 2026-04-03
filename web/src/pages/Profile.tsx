@@ -56,11 +56,11 @@ export default function Profile() {
     <div className="max-w-lg">
       <PageTitle className="mb-6">Profile</PageTitle>
 
-      {message && <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{message}</p>}
-      {error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-error">{error}</p>}
+      {message && <p className="mb-4 rounded-lg bg-success/10 px-3 py-2 text-sm text-success">{message}</p>}
+      {error && <p className="mb-4 rounded-lg bg-error/10 px-3 py-2 text-sm text-error">{error}</p>}
 
       <Card className="mb-6 p-6">
-        <h3 className="mb-4 text-sm font-semibold text-slate-800">Account Info</h3>
+        <h3 className="mb-4 text-sm font-semibold text-text font-mono">Account Info</h3>
         <p className="mb-4 text-sm text-muted">Email: {user?.email}</p>
         <form onSubmit={handleSaveName} className="space-y-3">
           <div>
@@ -74,7 +74,7 @@ export default function Profile() {
       </Card>
 
       <Card className="p-6">
-        <h3 className="mb-4 text-sm font-semibold text-slate-800">Change Password</h3>
+        <h3 className="mb-4 text-sm font-semibold text-text font-mono">Change Password</h3>
         <form onSubmit={handleChangePassword} className="space-y-3">
           <div>
             <Label htmlFor="current-pw">Current Password</Label>
