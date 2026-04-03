@@ -1,45 +1,121 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * TCMS Design Token System
+ * ═══════════════════════════════════════════════════════════════════════════
+ * All color tokens use oklch() channel format (not hex). This is required for:
+ *   1. shadcn/ui compatibility layer (Phase 4) — shadcn reads CSS vars as
+ *      color channels; hex values produce invalid CSS when used in hsl()/oklch()
+ *   2. Predictable contrast calculations across dark/light themes
+ *
+ * Token naming:
+ *   --color-background    — page background
+ *   --color-surface       — card / panel background (one step above background)
+ *   --color-surface-raised — hover states, table headers, dropdown items
+ *   --color-border        — borders, dividers
+ *   --color-text          — primary text
+ *   --color-muted         — secondary text, placeholders
+ *   --color-primary       — brand green (interactive elements, links)
+ *   --color-primary-hover — primary on hover
+ *   --color-success       — success state (same as primary in TCMS)
+ *   --color-error         — error / destructive state
+ *   --color-warning       — warning state
+ *
+ * NEVER use hardcoded Tailwind palette classes in JSX (e.g. bg-slate-700).
+ * Use these tokens via Tailwind theme aliases (e.g. bg-surface-raised).
+ * The ESLint palette guard in eslint.config.js enforces this at build time.
+ *
+ * shadcn/ui compatibility (Phase 4):
+ *   shadcn components reference generic CSS vars (--background, --foreground,
+ *   --primary, --border, etc.). We bridge those to TCMS tokens here so that
+ *   any shadcn primitive (button, dropdown-menu, etc.) automatically respects
+ *   the TCMS design system without needing custom overrides per-component.
+ */
 
 /* ── Dark theme (default) ─────────────────────────────────────────────────── */
 :root,
 [data-theme="dark"] {
-  --color-primary:        #22C55E;
-  --color-primary-hover:  #16A34A;
-  --color-success:        #22C55E;
-  --color-error:          #EF4444;
-  --color-warning:        #F59E0B;
-  --color-muted:          #94A3B8;
-  --color-background:     #0F172A;
-  --color-surface:        #1E293B;
-  --color-surface-raised: #334155;
-  --color-border:         rgba(71, 85, 105, 0.5);
-  --color-text:           #F1F5F9;
+  /* TCMS core tokens */
+  --color-primary:        oklch(0.723 0.219 142.5);
+  --color-primary-hover:  oklch(0.647 0.185 142.4);
+  --color-success:        oklch(0.723 0.219 142.5);
+  --color-error:          oklch(0.637 0.237 25.3);
+  --color-warning:        oklch(0.769 0.188 80.8);
+  --color-muted:          oklch(0.678 0.023 258.3);
+  --color-background:     oklch(0.173 0.026 263.2);
+  --color-surface:        oklch(0.233 0.024 261.2);
+  --color-surface-raised: oklch(0.345 0.025 261.7);
+  --color-border:         oklch(0.484 0.023 258.8 / 0.5);
+  --color-text:           oklch(0.968 0.005 264.5);
   --radius-card:          0.5rem;
   --shadow-card:          0 1px 3px 0 rgb(0 0 0 / 0.4);
   --font-sans:            'IBM Plex Sans', system-ui, sans-serif;
   --font-mono:            'JetBrains Mono', ui-monospace, monospace;
+
+  /* shadcn/ui compatibility bridge — maps shadcn generic vars to TCMS tokens */
+  --background:           var(--color-background);
+  --foreground:           var(--color-text);
+  --card:                 var(--color-surface);
+  --card-foreground:      var(--color-text);
+  --popover:              var(--color-surface);
+  --popover-foreground:   var(--color-text);
+  --primary:              var(--color-primary);
+  --primary-foreground:   oklch(0.173 0.026 263.2);
+  --secondary:            var(--color-surface-raised);
+  --secondary-foreground: var(--color-text);
+  --muted-foreground:     var(--color-muted);
+  --accent:               var(--color-surface-raised);
+  --accent-foreground:    var(--color-text);
+  --destructive:          var(--color-error);
+  --border:               var(--color-border);
+  --input:                var(--color-surface-raised);
+  --ring:                 var(--color-primary);
+  --radius:               0.5rem;
 }
 
 /* ── Light theme ──────────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-primary:        #16A34A;
-  --color-primary-hover:  #15803D;
-  --color-success:        #16A34A;
-  --color-error:          #DC2626;
-  --color-warning:        #D97706;
-  --color-muted:          #64748B;
-  --color-background:     #F8FAFC;
-  --color-surface:        #FFFFFF;
-  --color-surface-raised: #F1F5F9;
-  --color-border:         #E2E8F0;
-  --color-text:           #0F172A;
+  /* TCMS core tokens */
+  --color-primary:        oklch(0.647 0.185 142.4);
+  --color-primary-hover:  oklch(0.596 0.164 142.3);
+  --color-success:        oklch(0.647 0.185 142.4);
+  --color-error:          oklch(0.577 0.220 27.3);
+  --color-warning:        oklch(0.717 0.177 78.9);
+  --color-muted:          oklch(0.551 0.022 257.4);
+  --color-background:     oklch(0.985 0.003 264.5);
+  --color-surface:        oklch(1 0 0);
+  --color-surface-raised: oklch(0.968 0.005 264.5);
+  --color-border:         oklch(0.928 0.008 265.0);
+  --color-text:           oklch(0.173 0.026 263.2);
   --radius-card:          0.5rem;
   --shadow-card:          0 1px 2px 0 rgb(0 0 0 / 0.05);
   --font-sans:            'IBM Plex Sans', system-ui, sans-serif;
   --font-mono:            'JetBrains Mono', ui-monospace, monospace;
+
+  /* shadcn/ui compatibility bridge */
+  --background:           var(--color-background);
+  --foreground:           var(--color-text);
+  --card:                 var(--color-surface);
+  --card-foreground:      var(--color-text);
+  --popover:              var(--color-surface);
+  --popover-foreground:   var(--color-text);
+  --primary:              var(--color-primary);
+  --primary-foreground:   oklch(1 0 0);
+  --secondary:            var(--color-surface-raised);
+  --secondary-foreground: var(--color-text);
+  --muted-foreground:     var(--color-muted);
+  --accent:               var(--color-surface-raised);
+  --accent-foreground:    var(--color-text);
+  --destructive:          var(--color-error);
+  --border:               var(--color-border);
+  --input:                var(--color-surface-raised);
+  --ring:                 var(--color-primary);
+  --radius:               0.5rem;
 }
 
+/* ── Tailwind theme aliases ────────────────────────────────────────────────── */
 @theme inline {
   --color-primary:        var(--color-primary);
   --color-primary-hover:  var(--color-primary-hover);
@@ -56,6 +132,34 @@
   --shadow-card:          var(--shadow-card);
   --font-sans:            var(--font-sans);
   --font-mono:            var(--font-mono);
+  /* shadcn bridge aliases — lets shadcn component classes resolve in Tailwind */
+  --color-foreground:     var(--foreground);
+  --color-card:           var(--card);
+  --color-popover:        var(--popover);
+  --color-destructive:    var(--destructive);
+  --color-ring:           var(--ring);
+  --color-input:          var(--input);
+  --color-accent:         var(--accent);
+  --color-secondary:      var(--secondary);
+  --radius-sm:            calc(var(--radius) * 0.6);
+  --radius-md:            calc(var(--radius) * 0.8);
+  --radius-lg:            var(--radius);
+}
+
+/* ── Smooth theme toggle transition ──────────────────────────────────────── */
+/* Applied to all elements so the dark↔light toggle feels polished. */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* Disable all transitions/animations for users who prefer reduced motion (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 body {
@@ -95,10 +199,4 @@ a:hover {
 
 .dropdown-panel {
   animation: dropdown-in 0.2s ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dropdown-panel {
-    animation: none;
-  }
 }

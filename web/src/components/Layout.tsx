@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Outlet, Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { LayoutDashboard, ListTodo, FolderOpen, FlaskConical, Flag, BarChart2, ChevronRight, Shield, Menu, X, Sun, Moon } from "lucide-react";
+import { FocusScope } from "@radix-ui/react-focus-scope";
 import { useAuth } from "../AuthContext";
 import { useProject } from "../ProjectContext";
 import { useTheme } from "../ThemeContext";
@@ -241,7 +242,19 @@ export default function Layout() {
   const [projectSwitcherOpen, setProjectSwitcherOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Ref to hamburger button — focus returns here when drawer closes (WCAG 2.4.3)
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+
   const showSidebar = projectId != null;
+
+  // Body scroll lock — prevent background scroll when mobile drawer is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [sidebarOpen]);
 
   useEffect(() => {
     if (routeProjectId) setProjectId(routeProjectId);
@@ -264,20 +277,24 @@ export default function Layout() {
     setProjectSwitcherOpen(false);
   }, []);
 
+  const closeSidebar = useCallback(() => {
+    setSidebarOpen(false);
+    // Restore focus to the hamburger trigger (WCAG 2.4.3 focus order)
+    requestAnimationFrame(() => hamburgerRef.current?.focus());
+  }, []);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
         closeAllDropdowns();
-        setSidebarOpen(false);
+        if (sidebarOpen) closeSidebar();
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [closeAllDropdowns]);
+  }, [closeAllDropdowns, closeSidebar, sidebarOpen]);
 
   const currentProject = projectId ? projects.find((p) => p.id === projectId) : null;
-
-  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -285,11 +302,13 @@ export default function Layout() {
         <div className="flex items-center gap-4">
           {showSidebar && (
             <button
+              ref={hamburgerRef}
               type="button"
               onClick={() => setSidebarOpen((o) => !o)}
               className="md:hidden inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-border bg-surface-raised text-text hover:bg-surface transition-colors duration-150"
               aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               aria-expanded={sidebarOpen}
+              aria-controls="sidebar-nav"
             >
               {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -324,13 +343,22 @@ export default function Layout() {
       <div className="relative flex flex-1 overflow-hidden">
         {showSidebar && (
           <>
-            <aside
-              className={`fixed left-0 top-12 z-30 flex h-[calc(100vh-3rem)] w-52 flex-col overflow-y-auto border-r border-border bg-surface md:relative md:top-0 md:h-auto md:z-auto md:shrink-0 ${
-                sidebarOpen ? "block" : "hidden md:flex"
-              }`}
-              aria-label="Main navigation"
-              data-testid="sidebar-nav"
+            <FocusScope
+              trapped={sidebarOpen}
+              onUnmountAutoFocus={(e) => {
+                // Suppress FocusScope's default focus-return; closeSidebar() handles it
+                e.preventDefault();
+              }}
             >
+              <aside
+                id="sidebar-nav"
+                className={`fixed left-0 top-12 z-30 flex h-[calc(100vh-3rem)] w-52 flex-col overflow-y-auto border-r border-border bg-surface md:relative md:top-0 md:h-auto md:z-auto md:shrink-0 ${
+                  sidebarOpen ? "block" : "hidden md:flex"
+                }`}
+                aria-label="Main navigation"
+                aria-modal={sidebarOpen || undefined}
+                data-testid="sidebar-nav"
+              >
               {/* Project switcher */}
               <div className="border-b border-border p-3 pb-3" data-testid="project-switcher">
                 <div className="mb-1 text-xs font-medium text-muted">Project</div>
@@ -365,12 +393,13 @@ export default function Layout() {
 
               <SidebarNav location={location} onNavigate={closeSidebar} projectId={projectId} />
             </aside>
+            </FocusScope>
             {sidebarOpen && (
-              <div className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+              <div className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={closeSidebar} aria-hidden="true" />
             )}
           </>
         )}
-        <main className="flex-1 overflow-auto p-4">
+        <main id="main-content" className="flex-1 overflow-auto p-4">
           <Outlet />
         </main>
       </div>

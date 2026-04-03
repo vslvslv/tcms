@@ -248,8 +248,7 @@ export default function RunView() {
         </label>
         {summary.failed > 0 && (
           <Button
-            variant="outline"
-            size="sm"
+            variant="secondary"
             onClick={async () => {
               try {
                 const newRun = await api<{ id: string }>(`/api/runs/${runId}/rerun-failures`, { method: "POST" });

@@ -92,6 +92,13 @@ export default function App() {
       <ThemeProvider>
         <AuthProvider>
           <ProjectProvider>
+            {/* Skip-to-content link (WCAG 2.4.1) — visually hidden until focused */}
+            <a
+              href="#main-content"
+              className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary focus:ring-2 focus:ring-primary focus:outline-none"
+            >
+              Skip to main content
+            </a>
             <AppRoutes />
           </ProjectProvider>
         </AuthProvider>

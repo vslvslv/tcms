@@ -4,6 +4,8 @@
  * Run with: npx vitest (requires vitest + @testing-library/react + jsdom)
  * Install: npm install -D vitest @testing-library/react @testing-library/jest-dom jsdom
  * Add to vite.config.ts: test: { environment: "jsdom", globals: true }
+ *   → CORRECTION: create vitest.config.ts (separate file) — do NOT add test block
+ *     to vite.config.ts; @tailwindcss/vite plugin is incompatible with JSDOM environment
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "@testing-library/react";
