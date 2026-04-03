@@ -18,8 +18,6 @@ import {
 } from "../components/ui/Table";
 import { cn } from "../lib/cn";
 
-const STATUSES = ["passed", "failed", "blocked", "skipped", "untested"] as const;
-
 function statusBadgeClass(s: string): string {
   switch (s) {
     case "passed": return "bg-success/10 text-success";
@@ -162,7 +160,6 @@ export default function RunView() {
   if (!run) return null;
 
   const summary = run.summary ?? { passed: 0, failed: 0, blocked: 0, skipped: 0, untested: 0 };
-  const tests = run.tests ?? [];
   const total = summary.passed + summary.failed + summary.blocked + summary.skipped + summary.untested;
   const passPct = total > 0 ? Math.round((summary.passed / total) * 100) : 0;
   const runBadgeId = run.id.slice(0, 8).toUpperCase();

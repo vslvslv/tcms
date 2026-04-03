@@ -34,7 +34,8 @@ export function SubmitButton({ variant = "primary", className, disabled, ...prop
       type="submit"
       disabled={disabled}
       className={cn(
-        "inline-flex items-center justify-center rounded border border-transparent bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:opacity-50",
+        "inline-flex cursor-pointer items-center justify-center rounded border px-3 py-1.5 text-sm font-medium transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50",
+        variantClasses[variant],
         className
       )}
       {...props}

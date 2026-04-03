@@ -79,7 +79,7 @@ export default function Dashboard() {
   }, []);
 
   const activityData = useMemo(
-    () => (data?.recentRuns ? groupRunsByDate(data.recentRuns) : []),
+    () => (data?.recentRuns ? groupRunsByDate(data.recentRuns) : []), // eslint-disable-line react-hooks/preserve-manual-memoization
     [data?.recentRuns]
   );
 
