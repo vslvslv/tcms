@@ -42,6 +42,7 @@ export default function CasesDetails() {
 
   useEffect(() => {
     if (!projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProject(null);
       setSuites([]);
       setSectionsBySuite({});

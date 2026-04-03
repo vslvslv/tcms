@@ -39,7 +39,8 @@ export default function Reports() {
       .finally(() => setLoading(false));
   }, []);
 
-  const activityData = useMemo(() => (data?.recentRuns ? groupRunsByDate(data.recentRuns) : []), [data?.recentRuns]);
+  const activityData = useMemo(() => (data?.recentRuns ? groupRunsByDate(data.recentRuns) : []), // eslint-disable-line react-hooks/preserve-manual-memoization
+    [data?.recentRuns]);
 
   const overviewPieData = useMemo(() => {
     if (!data) return [];

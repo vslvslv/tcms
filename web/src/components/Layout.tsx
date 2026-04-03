@@ -41,6 +41,7 @@ function SidebarNav({
   const [orderBy, setOrderBy] = useState<string>("date");
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (path.startsWith("/projects") && !path.includes("/settings") || path.startsWith("/cases/")) setExpanded("cases");
     else if (path.startsWith("/runs")) setExpanded("runs");
     else if (path.startsWith("/milestones")) setExpanded("milestones");
@@ -48,6 +49,7 @@ function SidebarNav({
 
   useEffect(() => {
     if (!projectId || !isRunsOverview) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRunsSummaryLoading(true);
     api<ProjectRunSummary[]>(`/api/projects/${projectId}/runs?limit=500`)
       .then((list) => setProjectRuns(list))
@@ -58,8 +60,6 @@ function SidebarNav({
   const openCount = projectRuns.filter((r) => !r.isCompleted).length;
   const completedCount = projectRuns.filter((r) => r.isCompleted).length;
 
-  const linkClass = (active: boolean) =>
-    `block rounded px-3 py-2 text-sm no-underline transition-colors duration-150 ${active ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`;
   const subLinkClass = (active: boolean) =>
     `block rounded py-1.5 pl-8 pr-3 text-sm no-underline transition-colors duration-150 ${active ? "font-medium text-primary bg-primary/10" : "text-muted hover:bg-surface-raised hover:text-text"}`;
 

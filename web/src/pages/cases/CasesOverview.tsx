@@ -56,7 +56,7 @@ export default function CasesOverview() {
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [_project, setProject] = useState<Project | null>(null);
+  const [, setProject] = useState<Project | null>(null);
   const [suites, setSuites] = useState<Suite[]>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [cases, setCases] = useState<TestCase[]>([]);

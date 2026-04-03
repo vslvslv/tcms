@@ -134,7 +134,7 @@ export function TestCaseForm({
         })
         .then((result) => {
           if (cancelled || !result) return;
-          const [_pid, ct, pr, cf, ss, ds] = result;
+          const [, ct, pr, cf, ss, ds] = result;
           setCaseTypes(ct);
           setPriorities(pr);
           setCaseFields(cf);

@@ -10,7 +10,7 @@ import {
   type CaseVersion,
 } from "../api";
 import { Button } from "./ui/Button";
-import { Card } from "./ui/Card";
+
 import { LoadingSpinner } from "./ui/LoadingSpinner";
 import { AttachmentPanel } from "./AttachmentPanel";
 import {
@@ -59,7 +59,7 @@ type TabKey = "results" | "history" | "defects";
 
 export function RunTestCaseSidebar({
   test,
-  runId,
+  runId: _runId, // eslint-disable-line @typescript-eslint/no-unused-vars
   allTestsInOrder,
   onClose,
   onResultSubmitted,

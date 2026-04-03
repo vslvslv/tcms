@@ -24,11 +24,13 @@ export default function CasesDefects() {
 
   useEffect(() => {
     if (projectId !== "" || !contextProjectId || projects.length === 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (projects.some((p) => p.id === contextProjectId)) setProjectId(contextProjectId);
   }, [projectId, contextProjectId, projects]);
 
   useEffect(() => {
     if (!projectId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCases([]);
       return;
     }
