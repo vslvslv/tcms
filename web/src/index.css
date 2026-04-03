@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+@import "tw-animate-css";
 
 /*
  * TCMS Design Token System
@@ -25,11 +26,18 @@
  * NEVER use hardcoded Tailwind palette classes in JSX (e.g. bg-slate-700).
  * Use these tokens via Tailwind theme aliases (e.g. bg-surface-raised).
  * The ESLint palette guard in eslint.config.js enforces this at build time.
+ *
+ * shadcn/ui compatibility (Phase 4):
+ *   shadcn components reference generic CSS vars (--background, --foreground,
+ *   --primary, --border, etc.). We bridge those to TCMS tokens here so that
+ *   any shadcn primitive (button, dropdown-menu, etc.) automatically respects
+ *   the TCMS design system without needing custom overrides per-component.
  */
 
 /* ── Dark theme (default) ─────────────────────────────────────────────────── */
 :root,
 [data-theme="dark"] {
+  /* TCMS core tokens */
   --color-primary:        oklch(0.723 0.219 142.5);
   --color-primary-hover:  oklch(0.647 0.185 142.4);
   --color-success:        oklch(0.723 0.219 142.5);
@@ -45,10 +53,31 @@
   --shadow-card:          0 1px 3px 0 rgb(0 0 0 / 0.4);
   --font-sans:            'IBM Plex Sans', system-ui, sans-serif;
   --font-mono:            'JetBrains Mono', ui-monospace, monospace;
+
+  /* shadcn/ui compatibility bridge — maps shadcn generic vars to TCMS tokens */
+  --background:           var(--color-background);
+  --foreground:           var(--color-text);
+  --card:                 var(--color-surface);
+  --card-foreground:      var(--color-text);
+  --popover:              var(--color-surface);
+  --popover-foreground:   var(--color-text);
+  --primary:              var(--color-primary);
+  --primary-foreground:   oklch(0.173 0.026 263.2);
+  --secondary:            var(--color-surface-raised);
+  --secondary-foreground: var(--color-text);
+  --muted-foreground:     var(--color-muted);
+  --accent:               var(--color-surface-raised);
+  --accent-foreground:    var(--color-text);
+  --destructive:          var(--color-error);
+  --border:               var(--color-border);
+  --input:                var(--color-surface-raised);
+  --ring:                 var(--color-primary);
+  --radius:               0.5rem;
 }
 
 /* ── Light theme ──────────────────────────────────────────────────────────── */
 [data-theme="light"] {
+  /* TCMS core tokens */
   --color-primary:        oklch(0.647 0.185 142.4);
   --color-primary-hover:  oklch(0.596 0.164 142.3);
   --color-success:        oklch(0.647 0.185 142.4);
@@ -64,24 +93,29 @@
   --shadow-card:          0 1px 2px 0 rgb(0 0 0 / 0.05);
   --font-sans:            'IBM Plex Sans', system-ui, sans-serif;
   --font-mono:            'JetBrains Mono', ui-monospace, monospace;
+
+  /* shadcn/ui compatibility bridge */
+  --background:           var(--color-background);
+  --foreground:           var(--color-text);
+  --card:                 var(--color-surface);
+  --card-foreground:      var(--color-text);
+  --popover:              var(--color-surface);
+  --popover-foreground:   var(--color-text);
+  --primary:              var(--color-primary);
+  --primary-foreground:   oklch(1 0 0);
+  --secondary:            var(--color-surface-raised);
+  --secondary-foreground: var(--color-text);
+  --muted-foreground:     var(--color-muted);
+  --accent:               var(--color-surface-raised);
+  --accent-foreground:    var(--color-text);
+  --destructive:          var(--color-error);
+  --border:               var(--color-border);
+  --input:                var(--color-surface-raised);
+  --ring:                 var(--color-primary);
+  --radius:               0.5rem;
 }
 
-/* ── Smooth theme toggle transition ──────────────────────────────────────── */
-/* Applied to all elements so the dark↔light toggle feels polished. */
-* {
-  transition-property: background-color, border-color, color;
-  transition-duration: 200ms;
-  transition-timing-function: ease;
-}
-
-/* Disable all transitions/animations for users who prefer reduced motion (WCAG 2.3.3) */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition: none !important;
-    animation: none !important;
-  }
-}
-
+/* ── Tailwind theme aliases ────────────────────────────────────────────────── */
 @theme inline {
   --color-primary:        var(--color-primary);
   --color-primary-hover:  var(--color-primary-hover);
@@ -98,6 +132,34 @@
   --shadow-card:          var(--shadow-card);
   --font-sans:            var(--font-sans);
   --font-mono:            var(--font-mono);
+  /* shadcn bridge aliases — lets shadcn component classes resolve in Tailwind */
+  --color-foreground:     var(--foreground);
+  --color-card:           var(--card);
+  --color-popover:        var(--popover);
+  --color-destructive:    var(--destructive);
+  --color-ring:           var(--ring);
+  --color-input:          var(--input);
+  --color-accent:         var(--accent);
+  --color-secondary:      var(--secondary);
+  --radius-sm:            calc(var(--radius) * 0.6);
+  --radius-md:            calc(var(--radius) * 0.8);
+  --radius-lg:            var(--radius);
+}
+
+/* ── Smooth theme toggle transition ──────────────────────────────────────── */
+/* Applied to all elements so the dark↔light toggle feels polished. */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 200ms;
+  transition-timing-function: ease;
+}
+
+/* Disable all transitions/animations for users who prefer reduced motion (WCAG 2.3.3) */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 body {
