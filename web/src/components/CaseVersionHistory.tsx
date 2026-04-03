@@ -18,8 +18,8 @@ function formatRelativeTime(dateStr: string): string {
 
 function DiffRow({ label, oldVal, newVal }: { label: string; oldVal: string | null; newVal: string | null }) {
   return (
-    <div className="rounded-lg border border-slate-200 p-3">
-      <div className="mb-1 text-xs font-medium text-slate-500">{label}</div>
+    <div className="rounded-lg border border-border p-3">
+      <div className="mb-1 text-xs font-medium text-muted">{label}</div>
       <div className="flex gap-4">
         <div className="flex-1 rounded bg-red-50 px-2 py-1 text-sm line-through">{oldVal || "(empty)"}</div>
         <div className="flex-1 rounded bg-green-50 px-2 py-1 text-sm">{newVal || "(empty)"}</div>
@@ -33,8 +33,8 @@ type StepSnapshot = { content: string; expected: string | null; sortOrder: numbe
 function StepsDiff({ oldSteps, newSteps }: { oldSteps: StepSnapshot[]; newSteps: StepSnapshot[] }) {
   const maxLen = Math.max(oldSteps.length, newSteps.length);
   return (
-    <div className="rounded-lg border border-slate-200 p-3">
-      <div className="mb-2 text-xs font-medium text-slate-500">Steps</div>
+    <div className="rounded-lg border border-border p-3">
+      <div className="mb-2 text-xs font-medium text-muted">Steps</div>
       <div className="space-y-1">
         {Array.from({ length: maxLen }, (_, i) => {
           const old = oldSteps[i];
@@ -51,7 +51,7 @@ function StepsDiff({ oldSteps, newSteps }: { oldSteps: StepSnapshot[]; newSteps:
                 removed ? "bg-red-50" : added ? "bg-green-50" : changed ? "bg-yellow-50" : ""
               }`}
             >
-              <span className="w-6 shrink-0 text-slate-400">{i + 1}.</span>
+              <span className="w-6 shrink-0 text-muted">{i + 1}.</span>
               <div className="flex-1">
                 {removed && <span className="line-through text-red-700">{old.content}</span>}
                 {added && <span className="text-green-700">{cur.content}</span>}
@@ -120,12 +120,12 @@ export function CaseVersionHistory({ caseId }: { caseId: string }) {
 
   return (
     <Card className="p-6">
-      <h3 className="mb-3 text-sm font-semibold text-slate-800">Version History</h3>
+      <h3 className="mb-3 text-sm font-semibold text-text">Version History</h3>
       <div className="space-y-1">
         {versions.map((v, idx) => {
           const versionNum = versions.length - idx;
           return (
-            <div key={v.id} className="flex items-center gap-3 rounded-lg border border-slate-100 px-3 py-2 text-sm">
+            <div key={v.id} className="flex items-center gap-3 rounded-lg border border-border px-3 py-2 text-sm">
               <input
                 type="radio"
                 name="diff-from"

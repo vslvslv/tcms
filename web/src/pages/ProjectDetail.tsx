@@ -276,7 +276,7 @@ export default function ProjectDetail() {
           <ul className="list-none p-0">
             {recentRuns.slice(0, 5).map((r) => (
               <li key={r.id} className="flex items-center gap-2 py-1.5">
-                <FolderOpen size={14} className="shrink-0 text-slate-400" />
+                <FolderOpen size={14} className="shrink-0 text-muted" />
                 <Link to={`/runs/${r.id}`} className="text-primary hover:underline">{r.name}</Link>
                 <span className="text-xs text-muted">
                   By {r.createdByName ?? "—"} on {r.createdAt ? new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: "short" }) : "—"}

@@ -207,7 +207,7 @@ export default function RunView() {
               {summary.passed > 0 && <div className="bg-success" style={{ width: `${total > 0 ? (summary.passed / total) * 100 : 0}%` }} />}
               {summary.failed > 0 && <div className="bg-error" style={{ width: `${total > 0 ? (summary.failed / total) * 100 : 0}%` }} />}
               {summary.blocked > 0 && <div className="bg-warning" style={{ width: `${total > 0 ? (summary.blocked / total) * 100 : 0}%` }} />}
-              {summary.skipped > 0 && <div className="bg-gray-400" style={{ width: `${total > 0 ? (summary.skipped / total) * 100 : 0}%` }} />}
+              {summary.skipped > 0 && <div className="bg-muted" style={{ width: `${total > 0 ? (summary.skipped / total) * 100 : 0}%` }} />}
               {summary.untested > 0 && <div className="bg-surface-raised" style={{ width: `${total > 0 ? (summary.untested / total) * 100 : 0}%` }} />}
             </div>
           </div>
