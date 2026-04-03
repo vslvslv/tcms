@@ -41,8 +41,8 @@ function statusDotClass(s: string): string {
     case "passed": return "bg-success";
     case "failed": return "bg-error";
     case "blocked": return "bg-warning";
-    case "skipped": return "bg-slate-400";
-    default: return "bg-slate-300";
+    case "skipped": return "bg-muted";
+    default: return "bg-surface-raised";
   }
 }
 

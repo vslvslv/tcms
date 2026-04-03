@@ -14,13 +14,21 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem("tcms-theme");
-    return stored === "light" ? "light" : "dark";
+    try {
+      const stored = localStorage.getItem("tcms-theme");
+      return stored === "light" ? "light" : "dark";
+    } catch {
+      return "dark";
+    }
   });
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("tcms-theme", theme);
+    try {
+      localStorage.setItem("tcms-theme", theme);
+    } catch {
+      // localStorage unavailable (e.g. iOS Safari private mode) — theme still applies
+    }
   }, [theme]);
 
   function toggleTheme() {

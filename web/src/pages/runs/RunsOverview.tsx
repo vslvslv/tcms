@@ -208,7 +208,7 @@ function RunCard({
                       <div className="bg-warning" style={{ width: `${(summary.blocked / total) * 100}%` }} />
                     )}
                     {summary.skipped > 0 && (
-                      <div className="bg-gray-400" style={{ width: `${(summary.skipped / total) * 100}%` }} />
+                      <div className="bg-muted" style={{ width: `${(summary.skipped / total) * 100}%` }} />
                     )}
                     {summary.untested > 0 && (
                       <div className="bg-surface-raised" style={{ width: `${(summary.untested / total) * 100}%` }} />

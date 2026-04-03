@@ -439,7 +439,7 @@ export default function CasesOverview() {
           ) : (
             <>
               <span className="font-medium text-text">{section.name}</span>
-              <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-xs font-medium tabular-nums text-muted">{count}</span>
+              <span className="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-medium tabular-nums text-muted">{count}</span>
               <div className="ml-auto flex items-center gap-0.5">
                 <button
                   type="button"
