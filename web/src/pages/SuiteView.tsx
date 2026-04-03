@@ -103,12 +103,12 @@ export default function SuiteView() {
         <Link to={`/sections/${section.id}/cases`} className="mr-2 font-medium text-primary hover:underline">{section.name}</Link>
         <Link to={`/sections/${section.id}/cases/new`} className="text-sm text-primary hover:underline">Add case</Link>
         {" · "}
-        <button type="button" className="text-sm text-gray-600 hover:underline" onClick={() => setAddingUnderParent(section.id)}>Add subsection</button>
+        <button type="button" className="text-sm text-muted hover:underline" onClick={() => setAddingUnderParent(section.id)}>Add subsection</button>
         {addingUnderParent === section.id && (
           <form onSubmit={addSubSection} className="mt-2 flex flex-wrap items-center gap-2">
-            <input value={subSectionName} onChange={(e) => setSubSectionName(e.target.value)} placeholder="Section name" className="rounded border border-gray-300 px-2 py-1 text-sm" />
+            <input value={subSectionName} onChange={(e) => setSubSectionName(e.target.value)} placeholder="Section name" className="rounded border border-border bg-surface-raised text-text px-2 py-1 text-sm" />
             <button type="submit" disabled={saving} className="rounded border border-primary bg-primary px-2 py-1 text-sm text-white hover:bg-primary-hover disabled:opacity-50">Add</button>
-            <button type="button" className="rounded border border-gray-300 px-2 py-1 text-sm hover:bg-gray-50" onClick={() => { setAddingUnderParent(null); setSubSectionName(""); }}>Cancel</button>
+            <button type="button" className="rounded border border-border bg-surface-raised px-2 py-1 text-sm hover:bg-surface-raised" onClick={() => { setAddingUnderParent(null); setSubSectionName(""); }}>Cancel</button>
           </form>
         )}
         {section.children.length > 0 && (
@@ -124,13 +124,13 @@ export default function SuiteView() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-2 text-xl font-semibold text-gray-900">{suite.name}</h1>
+      <h1 className="mb-2 text-xl font-semibold text-text font-mono">{suite.name}</h1>
       <p className="mb-6">
         <Link to={`/suites/${suiteId}/runs/new`} className="text-primary hover:underline">Create run</Link>
       </p>
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Sections</h2>
       <form onSubmit={addRootSection} className="mb-6 flex items-center gap-2">
-        <input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="New section name" className="w-48 rounded border border-gray-300 px-2 py-1.5 text-sm" />
+        <input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="New section name" className="w-48 rounded border border-border bg-surface-raised text-text px-2 py-1.5 text-sm" />
         <button type="submit" disabled={saving} className="rounded border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50">Add section</button>
       </form>
       <div className="rounded-lg border border-border bg-surface p-4">

@@ -65,7 +65,7 @@ export default function SectionCases() {
         >
           Export CSV
         </Button>
-        <span className="text-sm text-gray-600">Import CSV:</span>
+        <span className="text-sm text-muted">Import CSV:</span>
         <input
           type="file"
           accept=".csv"
@@ -101,7 +101,7 @@ export default function SectionCases() {
         />
         {templates.length > 0 && (
           <>
-            <span className="text-sm text-gray-600">New from template:</span>
+            <span className="text-sm text-muted">New from template:</span>
             <Select
               value=""
               onChange={(e) => {
@@ -118,7 +118,7 @@ export default function SectionCases() {
         )}
       </div>
       <div className="mb-2">
-        <label className="text-sm text-gray-600">
+        <label className="text-sm text-muted">
           Filter by status:{" "}
           <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="">All</option>
@@ -131,15 +131,15 @@ export default function SectionCases() {
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[400px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-border bg-gray-50">
-              <th className="px-3 py-2 text-left font-semibold text-gray-700">Title</th>
-              <th className="px-3 py-2 text-left font-semibold text-gray-700">Status</th>
-              <th className="w-20 px-3 py-2 text-right font-semibold text-gray-700">Actions</th>
+            <tr className="border-b border-border bg-surface-raised">
+              <th className="px-3 py-2 text-left font-semibold text-muted">Title</th>
+              <th className="px-3 py-2 text-left font-semibold text-muted">Status</th>
+              <th className="w-20 px-3 py-2 text-right font-semibold text-muted">Actions</th>
             </tr>
           </thead>
           <tbody>
             {cases.map((c) => (
-              <tr key={c.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+              <tr key={c.id} className="border-b border-border hover:bg-surface-raised/60">
                 <td className="px-3 py-2">
                   <Link to={`/cases/${c.id}/edit`} className="text-primary hover:underline">{c.title || "(Untitled)"}</Link>
                 </td>
@@ -147,7 +147,7 @@ export default function SectionCases() {
                   {c.status ? (
                     <StatusBadge status={c.status as "draft" | "ready" | "approved"} />
                   ) : (
-                    <span className="text-gray-400">—</span>
+                    <span className="text-muted">—</span>
                   )}
                 </td>
                 <td className="px-3 py-2 text-right">

@@ -17,8 +17,8 @@ function ChevronDown() {
 }
 
 const selectClasses = [
-  "w-full rounded-xl border border-border bg-surface pl-3 pr-10 py-2.5 text-sm text-gray-900",
-  "transition-shadow duration-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 focus:shadow-md",
+  "w-full rounded-lg border border-border bg-surface-raised pl-3 pr-10 py-2.5 text-sm text-text",
+  "transition-shadow duration-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:shadow-md",
   "disabled:cursor-not-allowed disabled:opacity-60",
   "appearance-none cursor-pointer",
 ].join(" ");
@@ -30,6 +30,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
         <select
           ref={ref}
           className={cn(selectClasses, className)}
+          style={{ colorScheme: "dark" }}
           {...props}
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">

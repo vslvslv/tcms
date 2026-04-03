@@ -380,12 +380,12 @@ export default function ProjectSettings() {
   const canManage = myRole === "admin" || myRole === "lead";
 
   return (
-    <div style={{ maxWidth: 700, margin: 0 }}>
-      <h1 style={{ margin: "0 0 8px 0" }}>Settings</h1>
-      <p style={{ margin: "0 0 24px 0" }}>
-        <Link to={`/projects/${projectId}`}>← {project.name}</Link>
+    <div className="max-w-2xl text-text">
+      <h1 className="mb-2 font-mono text-xl font-semibold text-text">Settings</h1>
+      <p className="mb-6 text-sm text-muted">
+        <Link to={`/projects/${projectId}`} className="text-primary hover:underline">← {project.name}</Link>
       </p>
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="mb-4 text-sm text-error">{error}</p>}
 
       <section style={{ marginBottom: 32 }}>
         <h3>Case types</h3>

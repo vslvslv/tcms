@@ -47,11 +47,11 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-raised px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
           <div className="mb-8 text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">TCMS</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-text font-mono">TCMS</h1>
             <p className="mt-1 text-sm text-muted">Test Case Management System</p>
           </div>
           <form onSubmit={handleSubmit} className="space-y-5" data-testid="login-form">
@@ -92,13 +92,13 @@ export default function Login() {
             </SubmitButton>
           </form>
           <div className="my-5 flex items-center gap-3">
-            <div className="h-px flex-1 bg-gray-200" />
+            <div className="h-px flex-1 bg-border" />
             <span className="text-xs text-muted">or</span>
-            <div className="h-px flex-1 bg-gray-200" />
+            <div className="h-px flex-1 bg-border" />
           </div>
           <a
             href={`${import.meta.env.VITE_API_URL ?? "http://localhost:3001"}/api/auth/oauth/google/authorize`}
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-100"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -108,13 +108,13 @@ export default function Login() {
             </svg>
             Sign in with Google
           </a>
-          <p className="mt-6 text-center text-sm text-gray-600">
-            Don’t have an account?{" "}
+          <p className="mt-6 text-center text-sm text-muted">
+            Don't have an account?{" "}
             <Link to="/register" className="font-medium text-primary hover:underline">
               Register
             </Link>
           </p>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-muted">
             <Link to="/reset-password" className="font-medium text-primary hover:underline">
               Forgot password?
             </Link>

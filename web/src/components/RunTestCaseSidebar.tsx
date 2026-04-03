@@ -28,19 +28,19 @@ const STATUSES = ["passed", "failed", "blocked", "skipped", "untested"] as const
 
 function statusBadgeClass(s: string): string {
   switch (s) {
-    case "passed": return "bg-emerald-100 text-emerald-800";
-    case "failed": return "bg-red-100 text-red-800";
-    case "blocked": return "bg-amber-100 text-amber-800";
-    case "skipped": return "bg-slate-100 text-slate-600";
-    default: return "bg-slate-100 text-slate-500";
+    case "passed": return "bg-success/20 text-success";
+    case "failed": return "bg-error/20 text-error";
+    case "blocked": return "bg-warning/20 text-warning";
+    case "skipped": return "bg-surface-raised text-muted";
+    default: return "bg-surface-raised text-muted";
   }
 }
 
 function statusDotClass(s: string): string {
   switch (s) {
-    case "passed": return "bg-emerald-500";
-    case "failed": return "bg-red-500";
-    case "blocked": return "bg-amber-500";
+    case "passed": return "bg-success";
+    case "failed": return "bg-error";
+    case "blocked": return "bg-warning";
     case "skipped": return "bg-slate-400";
     default: return "bg-slate-300";
   }
@@ -192,27 +192,27 @@ export function RunTestCaseSidebar({
   const caseIdShort = test.testCaseId.slice(0, 8).toUpperCase();
 
   return (
-    <div className="flex h-full flex-col border-l border-slate-200 bg-white shadow-lg">
+    <div className="flex h-full flex-col border-l border-border bg-surface shadow-lg">
       {/* Header */}
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-surface-raised/40 px-4 py-3">
         <div className="min-w-0 flex-1 flex items-center gap-2">
           <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", statusDotClass(status))} aria-hidden />
           <span className="inline-flex shrink-0 rounded bg-violet-100 px-2 py-0.5 font-mono text-xs font-medium text-violet-800">
             {caseIdShort}
           </span>
-          <span className="truncate text-sm font-medium text-slate-900">{test.caseTitle}</span>
+          <span className="truncate text-sm font-medium text-text">{test.caseTitle}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Link
             to={`/cases/${test.testCaseId}/edit`}
-            className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-1 rounded border border-border bg-surface-raised px-2 py-1.5 text-xs font-medium text-muted hover:bg-surface-raised"
           >
             <span aria-hidden>✎</span> Edit
           </Link>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+            className="rounded p-1.5 text-muted hover:bg-surface-raised hover:text-text"
             aria-label="Close"
           >
             ×
@@ -229,23 +229,23 @@ export function RunTestCaseSidebar({
         ) : (
           <>
             {/* Preconditions & Steps */}
-            <div className="border-b border-slate-200 p-4">
+            <div className="border-b border-border p-4">
               {caseData?.prerequisite && (
                 <div className="mb-4">
-                  <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Preconditions</h4>
-                  <div className="whitespace-pre-wrap text-sm text-slate-700">{caseData.prerequisite}</div>
+                  <h4 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">Preconditions</h4>
+                  <div className="whitespace-pre-wrap text-sm text-muted">{caseData.prerequisite}</div>
                 </div>
               )}
               {steps.length > 0 && (
                 <div>
-                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Steps</h4>
+                  <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Steps</h4>
                   <div className="space-y-3">
                     {steps.map((step, i) => (
-                      <div key={step.id} className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
-                        <div className="mb-1 text-xs font-medium text-slate-500">Step {i + 1}</div>
-                        <div className="text-sm text-slate-800">{step.content}</div>
+                      <div key={step.id} className="rounded-lg border border-border bg-surface-raised/40 p-2.5">
+                        <div className="mb-1 text-xs font-medium text-muted">Step {i + 1}</div>
+                        <div className="text-sm text-text">{step.content}</div>
                         {step.expected && (
-                          <div className="mt-1 text-xs text-slate-600">Expected: {step.expected}</div>
+                          <div className="mt-1 text-xs text-muted">Expected: {step.expected}</div>
                         )}
                       </div>
                     ))}
@@ -253,12 +253,12 @@ export function RunTestCaseSidebar({
                 </div>
               )}
               {!caseData?.prerequisite && steps.length === 0 && (
-                <p className="text-sm text-slate-500">No preconditions or steps defined.</p>
+                <p className="text-sm text-muted">No preconditions or steps defined.</p>
               )}
             </div>
 
             {/* Tabs */}
-            <div className="border-b border-slate-200">
+            <div className="border-b border-border">
               <div className="flex gap-0">
                 {(["results", "history", "defects"] as const).map((tab) => (
                   <button
@@ -269,7 +269,7 @@ export function RunTestCaseSidebar({
                       "px-4 py-2.5 text-xs font-medium",
                       activeTab === tab
                         ? "border-b-2 border-primary text-primary"
-                        : "text-slate-500 hover:text-slate-700"
+                        : "text-muted hover:text-text"
                     )}
                   >
                     {tab === "results" && "Results & Comments"}
@@ -283,23 +283,23 @@ export function RunTestCaseSidebar({
             <div className="p-4">
               {activeTab === "results" && (
                 <>
-                  {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+                  {error && <p className="mb-2 text-sm text-error">{error}</p>}
                   <div className="mb-4">
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Comment</label>
+                    <label className="mb-1 block text-xs font-medium text-muted">Comment</label>
                     <textarea
                       value={resultComment}
                       onChange={(e) => setResultComment(e.target.value)}
                       rows={3}
-                      className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-full resize-y rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                       placeholder="Add a comment for this result…"
                     />
                   </div>
                   <div className="mb-4">
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Status</label>
+                    <label className="mb-1 block text-xs font-medium text-muted">Status</label>
                     <select
                       value={resultStatus}
                       onChange={(e) => setResultStatus(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     >
                       {STATUSES.map((s) => (
                         <option key={s} value={s}>{s}</option>
@@ -307,30 +307,30 @@ export function RunTestCaseSidebar({
                     </select>
                   </div>
                   <div className="mb-4">
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Elapsed (seconds)</label>
+                    <label className="mb-1 block text-xs font-medium text-muted">Elapsed (seconds)</label>
                     <input
                       type="number"
                       min={0}
                       value={resultElapsed}
                       onChange={(e) => setResultElapsed(e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
-                  <h4 className="mb-2 text-xs font-semibold text-slate-700">Result history</h4>
+                  <h4 className="mb-2 text-xs font-semibold text-muted">Result history</h4>
                   <ul className="mb-4 list-none space-y-2 p-0">
                     {resultHistory.slice(0, 10).map((r) => (
-                      <li key={r.id} className="flex flex-wrap items-start gap-2 rounded border border-slate-100 bg-slate-50/50 p-2 text-xs">
+                      <li key={r.id} className="flex flex-wrap items-start gap-2 rounded border border-border bg-surface-raised/40 p-2 text-xs">
                         <span className={cn("inline-flex rounded px-1.5 py-0.5 font-medium", statusBadgeClass(r.status))}>
                           {r.status}
                         </span>
-                        <span className="text-slate-500">
+                        <span className="text-muted">
                           {new Date(r.createdAt).toLocaleString()} · {r.createdBy.slice(0, 8)}
                         </span>
-                        {r.comment && <span className="w-full text-slate-600">{r.comment}</span>}
+                        {r.comment && <span className="w-full text-muted">{r.comment}</span>}
                       </li>
                     ))}
                     {resultHistory.length === 0 && (
-                      <li className="text-slate-500">No results yet for this test.</li>
+                      <li className="text-muted">No results yet for this test.</li>
                     )}
                   </ul>
                 </>
@@ -342,9 +342,9 @@ export function RunTestCaseSidebar({
                       <LoadingSpinner />
                     </div>
                   ) : caseVersions.length === 0 ? (
-                    <p className="text-sm text-slate-500">No version history for this case yet.</p>
+                    <p className="text-sm text-muted">No version history for this case yet.</p>
                   ) : (
-                    <div className="overflow-x-auto rounded-lg border border-slate-200">
+                    <div className="overflow-x-auto rounded-lg border border-border">
                       <Table>
                         <TableHead>
                           <TableHeaderRow>
@@ -357,12 +357,12 @@ export function RunTestCaseSidebar({
                         <TableBody>
                           {caseVersions.map((v) => (
                             <TableRow key={v.id}>
-                              <TableCell className="font-mono text-xs text-slate-600">{v.id.slice(0, 8)}</TableCell>
-                              <TableCell className="text-xs text-slate-700">
+                              <TableCell className="font-mono text-xs text-muted">{v.id.slice(0, 8)}</TableCell>
+                              <TableCell className="text-xs text-text">
                                 {new Date(v.createdAt).toLocaleString()}
                               </TableCell>
-                              <TableCell className="text-xs text-slate-600">{v.createdBy.slice(0, 8)}</TableCell>
-                              <TableCell className="max-w-[120px] truncate text-xs text-slate-700" title={v.title}>
+                              <TableCell className="text-xs text-muted">{v.createdBy.slice(0, 8)}</TableCell>
+                              <TableCell className="max-w-[120px] truncate text-xs text-text" title={v.title}>
                                 {v.title}
                               </TableCell>
                             </TableRow>
@@ -377,14 +377,14 @@ export function RunTestCaseSidebar({
                 <>
                   <ul className="mb-3 list-none space-y-1.5 p-0">
                     {resultIssueLinks.map((l) => (
-                      <li key={l.id} className="flex items-center justify-between gap-2 rounded border border-slate-100 bg-slate-50/50 px-2 py-1.5 text-sm">
+                      <li key={l.id} className="flex items-center justify-between gap-2 rounded border border-border bg-surface-raised/40 px-2 py-1.5 text-sm">
                         <a href={l.url} target="_blank" rel="noopener noreferrer" className="truncate text-primary hover:underline">
                           {l.title || l.url}
                         </a>
                         <button
                           type="button"
                           onClick={() => removeResultIssueLink(l.id)}
-                          className="shrink-0 text-slate-500 hover:text-red-600"
+                          className="shrink-0 text-muted hover:text-error"
                         >
                           Remove
                         </button>
@@ -397,13 +397,13 @@ export function RunTestCaseSidebar({
                       onChange={(e) => setNewIssueUrl(e.target.value)}
                       placeholder="Defect URL"
                       required
-                      className="min-w-[160px] flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                      className="min-w-[160px] flex-1 rounded-lg border border-border bg-surface-raised text-text px-2 py-1.5 text-sm"
                     />
                     <input
                       value={newIssueTitle}
                       onChange={(e) => setNewIssueTitle(e.target.value)}
                       placeholder="Title (optional)"
-                      className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                      className="rounded-lg border border-border bg-surface-raised text-text px-2 py-1.5 text-sm"
                     />
                     <Button type="submit" variant="primary">Add link</Button>
                   </form>
@@ -415,14 +415,14 @@ export function RunTestCaseSidebar({
 
         {/* Attachments for the latest result */}
         {latestResultId && (
-          <div className="mt-3 border-t border-slate-100 pt-3">
+          <div className="mt-3 border-t border-border pt-3">
             <AttachmentPanel entityType="result" entityId={latestResultId} />
           </div>
         )}
       </div>
 
       {/* Sticky footer */}
-      <div className="shrink-0 border-t border-slate-200 bg-slate-50/80 p-3">
+      <div className="shrink-0 border-t border-border bg-surface-raised/40 p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -443,7 +443,7 @@ export function RunTestCaseSidebar({
               ✓ Pass & Next
             </Button>
             <select
-              className="rounded-r-lg border border-l-0 border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-700 focus:outline-none"
+              className="rounded-r-lg border border-l-0 border-border bg-surface-raised px-2 py-1.5 text-sm text-muted focus:outline-none"
               onChange={(e) => {
                 const v = e.target.value;
                 if (v) submitResult(v as typeof STATUSES[number], true);
@@ -457,7 +457,7 @@ export function RunTestCaseSidebar({
               <option value="skipped">Skip & Next</option>
             </select>
           </div>
-          <Button type="button" variant="secondary" className="text-slate-600">
+          <Button type="button" variant="secondary" className="text-muted">
             Assign To
           </Button>
         </div>

@@ -124,16 +124,16 @@ export default function Projects() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[500px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-border bg-gray-50">
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Name</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Description</th>
-                  <th className="px-4 py-3 text-left font-semibold text-gray-700">Updated</th>
-                  <th className="w-28 px-4 py-3 text-right font-semibold text-gray-700">Actions</th>
+                <tr className="border-b border-border bg-surface-raised">
+                  <th className="px-4 py-3 text-left font-semibold text-muted">Name</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted">Description</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted">Updated</th>
+                  <th className="w-28 px-4 py-3 text-right font-semibold text-muted">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {projects.map((p) => (
-                  <tr key={p.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/50">
+                  <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface-raised/60 transition-colors duration-150">
                     <td className="px-4 py-3">
                       <Link to={`/projects/${p.id}`} className="font-medium text-primary hover:underline">
                         {p.name}
@@ -150,7 +150,7 @@ export default function Projects() {
                       >
                         View
                       </Link>
-                      <span className="mx-2 text-gray-300">·</span>
+                      <span className="mx-2 text-border">·</span>
                       <Link
                         to={`/projects/${p.id}/settings`}
                         className="text-muted hover:underline"

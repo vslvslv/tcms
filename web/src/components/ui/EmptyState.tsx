@@ -11,7 +11,7 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-gray-50/50 py-12 text-center", className)}>
+    <div className={cn("flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-surface-raised/30 py-12 text-center", className)}>
       <p className="text-muted">{message}</p>
       {action && <div className="mt-4">{action}</div>}
     </div>

@@ -32,7 +32,7 @@ function runsByDay(runs: { createdAt?: string }[]): Map<string, number> {
   return byDate;
 }
 
-const CHART_COLORS = ["#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe", "#eff6ff"];
+const CHART_COLORS = ["#22C55E", "#34D399", "#6EE7B7", "#A7F3D0", "#BBF7D0", "#D1FAE5", "#ECFDF5"];
 
 export default function ProjectDetail() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -199,19 +199,19 @@ export default function ProjectDetail() {
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
               <XAxis
                 dataKey="displayDate"
-                tick={{ fontSize: 11, fill: "#6b7280" }}
-                axisLine={{ stroke: "#e5e7eb" }}
+                tick={{ fontSize: 11, fill: "#94A3B8" }}
+                axisLine={{ stroke: "rgba(71,85,105,0.5)" }}
                 tickLine={false}
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fontSize: 11, fill: "#6b7280" }}
+                tick={{ fontSize: 11, fill: "#94A3B8" }}
                 axisLine={false}
                 tickLine={false}
                 width={28}
               />
               <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                contentStyle={{ borderRadius: 8, border: "1px solid rgba(71,85,105,0.5)", background: "#1E293B", color: "#F1F5F9", fontSize: 12 }}
                 labelFormatter={(_, payload) => payload[0]?.payload?.displayDate ?? ""}
                 formatter={(value: number | undefined) => [`${value ?? 0} run${(value ?? 0) !== 1 ? "s" : ""}`, "Runs"]}
               />
@@ -233,12 +233,12 @@ export default function ProjectDetail() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Milestones</h2>
           </div>
           {showNewMilestone && (
-            <form onSubmit={createMilestone} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-gray-50 p-4">
+            <form onSubmit={createMilestone} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-surface-raised p-4">
               <label className="flex items-center gap-2">
-                Name <input value={newMilestoneName} onChange={(e) => setNewMilestoneName(e.target.value)} required className="rounded border border-gray-300 px-2 py-1 text-sm" />
+                Name <input value={newMilestoneName} onChange={(e) => setNewMilestoneName(e.target.value)} required className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
               </label>
               <label className="flex items-center gap-2">
-                Due date <input type="date" value={newMilestoneDue} onChange={(e) => setNewMilestoneDue(e.target.value)} className="rounded border border-gray-300 px-2 py-1 text-sm" />
+                Due date <input type="date" value={newMilestoneDue} onChange={(e) => setNewMilestoneDue(e.target.value)} className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
               </label>
               <Button type="submit" variant="primary" disabled={saving}>Create</Button>
               <Button type="button" onClick={() => { setShowNewMilestone(false); setNewMilestoneName(""); setNewMilestoneDue(""); }}>Cancel</Button>
@@ -297,7 +297,7 @@ export default function ProjectDetail() {
         {auditLog.length > 0 ? (
           <ul className="list-none space-y-2 p-0">
             {auditLog.map((entry) => (
-              <li key={entry.id} className="flex flex-wrap items-center gap-2 rounded border border-gray-100 bg-gray-50/50 px-2 py-1.5 text-sm">
+              <li key={entry.id} className="flex flex-wrap items-center gap-2 rounded border border-border bg-surface-raised/40 px-2 py-1.5 text-sm">
                 <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{entry.entityType}</span>
                 {entry.action} · {new Date(entry.createdAt).toLocaleString()} · {entry.userId.slice(0, 8)}
               </li>
@@ -306,7 +306,7 @@ export default function ProjectDetail() {
         ) : (
           <ul className="list-none space-y-2 p-0">
             {activityFromRuns.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-2 rounded border border-gray-100 bg-gray-50/50 px-2 py-1.5 text-sm">
+              <li key={a.id} className="flex flex-wrap items-center gap-2 rounded border border-border bg-surface-raised/40 px-2 py-1.5 text-sm">
                 <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">Test Run</span>
                 {a.description} · {new Date(a.date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })} · {a.by}
               </li>
@@ -324,9 +324,9 @@ export default function ProjectDetail() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Suites</h2>
           </div>
           {showNewSuite && (
-            <form onSubmit={createSuite} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-gray-50 p-4">
+            <form onSubmit={createSuite} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-surface-raised p-4">
               <label className="flex items-center gap-2">
-                Name <input value={newSuiteName} onChange={(e) => setNewSuiteName(e.target.value)} required className="rounded border border-gray-300 px-2 py-1 text-sm" />
+                Name <input value={newSuiteName} onChange={(e) => setNewSuiteName(e.target.value)} required className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
               </label>
               <Button type="submit" variant="primary" disabled={saving}>Create</Button>
               <Button type="button" onClick={() => { setShowNewSuite(false); setNewSuiteName(""); }}>Cancel</Button>
@@ -349,9 +349,9 @@ export default function ProjectDetail() {
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Test plans</h2>
           </div>
           {showNewPlan && (
-            <form onSubmit={createPlan} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-gray-50 p-4">
+            <form onSubmit={createPlan} className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-surface-raised p-4">
               <label className="flex items-center gap-2">
-                Name <input value={newPlanName} onChange={(e) => setNewPlanName(e.target.value)} required className="rounded border border-gray-300 px-2 py-1 text-sm" />
+                Name <input value={newPlanName} onChange={(e) => setNewPlanName(e.target.value)} required className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
               </label>
               <label className="flex items-center gap-2">
                 Milestone

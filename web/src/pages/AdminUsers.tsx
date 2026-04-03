@@ -59,28 +59,28 @@ export default function AdminUsers() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Joined</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500">Actions</th>
+              <tr className="border-b border-border bg-surface-raised">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted">Role</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted">Joined</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted">Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                <tr key={u.id} className="border-b border-border hover:bg-surface-raised/60 transition-colors duration-150">
                   <td className="px-4 py-3 font-medium">{u.name}</td>
                   <td className="px-4 py-3 text-muted">{u.email}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
-                      u.globalRole === "admin" ? "bg-violet-100 text-violet-800" : "bg-slate-100 text-slate-700"
+                      u.globalRole === "admin" ? "bg-primary/20 text-primary" : "bg-surface-raised text-muted"
                     }`}>{u.globalRole}</span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
-                      u.isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                      u.isActive ? "bg-success/20 text-success" : "bg-error/20 text-error"
                     }`}>{u.isActive ? "Active" : "Deactivated"}</span>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>

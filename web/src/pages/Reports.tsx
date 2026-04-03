@@ -25,7 +25,7 @@ function groupRunsByDate(runs: { createdAt: string }[]): { date: string; count: 
     .map(([date, count]) => ({ date, count }));
 }
 
-const PIE_COLORS = ["#2563eb", "#16a34a", "#d97706", "#6b7280", "#dc2626"];
+const PIE_COLORS = ["#22C55E", "#34D399", "#F59E0B", "#94A3B8", "#EF4444"];
 
 export default function Reports() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -57,7 +57,7 @@ export default function Reports() {
   return (
     <div className="max-w-4xl">
       <PageTitle className="mb-6">Reports</PageTitle>
-      <p className="mb-6 text-gray-600">Overview of your projects and recent activity.</p>
+      <p className="mb-6 text-muted">Overview of your projects and recent activity.</p>
 
       {overviewPieData.length > 0 && (
         <Card className="mb-6">
@@ -70,7 +70,7 @@ export default function Reports() {
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={{ background: "#1E293B", color: "#F1F5F9", border: "1px solid rgba(71,85,105,0.5)" }} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -84,10 +84,10 @@ export default function Reports() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={activityData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#2563eb" radius={[2, 2, 0, 0]} />
+                <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94A3B8" }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94A3B8" }} />
+                <Tooltip contentStyle={{ background: "#1E293B", color: "#F1F5F9", border: "1px solid rgba(71,85,105,0.5)" }} />
+                <Bar dataKey="count" fill="#22C55E" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

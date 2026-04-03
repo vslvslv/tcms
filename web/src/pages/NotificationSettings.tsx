@@ -46,7 +46,7 @@ export default function NotificationSettings() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-1 text-2xl font-bold text-gray-900">Notification Settings</h1>
+      <h1 className="mb-1 text-2xl font-bold text-text font-mono">Notification Settings</h1>
       <p className="mb-6 text-sm text-muted">
         Choose which events trigger email notifications. SMTP must be configured on the server.
       </p>
@@ -57,7 +57,7 @@ export default function NotificationSettings() {
             className="flex items-center justify-between border-b border-border px-5 py-4 last:border-b-0"
           >
             <div>
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-text">
                 {EVENT_LABELS[pref.event] ?? pref.event}
               </p>
               <p className="text-xs text-muted">{pref.event}</p>
@@ -69,7 +69,7 @@ export default function NotificationSettings() {
               disabled={saving === pref.event}
               onClick={() => toggle(pref.event, !pref.enabled)}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-                pref.enabled ? "bg-primary" : "bg-gray-300"
+                pref.enabled ? "bg-primary" : "bg-surface-raised"
               } ${saving === pref.event ? "opacity-50" : ""}`}
             >
               <span

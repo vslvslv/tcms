@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { Outlet, Link, useNavigate, useParams, useLocation } from "react-router-dom";
-import { LayoutDashboard, ListTodo, FolderOpen, FlaskConical, Flag, BarChart2, ChevronRight, Shield } from "lucide-react";
+import { LayoutDashboard, ListTodo, FolderOpen, FlaskConical, Flag, BarChart2, ChevronRight, Shield, Menu, X, Sun, Moon } from "lucide-react";
 import { useAuth } from "../AuthContext";
 import { useProject } from "../ProjectContext";
+import { useTheme } from "../ThemeContext";
 import { api, type Project } from "../api";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Button } from "./ui/Button";
@@ -58,9 +59,9 @@ function SidebarNav({
   const completedCount = projectRuns.filter((r) => r.isCompleted).length;
 
   const linkClass = (active: boolean) =>
-    `block rounded px-3 py-2 text-sm no-underline ${active ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`;
+    `block rounded px-3 py-2 text-sm no-underline transition-colors duration-150 ${active ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`;
   const subLinkClass = (active: boolean) =>
-    `block rounded py-1.5 pl-8 pr-3 text-sm no-underline ${active ? "font-medium text-primary" : "text-muted hover:bg-gray-100 hover:text-gray-900"}`;
+    `block rounded py-1.5 pl-8 pr-3 text-sm no-underline transition-colors duration-150 ${active ? "font-medium text-primary bg-primary/10" : "text-muted hover:bg-surface-raised hover:text-text"}`;
 
   const toggle = (section: NavSection) => setExpanded((s) => (s === section ? null : section));
 
@@ -72,23 +73,23 @@ function SidebarNav({
         <Link
           to={`/projects/${projectId}`}
           onClick={onNavigate}
-          className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline ${isProjectOverview ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline transition-colors duration-150 ${isProjectOverview ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
         >
           <LayoutDashboard size={iconSize} className="shrink-0" />
           Overview
         </Link>
       )}
-      <span className="flex items-center gap-2 rounded px-3 py-2 text-sm text-gray-400 cursor-not-allowed" aria-disabled="true" title="To Do is being refactored">
+      <span className="flex items-center gap-2 rounded px-3 py-2 text-sm text-muted/50 cursor-not-allowed" aria-disabled="true" title="To Do is being refactored">
         <ListTodo size={iconSize} className="shrink-0" />
         To Do
       </span>
 
-      {/* Cases — sub-menu: Overview, Details, Status, Defects (TestRail 9.0) */}
+      {/* Cases — sub-menu */}
       <div className="mt-0.5">
         <button
           type="button"
           onClick={() => toggle("cases")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${(path.startsWith("/projects") && !path.includes("/settings")) || path.startsWith("/cases/") ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${(path.startsWith("/projects") && !path.includes("/settings")) || path.startsWith("/cases/") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
           aria-expanded={expanded === "cases"}
         >
           <span className="flex items-center gap-2">
@@ -115,12 +116,12 @@ function SidebarNav({
         )}
       </div>
 
-      {/* Test Runs & Results — sub-menu (TestRail-aligned) */}
+      {/* Test Runs & Results — sub-menu */}
       <div className="mt-0.5">
         <button
           type="button"
           onClick={() => toggle("runs")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${path.startsWith("/runs") ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${path.startsWith("/runs") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
           aria-expanded={expanded === "runs"}
         >
           <span className="flex items-center gap-2">
@@ -150,7 +151,6 @@ function SidebarNav({
                 </Link>
               </>
             )}
-            {/* Overview-only: Add buttons, summary, Group By / Order By */}
             {isRunsOverview && (
               <div className="mt-2 space-y-2 border-t border-border pt-2">
                 <div className="flex flex-col gap-1.5">
@@ -191,7 +191,7 @@ function SidebarNav({
         <button
           type="button"
           onClick={() => toggle("milestones")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm ${path.startsWith("/milestones") ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}
+          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${path.startsWith("/milestones") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
           aria-expanded={expanded === "milestones"}
         >
           <span className="flex items-center gap-2">
@@ -218,7 +218,7 @@ function SidebarNav({
         )}
       </div>
 
-      <Link to="/reports" onClick={onNavigate} className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline ${path === "/reports" ? "font-semibold text-gray-900 bg-gray-100" : "text-gray-700 hover:bg-gray-100"}`}>
+      <Link to="/reports" onClick={onNavigate} className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline transition-colors duration-150 ${path === "/reports" ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}>
         <BarChart2 size={iconSize} className="shrink-0" />
         Reports
       </Link>
@@ -229,6 +229,7 @@ function SidebarNav({
 export default function Layout() {
   const { user, logout } = useAuth();
   const { projectId, setProjectId } = useProject();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
@@ -280,41 +281,51 @@ export default function Layout() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-gray-50 px-4">
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-4">
         <div className="flex items-center gap-4">
           {showSidebar && (
             <button
               type="button"
               onClick={() => setSidebarOpen((o) => !o)}
-              className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded border border-border bg-surface text-gray-700 hover:bg-gray-100"
+              className="md:hidden inline-flex h-9 w-9 cursor-pointer items-center justify-center rounded border border-border bg-surface-raised text-text hover:bg-surface transition-colors duration-150"
               aria-label={sidebarOpen ? "Close menu" : "Open menu"}
               aria-expanded={sidebarOpen}
             >
-              <span className="text-lg">{sidebarOpen ? "×" : "☰"}</span>
+              {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           )}
-          <Link to="/dashboard" className="flex items-center gap-2 font-bold text-gray-900 no-underline hover:underline">
+          <Link to="/dashboard" className="flex items-center gap-2 font-mono font-bold text-text no-underline hover:text-primary transition-colors duration-150">
             <Shield size={20} className="text-primary" />
             TCMS
           </Link>
         </div>
-        <Dropdown
-          trigger={<>{user?.name ?? user?.email ?? "User"}</>}
-          align="right"
-          open={userMenuOpen}
-          onOpenChange={(open) => { setUserMenuOpen(open); if (open) { setProjectSwitcherOpen(false); } }}
-        >
-          <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/profile"); }}>Profile</DropdownItem>
-          <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/tokens"); }}>API Tokens</DropdownItem>
-          <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/notifications"); }}>Notifications</DropdownItem>
-          <DropdownItem onClick={() => { setUserMenuOpen(false); logout(); }}>Log out</DropdownItem>
-        </Dropdown>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded border border-border bg-surface-raised text-muted hover:text-text hover:bg-surface transition-colors duration-150"
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
+          <Dropdown
+            trigger={<>{user?.name ?? user?.email ?? "User"}</>}
+            align="right"
+            open={userMenuOpen}
+            onOpenChange={(open) => { setUserMenuOpen(open); if (open) { setProjectSwitcherOpen(false); } }}
+          >
+            <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/profile"); }}>Profile</DropdownItem>
+            <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/tokens"); }}>API Tokens</DropdownItem>
+            <DropdownItem onClick={() => { setUserMenuOpen(false); navigate("/notifications"); }}>Notifications</DropdownItem>
+            <DropdownItem onClick={() => { setUserMenuOpen(false); logout(); }}>Log out</DropdownItem>
+          </Dropdown>
+        </div>
       </header>
       <div className="relative flex flex-1 overflow-hidden">
         {showSidebar && (
           <>
             <aside
-              className={`fixed left-0 top-12 z-30 flex h-[calc(100vh-3rem)] w-52 flex-col overflow-y-auto border-r border-border bg-gray-50/95 backdrop-blur md:relative md:top-0 md:h-auto md:z-auto md:shrink-0 md:border-r md:bg-gray-50/80 ${
+              className={`fixed left-0 top-12 z-30 flex h-[calc(100vh-3rem)] w-52 flex-col overflow-y-auto border-r border-border bg-surface md:relative md:top-0 md:h-auto md:z-auto md:shrink-0 ${
                 sidebarOpen ? "block" : "hidden md:flex"
               }`}
               aria-label="Main navigation"
@@ -355,7 +366,7 @@ export default function Layout() {
               <SidebarNav location={location} onNavigate={closeSidebar} projectId={projectId} />
             </aside>
             {sidebarOpen && (
-              <div className="fixed inset-0 z-20 bg-black/20 md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+              <div className="fixed inset-0 z-20 bg-black/60 md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
             )}
           </>
         )}

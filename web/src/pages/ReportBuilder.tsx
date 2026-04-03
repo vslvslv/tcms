@@ -67,19 +67,19 @@ export default function ReportBuilder() {
       <Card className="mb-6 p-4">
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">From</label>
+            <label className="mb-1 block text-xs font-medium text-muted">From</label>
             <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              className="rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">To</label>
+            <label className="mb-1 block text-xs font-medium text-muted">To</label>
             <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              className="rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-600">Status</label>
+            <label className="mb-1 block text-xs font-medium text-muted">Status</label>
             <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              className="rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm">
               <option value="">All</option>
               <option value="passed">Passed</option>
               <option value="failed">Failed</option>
@@ -112,26 +112,26 @@ export default function ReportBuilder() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50">
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Case</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Run</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Status</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Comment</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Time</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">Date</th>
+                <tr className="border-b border-border bg-surface-raised">
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted">Case</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted">Run</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted">Status</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted">Comment</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted">Time</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold text-muted">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {results.map((r) => (
-                  <tr key={r.id} className="border-b border-slate-100 hover:bg-slate-50/50">
+                  <tr key={r.id} className="border-b border-border hover:bg-surface-raised/60">
                     <td className="px-3 py-2 font-medium">{r.caseTitle}</td>
                     <td className="px-3 py-2 text-muted">{r.runName}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${
-                        r.status === "passed" ? "bg-green-100 text-green-800" :
-                        r.status === "failed" ? "bg-red-100 text-red-800" :
-                        r.status === "blocked" ? "bg-yellow-100 text-yellow-800" :
-                        "bg-gray-100 text-gray-700"
+                        r.status === "passed" ? "bg-success/20 text-success" :
+                        r.status === "failed" ? "bg-error/20 text-error" :
+                        r.status === "blocked" ? "bg-warning/20 text-warning" :
+                        "bg-surface-raised text-muted"
                       }`}>{r.status}</span>
                     </td>
                     <td className="max-w-[200px] truncate px-3 py-2 text-muted">{r.comment ?? ""}</td>
@@ -142,7 +142,7 @@ export default function ReportBuilder() {
               </tbody>
             </table>
           </div>
-          <div className="border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs text-muted">
+          <div className="border-t border-border bg-surface-raised px-3 py-2 text-xs text-muted">
             {results.length} result{results.length !== 1 ? "s" : ""}{results.length === 500 ? " (max 500 shown)" : ""}
           </div>
         </Card>

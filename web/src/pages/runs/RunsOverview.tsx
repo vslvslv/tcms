@@ -196,7 +196,7 @@ function RunCard({
             </p>
             {total > 0 && (
               <div className="mt-2 flex items-center gap-2">
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-raised">
                   <div className="flex h-full">
                     {summary.passed > 0 && (
                       <div className="bg-success" style={{ width: `${(summary.passed / total) * 100}%` }} />
@@ -211,7 +211,7 @@ function RunCard({
                       <div className="bg-gray-400" style={{ width: `${(summary.skipped / total) * 100}%` }} />
                     )}
                     {summary.untested > 0 && (
-                      <div className="bg-gray-200" style={{ width: `${(summary.untested / total) * 100}%` }} />
+                      <div className="bg-surface-raised" style={{ width: `${(summary.untested / total) * 100}%` }} />
                     )}
                   </div>
                 </div>

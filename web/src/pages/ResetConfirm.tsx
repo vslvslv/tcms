@@ -39,11 +39,11 @@ export default function ResetConfirm() {
 
   if (success) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-surface-raised px-4 py-8">
         <div className="w-full max-w-sm">
           <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
-            <h2 className="mb-2 text-xl font-bold text-gray-900">Password Reset</h2>
-            <p className="text-sm text-green-600">
+            <h2 className="mb-2 text-xl font-bold text-text font-mono">Password Reset</h2>
+            <p className="text-sm text-success">
               Password reset successfully. Redirecting to login...
             </p>
           </div>
@@ -53,10 +53,10 @@ export default function ResetConfirm() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-surface-raised px-4 py-8">
       <div className="w-full max-w-sm">
         <div className="rounded-xl border border-border bg-surface p-8 shadow-card">
-          <h1 className="mb-6 text-xl font-bold text-gray-900">Set New Password</h1>
+          <h1 className="mb-6 text-xl font-bold text-text font-mono">Set New Password</h1>
           {error && (
             <div className="mb-4 rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-sm text-error" role="alert">
               {error}
@@ -90,7 +90,7 @@ export default function ResetConfirm() {
             </div>
             <SubmitButton className="w-full py-2.5 text-base">Reset Password</SubmitButton>
           </form>
-          <p className="mt-6 text-center text-sm text-gray-600">
+          <p className="mt-6 text-center text-sm text-muted">
             <Link to="/login" className="font-medium text-primary hover:underline">
               Back to login
             </Link>

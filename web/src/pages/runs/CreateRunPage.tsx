@@ -128,7 +128,7 @@ export default function CreateRunPage() {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="mt-1 w-full rounded border border-border px-2 py-1.5 text-sm focus:ring-2 focus:ring-primary"
+            className="mt-1 w-full rounded border border-border bg-surface-raised text-text px-2 py-1.5 text-sm focus:ring-2 focus:ring-primary"
           />
         </div>
         {plans.length > 0 && (

@@ -21,7 +21,7 @@ export function TableBody({ className, ...props }: HTMLAttributes<HTMLTableSecti
 export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={cn("border-b border-border last:border-0 hover:bg-gray-50/50", className)}
+      className={cn("border-b border-border last:border-0 hover:bg-surface-raised/60 transition-colors duration-150", className)}
       {...props}
     />
   );
@@ -30,7 +30,7 @@ export function TableRow({ className, ...props }: HTMLAttributes<HTMLTableRowEle
 export function TableHeaderRow({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) {
   return (
     <tr
-      className={cn("border-b border-border bg-gray-50", className)}
+      className={cn("border-b border-border bg-surface-raised", className)}
       {...props}
     />
   );
@@ -42,7 +42,7 @@ export function TableHeadCell({
 }: ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn("px-4 py-2 text-left font-semibold text-gray-700", className)}
+      className={cn("px-4 py-2 text-left font-semibold text-muted", className)}
       {...props}
     />
   );
