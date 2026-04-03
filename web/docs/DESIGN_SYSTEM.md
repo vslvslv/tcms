@@ -1,75 +1,196 @@
 # TCMS Design System
 
-This document describes the CSS strategy and design tokens used to keep the UI consistent across the application.
+Reference for the design token system, component library, testing infrastructure, and accessibility standards used in `web/`.
 
-## Theme tokens
+---
 
-Defined in `web/src/index.css` under `@theme`. Tailwind v4 turns these into utility classes.
+## Token System
 
-### Colors
+### Why oklch?
 
-| Token | Usage |
-|-------|--------|
-| `primary` / `primary-hover` | Links, primary buttons, active states, accents |
-| `success` | Success messages, approved status, positive feedback |
-| `error` | Errors, destructive actions, validation alerts |
-| `warning` | Warnings, caution states |
-| `muted` | Secondary text, placeholders, labels, disabled |
-| `background` | Page background |
-| `surface` | Cards, dropdowns, modals |
-| `border` | Borders (inputs, cards, dividers) |
+All color tokens use `oklch()` channel format (not hex). Reasons:
 
-Use semantic utilities: `text-primary`, `bg-primary`, `text-muted`, `border-border`, `bg-error/10`, etc. Prefer these over raw palette classes (`text-blue-600`, `text-gray-500`) so theming and consistency stay in one place.
+1. **shadcn/ui compatibility** — shadcn reads CSS vars as color channels; hex values produce invalid CSS when composed into `oklch()`/`hsl()` by shadcn primitives.
+2. **Predictable contrast** — oklch is perceptually uniform, so lightness values map directly to WCAG contrast ratios.
 
-### Other
+**Rule: never use hardcoded Tailwind palette classes in JSX** (e.g. `bg-slate-700`, `text-green-500`). The ESLint rule `no-restricted-syntax` in `eslint.config.js` enforces this at build time.
 
-| Token | Usage |
-|-------|--------|
-| `radius-card` | Card and panel corners → `rounded-card` |
-| `shadow-card` | Card shadow → `shadow-card` |
-| `font-sans` | Body font (via CSS variable in `body`) |
+Use design token classes instead: `bg-surface-raised`, `text-muted`, `border-border`, etc.
 
-## When to use what
+### Token Table
 
-- **Links (in-content)**: `text-primary hover:underline`. Global `<a>` in index.css already uses theme colors.
-- **Buttons**: Use `Button` / `SubmitButton` from `components/ui/Button` (variants: primary, secondary, ghost). They use theme tokens.
-- **Form fields**: Use `Input`, `Label`, and `Select` from `components/ui`. Input and Select use `border-border` and `focus:ring-primary`.
-- **Alerts**: Error: `border-error/30 bg-error/10 text-error`. Success: same pattern with `success`.
-- **Tables**: Shared header/row styles; use `border-border` for borders. Consider `Table` wrapper for new screens.
-- **Section headings**: Use `SectionHeading` from `components/ui/SectionHeading` (semantic, muted style).
-- **Status badges**: Use `StatusBadge` from `components/ui/StatusBadge` for case status (draft, ready, approved).
+| Token | Tailwind class | Dark value | Light value | Use |
+|-------|---------------|-----------|------------|-----|
+| `--color-background` | `bg-background` | `oklch(0.173 …)` | `oklch(0.985 …)` | Page background |
+| `--color-surface` | `bg-surface` | `oklch(0.233 …)` | `oklch(1 0 0)` | Card / panel |
+| `--color-surface-raised` | `bg-surface-raised` | `oklch(0.345 …)` | `oklch(0.968 …)` | Hover, table header |
+| `--color-border` | `border-border` | `oklch(0.484 … / 0.5)` | `oklch(0.928 …)` | Borders, dividers |
+| `--color-text` | `text-text` | `oklch(0.968 …)` | `oklch(0.173 …)` | Primary text |
+| `--color-muted` | `text-muted` | `oklch(0.678 …)` | `oklch(0.551 …)` | Secondary text |
+| `--color-primary` | `text-primary`, `bg-primary` | `oklch(0.723 …)` | `oklch(0.647 …)` | Brand green, links |
+| `--color-primary-hover` | `hover:bg-primary-hover` | `oklch(0.647 …)` | `oklch(0.596 …)` | Primary hover |
+| `--color-success` | `text-success` | same as primary | same as primary | Pass state |
+| `--color-error` | `text-error`, `bg-error` | `oklch(0.637 …)` | `oklch(0.577 …)` | Fail / destructive |
+| `--color-warning` | `text-warning` | `oklch(0.769 …)` | `oklch(0.717 …)` | Blocked state |
 
-## Shared components
+### Dark and Light Themes
 
-| Component | Path | Purpose |
-|-----------|------|---------|
-| Button / SubmitButton | `components/ui/Button` | Actions; use variant and optional className |
-| Card | `components/ui/Card` | Content containers |
-| Input | `components/ui/Input` | Text inputs with consistent focus style |
-| Label | `components/ui/Label` | Form labels |
-| Select | `components/ui/Select` | Native `<select>` with same border/focus as Input |
-| Dropdown | `components/ui/Dropdown` | Custom click-to-open menu or listbox (trigger + panel) |
-| DropdownItem | `components/ui/Dropdown` | Menu/list option inside Dropdown; use `role="option"` and `selected` for listbox |
-| SectionHeading | `components/ui/SectionHeading` | Section titles (muted, uppercase) |
-| StatusBadge | `components/ui/StatusBadge` | Case status (draft/ready/approved) |
-| PageTitle | `components/ui/PageTitle` | Page title (h1) |
-| EmptyState | `components/ui/EmptyState` | Empty list message + optional action |
-| Breadcrumb | `components/ui/Breadcrumb` | Breadcrumb navigation |
-| LoadingSpinner | `components/ui/LoadingSpinner` | Loading indicator |
-| AppLink | `components/ui/AppLink` | In-app link with primary style (wraps React Router `Link`) |
-| Table, TableHead, TableBody, TableRow, TableHeaderRow, TableHeadCell, TableCell | `components/ui/Table` | Consistent table layout and borders |
+Theme is controlled by the `data-theme` attribute on `<html>`:
 
-All UI components accept `className` for layout or one-off overrides; merge with base styles (e.g. using `cn()`).
+- `:root, [data-theme="dark"]` — default dark theme
+- `[data-theme="light"]` — light theme
 
-## Conventions
+`ThemeContext` manages the toggle and persists the preference to `localStorage` under key `tcms-theme`.
 
-1. **Prefer theme tokens and shared components** over raw Tailwind palette and duplicated class strings.
-2. **Use `cn()`** (from `lib/cn`) for conditional or merged class names so Tailwind classes combine correctly.
-3. **Single global stylesheet**: Tailwind and base styles live in `index.css`; no separate App.css.
-4. **New components**: Use theme utilities (`text-primary`, `border-border`, etc.) and accept `className` for overrides.
+All theme CSS lives in `src/index.css`. The `@theme inline {}` block forwards every TCMS token to Tailwind, making them available as utility classes.
 
-## Dropdowns
+### shadcn/ui Bridge
 
-- **Native choice lists**: Use `Select` for form dropdowns (e.g. project, status, priority). Same look as Input (border, focus ring).
-- **Custom menus**: Use `Dropdown` + `DropdownItem` for actions (e.g. Add menu, User menu) or single-choice lists (e.g. Project switcher). Behavior: overlay to close on outside click, Escape to close, optional `align="right"`, optional `panelMaxHeight="max-h-72"` for scrollable panels. Use `open` / `onOpenChange` for controlled mode.
-- **Consistency**: All dropdown panels use `border-border`, `bg-surface`, `shadow-lg`; items use `hover:bg-gray-100`; selected listbox option uses `bg-primary/10`.
+shadcn components expect generic CSS vars (`--background`, `--primary`, `--border`, etc.). Both theme blocks in `index.css` map these to TCMS tokens:
+
+```css
+--background:        var(--color-background);
+--foreground:        var(--color-text);
+--card:              var(--color-surface);
+--popover:           var(--color-surface);
+--primary:           var(--color-primary);
+--secondary:         var(--color-surface-raised);
+--muted-foreground:  var(--color-muted);
+--accent:            var(--color-surface-raised);
+--destructive:       var(--color-error);
+--border:            var(--color-border);
+--input:             var(--color-surface-raised);
+--ring:              var(--color-primary);
+```
+
+This means any shadcn primitive automatically picks up TCMS branding with zero per-component overrides.
+
+---
+
+## Component Library
+
+All UI primitives live in `src/components/ui/`. Two categories:
+
+- **TCMS primitives** — hand-rolled, use TCMS tokens directly
+- **shadcn primitives** — generated via `npx shadcn@latest add <name>`, use the bridge vars
+
+### TCMS Primitives
+
+| Component | File | Notes |
+|-----------|------|-------|
+| `Button` | `Button.tsx` | `variant`: `primary \| secondary \| ghost`; also exports `SubmitButton` |
+| `Card` | `Card.tsx` | `bg-surface` container with `shadow-card` |
+| `Input` | `Input.tsx` | Controlled text input |
+| `Select` | `Select.tsx` | Native `<select>` with token styling |
+| `Modal` | `Modal.tsx` | Radix Dialog under the hood |
+| `Table` / `TableRow` etc. | `Table.tsx` | Semantic table primitives |
+| `Badge` | `Badge.tsx` | Status chips |
+| `Tabs` | `Tabs.tsx` | `Tab` + `TabPanel` |
+| `LoadingSpinner` | `LoadingSpinner.tsx` | Centered spinner |
+| `PageTitle` | `PageTitle.tsx` | `<h1>` with margin |
+| `Dropdown` | `Dropdown.tsx` | Wraps `dropdown-menu.tsx`; preserves original `Dropdown`/`DropdownItem` API |
+
+### shadcn Primitives
+
+| Component | File | Notes |
+|-----------|------|-------|
+| `DropdownMenu` (and sub-exports) | `dropdown-menu.tsx` | Base UI `@base-ui/react/menu`; full keyboard nav |
+
+### Adding a New Component
+
+1. For a simple TCMS primitive, create `src/components/ui/MyComponent.tsx` using token classes only.
+2. For a complex interactive widget, run `npx shadcn@latest add <name>` from `web/`, then verify these files were not corrupted:
+   - `src/components/ui/Button.tsx` — must be the TCMS version (no `buttonVariants` export)
+   - `src/lib/utils.ts` — must re-export from `./cn`, not define its own `cn`
+   - `src/index.css` — must retain TCMS token blocks and shadcn bridge vars
+3. Never export non-component values (like `buttonVariants`) from a component file — this violates the `react-refresh/only-export-components` ESLint rule.
+
+---
+
+## Storybook
+
+Storybook 8 is configured in `.storybook/` with a Vite builder.
+
+```bash
+cd web
+npm run storybook          # Dev server on :6006
+npm run storybook:build    # Static build to storybook-static/
+```
+
+The `@storybook/addon-themes` addon adds a **Theme** dropdown in the toolbar so stories can be viewed in dark and light mode without code changes.
+
+The same ESLint palette guard runs on story files. Hardcoded palette classes in stories will fail the lint step.
+
+---
+
+## Testing
+
+### Visual Regression
+
+Dedicated Playwright config at repo root: `playwright.visual.config.ts`.
+
+```bash
+npm run test:visual          # Run visual snapshots (dark + light)
+npm run test:visual:update   # Update baselines
+```
+
+Specs live in `web/tests/visual/`. Snapshots are committed to `web/tests/visual/__snapshots__/` and compared on each run (`maxDiffPixelRatio: 0.02`).
+
+Setup: `web/tests/visual/visual.setup.ts` logs in as `admin@tcms.local` and saves auth state to `web/tests/visual/.auth/user.json` (gitignored).
+
+Theme injection for visual tests:
+```ts
+await page.addInitScript((theme) => {
+  localStorage.setItem("tcms-theme", theme);
+}, "dark"); // or "light"
+```
+
+### Accessibility Audit
+
+```bash
+npm run test:a11y
+```
+
+Spec: `web/tests/visual/a11y.spec.ts`. Uses `@axe-core/playwright` with tags `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`, `best-practice`. 5 pages audited in both dark and light themes. Violations are reported with impact level and target selector.
+
+### E2E
+
+Standard Playwright config at `playwright.config.ts`. See project `CLAUDE.md` for commands.
+
+---
+
+## Accessibility Standards
+
+| Feature | Implementation | Standard |
+|---------|---------------|----------|
+| Skip navigation | `<a href="#main-content">` in Layout header | WCAG 2.4.1 |
+| Focus trap (mobile drawer) | `<FocusScope trapped={sidebarOpen}>` from `@radix-ui/react-focus-scope` | WCAG 2.1.2 |
+| Focus return after drawer close | `hamburgerRef.current?.focus()` via `requestAnimationFrame` | WCAG 2.4.3 |
+| `aria-modal` on drawer | `aria-modal={sidebarOpen \|\| undefined}` on `<aside>` | ARIA 1.1 |
+| Body scroll lock | `document.body.style.overflow = "hidden"` when drawer open | UX best practice |
+| Reduced motion | `@media (prefers-reduced-motion: reduce) { * { transition: none !important } }` | WCAG 2.3.3 |
+| Keyboard shortcuts in RunView | `j`/`k` navigate, `p`/`f`/`b`/`s` set status, `n` next untested, `?` toggle help | RunView.tsx |
+| ARIA labels | `aria-label`, `aria-expanded`, `aria-controls` on interactive elements | WCAG 4.1.2 |
+
+### Dropdown Keyboard Behavior
+
+`dropdown-menu.tsx` uses `@base-ui/react/menu` which provides:
+
+- Arrow Up/Down to navigate items
+- Enter to select
+- Escape to close
+- Tab to exit and move focus forward
+
+---
+
+## shadcn/ui Usage Guidelines
+
+1. **Install via CLI only**: `npx shadcn@latest add <name>` from `web/`. Do not copy-paste shadcn source manually.
+2. **After every `shadcn add`**, verify these three files were not corrupted (shadcn sometimes regenerates them):
+   - `src/components/ui/Button.tsx` — must be the TCMS version (no `buttonVariants` export)
+   - `src/lib/utils.ts` — must re-export from `./cn`, not define its own `cn`
+   - `src/index.css` — must retain TCMS token blocks and shadcn bridge vars
+3. **Do not use shadcn's `@layer base`** block — it conflicts with TCMS body/html styles and the custom font setup.
+4. **Do not use shadcn's font imports** — TCMS uses IBM Plex Sans + JetBrains Mono via `--font-sans` / `--font-mono` tokens.
+5. **Path alias required**: `@/*` → `./src/*` must appear in both `tsconfig.json` (root) and `tsconfig.app.json`, plus `resolve.alias` in `vite.config.ts`. shadcn reads the root `tsconfig.json`.
+6. **`ignoreDeprecations: "5.0"`** is required in `tsconfig.app.json` to suppress the TypeScript `baseUrl` deprecation warning (TS 5.0+).
