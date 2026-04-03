@@ -14,6 +14,12 @@ build/
 # E2E auth state (sensitive)
 e2e/.auth/
 
+# Visual tests auth state and artifacts
+web/tests/visual/.auth/
+web/tests/visual/test-results/
+web/tests/visual/report/
+# Snapshots are committed — baselines live in __snapshots__/
+
 # Playwright
 e2e/test-results/
 playwright-report/

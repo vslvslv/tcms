@@ -4,9 +4,13 @@
   "scripts": {
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:visual": "playwright test --config=playwright.visual.config.ts --project visual-dark --project visual-light",
+    "test:visual:update": "playwright test --config=playwright.visual.config.ts --project visual-dark --project visual-light --update-snapshots",
+    "test:a11y": "playwright test --config=playwright.visual.config.ts --project a11y"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.49.0"
   }
 }
