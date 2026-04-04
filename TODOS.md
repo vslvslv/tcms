@@ -58,7 +58,28 @@ See BACKLOG.md for full list. High-value deferred items:
 
 ---
 
-## From /qa Sprint A (2026-04-04, sprint-03-04-26-1)
+## From /review Sprint A (2026-04-04, sprint-03-04-26-1)
+
+### Fixed by /review
+
+| Issue | Severity | Fix | Commit |
+|-------|----------|-----|--------|
+| AI insertion loop not transactional | Medium | Wrap case+step loop in `db.transaction()` | 94c684c |
+| Duplicate caseIds cause false "not found" | Low | Deduplicate with `new Set()` before `inArray()` check | 94c684c |
+| Bulk move/copy missing permission checks | Medium | Add `can("cases.edit")` on move, `can("cases.create")` on copy | 94c684c |
+| Delete as default bulk action — accidental data loss risk | Medium | Default changed to "move"; Delete moved to end of dropdown; `window.confirm` added | 94c684c |
+| Modal focus not restored after close | Low | Store trigger ref on open; restore in `onDialogClose` handler; improve aria-label | 94c684c |
+
+### Deferred (SHOULD-FIX / NICE-TO-HAVE)
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Bulk-copy memory at scale | SHOULD-FIX | 500 cases × 50 steps = ~25k rows in-heap. Fine for MVP; chunk if >1k cases/suite becomes realistic |
+| SuiteView: call `load()` after AI generation | SHOULD-FIX | Section tree doesn't refresh after cases added; add `load()` call after `setAiResult()` |
+| AI case traceability / audit badge | NICE-TO-HAVE | No badge distinguishing AI-generated cases; add `source: "ai"` column to `testCases` eventually |
+| `<dialog>` polyfill for older Android (<12) | NICE-TO-HAVE | `dialog-polyfill` if mobile analytics show older Android users |
+
+
 
 ### Fixed by /qa
 
