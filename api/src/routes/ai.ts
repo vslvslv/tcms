@@ -38,6 +38,9 @@ export default async function aiRoutes(app: FastifyInstance) {
     if (!(await assertProjectAccess(db, projectId, payload.sub))) {
       return replyError(reply, 404, "Project not found", "NOT_FOUND");
     }
+    if (!(await can(payload.sub, projectId, "cases.create"))) {
+      return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
+    }
 
     const bodyParsed = generateBody.safeParse(req.body);
     if (!bodyParsed.success) return replyError(reply, 400, "Invalid body", "VALIDATION_ERROR");
@@ -85,7 +88,8 @@ Generate ${count} test case(s) for this context.`;
       rawText = block.type === "text" ? block.text : "";
     } catch (err) {
       const msg = err instanceof Error ? err.message : "AI request failed";
-      return replyError(reply, 502, `AI generation failed: ${msg}`, "AI_ERROR");
+      console.error("[ai.generate-cases] AI error:", msg);
+      return replyError(reply, 502, "AI generation failed", "AI_ERROR");
     }
 
     // Parse JSON response
@@ -196,7 +200,8 @@ Suggest test cases that would catch and prevent this failure.`;
       rawText = block.type === "text" ? block.text : "";
     } catch (err) {
       const msg = err instanceof Error ? err.message : "AI request failed";
-      return replyError(reply, 502, `AI generation failed: ${msg}`, "AI_ERROR");
+      console.error("[ai.generate-from-failure] AI error:", msg);
+      return replyError(reply, 502, "AI generation failed", "AI_ERROR");
     }
 
     let suggestions: { title: string; steps: { content: string; expected: string }[]; reasoning: string }[];

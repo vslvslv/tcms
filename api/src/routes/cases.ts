@@ -511,32 +511,23 @@ export default async function caseRoutes(app: FastifyInstance) {
       return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
     }
 
-    // Fetch version and HEAD check inside the transaction so the version row can't be
-    // deleted concurrently between the check and the write
-    let snapshot: StepSnapshotItem[];
-    let versionTitle: string;
-    let versionData: { title: string; prerequisite: string | null; caseTypeId: string | null; priorityId: string | null };
-    try {
-      const [v] = await db.select().from(caseVersions).where(eq(caseVersions.id, paramsResult.data.versionId)).limit(1);
-      if (!v || v.testCaseId !== paramsResult.data.id) return replyError(reply, 404, "Version not found", "NOT_FOUND");
-      if (!Array.isArray(v.stepsSnapshot)) return replyError(reply, 422, "Version snapshot is corrupted", "INVALID_STATE");
+    // Fetch version, HEAD check, and all writes inside a single transaction to prevent
+    // concurrent restore races where two requests both pass the HEAD check.
+    const restored = await db.transaction(async (tx) => {
+      const [v] = await tx.select().from(caseVersions).where(eq(caseVersions.id, paramsResult.data.versionId)).limit(1);
+      if (!v || v.testCaseId !== paramsResult.data.id) throw Object.assign(new Error("Version not found"), { code: "NOT_FOUND" });
+      if (!Array.isArray(v.stepsSnapshot)) throw Object.assign(new Error("Version snapshot is corrupted"), { code: "INVALID_STATE" });
       // Reject restore to the current HEAD
-      const [headVersion] = await db.select({ id: caseVersions.id }).from(caseVersions)
+      const [headVersion] = await tx.select({ id: caseVersions.id }).from(caseVersions)
         .where(eq(caseVersions.testCaseId, paramsResult.data.id))
         .orderBy(desc(caseVersions.createdAt))
         .limit(1);
       if (headVersion && headVersion.id === v.id) {
-        return replyError(reply, 422, "Cannot restore to the current version", "INVALID_STATE");
+        throw Object.assign(new Error("Cannot restore to the current version"), { code: "INVALID_STATE" });
       }
-      snapshot = v.stepsSnapshot as StepSnapshotItem[];
-      versionTitle = v.title;
-      versionData = { title: v.title, prerequisite: v.prerequisite, caseTypeId: v.caseTypeId, priorityId: v.priorityId };
-    } catch (err) {
-      if (err instanceof Error && (err.message.includes("NOT_FOUND") || err.message.includes("INVALID_STATE"))) throw err;
-      return replyError(reply, 500, "Failed to load version", "INTERNAL_ERROR");
-    }
+      const snapshot = v.stepsSnapshot as StepSnapshotItem[];
+      const versionData = { title: v.title, prerequisite: v.prerequisite, caseTypeId: v.caseTypeId, priorityId: v.priorityId };
 
-    const restored = await db.transaction(async (tx) => {
       // Restore case fields; reset approval so the new content gets re-reviewed
       await tx.update(testCases)
         .set({
@@ -576,6 +567,10 @@ export default async function caseRoutes(app: FastifyInstance) {
         createdBy: payload.sub,
       });
       return { updatedCase, restoredSteps };
+    }).catch((err: Error & { code?: string }) => {
+      if (err.code === "NOT_FOUND") throw Object.assign(err, { statusCode: 404 });
+      if (err.code === "INVALID_STATE") throw Object.assign(err, { statusCode: 422 });
+      throw err;
     });
     const restoredCfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
     await writeAuditLog(db, payload.sub, "case.restored", "case", paramsResult.data.id, suitRow.projectId);
