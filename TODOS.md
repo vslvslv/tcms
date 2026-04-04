@@ -106,3 +106,18 @@ See BACKLOG.md for full list. High-value deferred items:
 - Post-QA: same — 4 fixes applied, all verified
 - Browse-based UI testing: blocked (browse.exe Access Denied on this machine). All tests were static code analysis + TypeScript/ESLint verification.
 
+
+---
+
+## From Sprint C review (2026-04-04)
+
+### Deferred informational findings
+
+| Item | Priority | Source | Notes |
+|------|----------|--------|-------|
+| Prompt injection gap in generate-from-failure (XML-like tags not stripped) | Medium | Adversarial review | Only `</failure_log>` closing tag is escaped; `<system>` blocks passthrough; consider stripping all XML tags before interpolation | 88c1814 |
+| Section dropdown in CI failure panel — no breadcrumb for duplicate names | Low | Adversarial review | Same name under different parents is ambiguous; show parent path | 88c1814 |
+| Concurrent restore creates duplicate caseVersions row | Low | Adversarial review | READ COMMITTED default; both tx commit same data; version numbering shows phantom duplicate | 88c1814 |
+| Audit log fires unconditionally in generate-from-failure even on empty results | Low | API contract specialist | Should only log when cases are actually created | 88c1814 |
+| No rate limiting on AI endpoints (generate-cases + generate-from-failure) | Medium | Adversarial review | Any member can exhaust Anthropic quota; needs Fastify rate-limit plugin | 88c1814 |
+| Zero test coverage for restore endpoint and generate-from-failure endpoint | High | Testing specialist | No E2E or unit tests for 5 auth branches of restore, nor any path of generate-from-failure | 88c1814 |
