@@ -513,17 +513,20 @@ export default async function caseRoutes(app: FastifyInstance) {
 
     // Fetch version, HEAD check, and all writes inside a single transaction to prevent
     // concurrent restore races where two requests both pass the HEAD check.
-    const restored = await db.transaction(async (tx) => {
+    type RestoreError = { error: string; status: 404 | 422; code: string };
+    type RestoreResult = { updatedCase: typeof testCases.$inferSelect; restoredSteps: (typeof testSteps.$inferSelect)[] };
+
+    const txResult: RestoreResult | RestoreError = await db.transaction(async (tx) => {
       const [v] = await tx.select().from(caseVersions).where(eq(caseVersions.id, paramsResult.data.versionId)).limit(1);
-      if (!v || v.testCaseId !== paramsResult.data.id) throw Object.assign(new Error("Version not found"), { code: "NOT_FOUND" });
-      if (!Array.isArray(v.stepsSnapshot)) throw Object.assign(new Error("Version snapshot is corrupted"), { code: "INVALID_STATE" });
+      if (!v || v.testCaseId !== paramsResult.data.id) return { error: "Version not found", status: 404 as const, code: "NOT_FOUND" };
+      if (!Array.isArray(v.stepsSnapshot)) return { error: "Version snapshot is corrupted", status: 422 as const, code: "INVALID_STATE" };
       // Reject restore to the current HEAD
       const [headVersion] = await tx.select({ id: caseVersions.id }).from(caseVersions)
         .where(eq(caseVersions.testCaseId, paramsResult.data.id))
         .orderBy(desc(caseVersions.createdAt))
         .limit(1);
       if (headVersion && headVersion.id === v.id) {
-        throw Object.assign(new Error("Cannot restore to the current version"), { code: "INVALID_STATE" });
+        return { error: "Cannot restore to the current version", status: 422 as const, code: "INVALID_STATE" };
       }
       const snapshot = v.stepsSnapshot as StepSnapshotItem[];
       const versionData = { title: v.title, prerequisite: v.prerequisite, caseTypeId: v.caseTypeId, priorityId: v.priorityId };
@@ -567,11 +570,9 @@ export default async function caseRoutes(app: FastifyInstance) {
         createdBy: payload.sub,
       });
       return { updatedCase, restoredSteps };
-    }).catch((err: Error & { code?: string }) => {
-      if (err.code === "NOT_FOUND") throw Object.assign(err, { statusCode: 404 });
-      if (err.code === "INVALID_STATE") throw Object.assign(err, { statusCode: 422 });
-      throw err;
     });
+    if ("error" in txResult) return replyError(reply, txResult.status, txResult.error, txResult.code);
+    const restored = txResult;
     const restoredCfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
     await writeAuditLog(db, payload.sub, "case.restored", "case", paramsResult.data.id, suitRow.projectId);
     return reply.send({
