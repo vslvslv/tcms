@@ -463,6 +463,60 @@ export default async function runRoutes(app: FastifyInstance) {
     return reply.status(201).send(newRun);
   });
 
+  // Bulk update test status in a run
+  const bulkStatusBody = z.object({
+    testIds: z.array(z.string().uuid()).min(1).max(500),
+    status: z.enum(["untested", "passed", "failed", "blocked", "skipped"]),
+  });
+  const paramsRunId = z.object({ runId: z.string().uuid() });
+
+  app.post("/api/runs/:runId/tests/bulk-status", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+
+    const paramsParsed = paramsRunId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsParsed.success) return replyError(reply, 400, "Invalid runId", "VALIDATION_ERROR");
+    const { runId } = paramsParsed.data;
+
+    const bodyParsed = bulkStatusBody.safeParse(req.body);
+    if (!bodyParsed.success) return replyError(reply, 400, bodyParsed.error.issues[0]?.message ?? "Invalid body", "VALIDATION_ERROR");
+    const { testIds, status } = bodyParsed.data;
+
+    const db = await getDb();
+
+    const hasAccess = await assertRunAccess(db, runId, payload.sub);
+    if (!hasAccess) return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+
+    // Validate all testIds belong to this run (cross-run security check)
+    const belongCheck = await db
+      .select({ id: tests.id })
+      .from(tests)
+      .where(and(inArray(tests.id, testIds), eq(tests.runId, runId)));
+    if (belongCheck.length !== testIds.length) {
+      return replyError(reply, 400, "One or more testIds do not belong to this run", "VALIDATION_ERROR");
+    }
+
+    // Batch insert results
+    await db.insert(results).values(
+      testIds.map((testId) => ({
+        testId,
+        status: status as "untested" | "passed" | "failed" | "blocked" | "skipped",
+        createdBy: payload.sub,
+      }))
+    );
+
+    // Resolve projectId for audit log
+    const [r] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+    if (r) {
+      const [s] = await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1);
+      if (s) {
+        await writeAuditLog(db, payload.sub, "result.bulk_updated", "run", runId, s.projectId);
+      }
+    }
+
+    return reply.status(200).send({ updated: testIds.length, status });
+  });
+
   // Smart test selection: suggest test cases based on changed files
   const suggestQuery = z.object({ changedFiles: z.string().min(1) });
 
