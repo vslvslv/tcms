@@ -711,7 +711,7 @@ export default async function caseRoutes(app: FastifyInstance) {
   });
 
   // Case search: GET /api/projects/:projectId/cases/search?q=<query>
-  const searchQuery = z.object({ q: z.string().min(1) });
+  const searchQuery = z.object({ q: z.string().min(1).max(200) });
 
   app.get("/api/projects/:projectId/cases/search", async (req: FastifyRequest, reply: FastifyReply) => {
     const payload = req.user as { sub: string } | undefined;
@@ -723,6 +723,8 @@ export default async function caseRoutes(app: FastifyInstance) {
 
     const { projectId } = paramsParsed.data;
     const { q } = queryParsed.data;
+    // Escape ILIKE wildcards so user input is treated as a literal string
+    const escapedQ = q.replace(/[%_\\]/g, "\\$&");
     const db = await getDb();
 
     if (!(await assertProjectAccess(db, projectId, payload.sub))) {
@@ -746,16 +748,18 @@ export default async function caseRoutes(app: FastifyInstance) {
     const matchingCases = await db
       .select({ id: testCases.id, title: testCases.title, sectionId: testCases.sectionId })
       .from(testCases)
-      .where(and(inArray(testCases.sectionId, sectionIds), ilike(testCases.title, `%${q}%`)))
+      .where(and(inArray(testCases.sectionId, sectionIds), ilike(testCases.title, `%${escapedQ}%`)))
       .limit(50);
 
     // Build section breadcrumb
     const sectionMap = new Map(sectionRows.map((s) => [s.id, s]));
-    function buildBreadcrumb(sectionId: string): string[] {
+    function buildBreadcrumb(sectionId: string, visited = new Set<string>()): string[] {
+      if (visited.has(sectionId)) return []; // cycle guard
       const sec = sectionMap.get(sectionId);
       if (!sec) return [];
       if (!sec.parentId) return [sec.name];
-      return [...buildBreadcrumb(sec.parentId), sec.name];
+      visited.add(sectionId);
+      return [...buildBreadcrumb(sec.parentId, visited), sec.name];
     }
 
     const results = matchingCases.map((c) => ({

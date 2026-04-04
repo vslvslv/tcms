@@ -275,6 +275,7 @@ export default async function runRoutes(app: FastifyInstance) {
     }
     const [run] = await db.select().from(runs).where(eq(runs.id, parsed.data.id)).limit(1);
     if (!run) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    const [runSuite] = await db.select({ projectId: suites.projectId }).from(suites).where(eq(suites.id, run.suiteId)).limit(1);
     const runTests = await db.select().from(tests).where(eq(tests.runId, run.id));
     const caseIds = runTests.map((t) => t.testCaseId);
     const casesRows =
@@ -337,6 +338,7 @@ export default async function runRoutes(app: FastifyInstance) {
     });
     return reply.send({
       ...run,
+      projectId: runSuite?.projectId ?? null,
       tests: testList,
       summary,
     });
@@ -484,37 +486,49 @@ export default async function runRoutes(app: FastifyInstance) {
 
     const db = await getDb();
 
-    const hasAccess = await assertRunAccess(db, runId, payload.sub);
-    if (!hasAccess) return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    // Resolve run + project for access + permission checks
+    const [run] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+    if (!run) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    const [suite] = await db.select().from(suites).where(eq(suites.id, run.suiteId)).limit(1);
+    if (!suite) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+
+    if (!(await assertProjectAccess(db, suite.projectId, payload.sub))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+    if (!(await can(payload.sub, suite.projectId, "runs.close"))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+
+    // Deduplicate testIds before ownership check (prevents double-insert on dupes)
+    const uniqueTestIds = [...new Set(testIds)];
 
     // Validate all testIds belong to this run (cross-run security check)
     const belongCheck = await db
       .select({ id: tests.id })
       .from(tests)
-      .where(and(inArray(tests.id, testIds), eq(tests.runId, runId)));
-    if (belongCheck.length !== testIds.length) {
+      .where(and(inArray(tests.id, uniqueTestIds), eq(tests.runId, runId)));
+    if (belongCheck.length !== uniqueTestIds.length) {
       return replyError(reply, 400, "One or more testIds do not belong to this run", "VALIDATION_ERROR");
     }
 
-    // Batch insert results
-    await db.insert(results).values(
-      testIds.map((testId) => ({
-        testId,
-        status: status as "untested" | "passed" | "failed" | "blocked" | "skipped",
-        createdBy: payload.sub,
-      }))
-    );
+    // Batch insert results in a transaction to prevent partial writes
+    await db.transaction(async (tx) => {
+      await tx.insert(results).values(
+        uniqueTestIds.map((testId) => ({
+          testId,
+          status: status as "untested" | "passed" | "failed" | "blocked" | "skipped",
+          createdBy: payload.sub,
+        }))
+      );
+    });
 
-    // Resolve projectId for audit log
-    const [r] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
-    if (r) {
-      const [s] = await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1);
-      if (s) {
-        await writeAuditLog(db, payload.sub, "result.bulk_updated", "run", runId, s.projectId);
-      }
+    try {
+      await writeAuditLog(db, payload.sub, "result.bulk_updated", "run", runId, suite.projectId);
+    } catch {
+      // Non-fatal: results are committed; audit log failure should not roll back the operation
     }
 
-    return reply.status(200).send({ updated: testIds.length, status });
+    return reply.status(200).send({ updated: uniqueTestIds.length, status });
   });
 
   // Smart test selection: suggest test cases based on changed files

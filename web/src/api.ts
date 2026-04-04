@@ -57,6 +57,7 @@ export type CaseSummary = { total: number; draft: number; ready: number; approve
 export type Run = {
   id: string;
   suiteId: string;
+  projectId?: string | null;
   name: string;
   description: string | null;
   planId?: string | null;

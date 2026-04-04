@@ -76,7 +76,8 @@ export default function CreateRunPage() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {    e.preventDefault();
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
     if (!suiteId || !name.trim()) return;
     setError("");
     setSaving(true);

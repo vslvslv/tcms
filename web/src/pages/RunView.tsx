@@ -83,15 +83,16 @@ export default function RunView() {
   }, [runId]);
 
   useEffect(() => {
-    if (!projectId) return;
-    api<FlakyTest[]>(`/api/projects/${projectId}/flaky-tests`)
+    const pid = run?.projectId ?? projectId;
+    if (!pid) return;
+    api<FlakyTest[]>(`/api/projects/${pid}/flaky-tests`)
       .then((data) => {
         const m = new Map<string, number>();
         for (const ft of data) m.set(ft.caseId, ft.flakinessScore);
         setFlakyMap(m);
       })
       .catch(() => { /* silent — badge hidden if unavailable */ });
-  }, [projectId]);
+  }, [run?.projectId, projectId]);
 
   const testsForSections = run?.tests ?? [];
   const filteredTests = useMemo(
@@ -313,7 +314,7 @@ export default function RunView() {
         </Select>
         <Select
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setSelectedTestId(null); }}
+          onChange={(e) => { setStatusFilter(e.target.value); setSelectedTestId(null); setSelectedTestIds(new Set()); }}
           aria-label="Filter by status"
           className="w-36 text-sm"
         >
