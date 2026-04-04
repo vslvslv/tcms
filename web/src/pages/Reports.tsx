@@ -63,8 +63,8 @@ export default function Reports() {
       {overviewPieData.length > 0 && (
         <Card className="mb-6">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Overview</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64" style={{ minWidth: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie data={overviewPieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(e) => `${e.name}: ${e.value}`}>
                   {overviewPieData.map((entry, i) => (
@@ -82,8 +82,8 @@ export default function Reports() {
       {activityData.length > 0 && (
         <Card className="mb-6">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Runs by day (last 14 days)</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64" style={{ minWidth: 0 }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <BarChart data={activityData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <XAxis dataKey="date" tick={{ fontSize: 11, fill: "#94A3B8" }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#94A3B8" }} />
