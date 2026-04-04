@@ -31,8 +31,8 @@ Generated: 2026-04-03 | Branch: re-design-application | Autoplan run
 
 See BACKLOG.md for full list. High-value deferred items:
 - ~~1.7: Bulk operations on cases (move, copy, delete)~~ **Completed: v0.1.0.0 (2026-04-04)**
-- 1.9: Case search / full-text filter
-- 2.9: Bulk update test status within a run
+- ~~1.9: Case search / full-text filter~~ **Completed: v0.1.0.1 (2026-04-04)**
+- ~~2.9: Bulk update test status within a run~~ **Completed: v0.1.0.1 (2026-04-04)**
 - 3.1-3.5: File attachments (full Epic 3 — schema exists, no API/UI)
 - ~~Epic 14: AI test generation~~ **Completed: v0.1.0.0 (2026-04-04)**
 - Epics 15-17: release readiness score (done), flaky test detection (done), smart test selection (deferred)
@@ -43,13 +43,12 @@ See BACKLOG.md for full list. High-value deferred items:
 
 | Item | Priority | Source | Notes |
 |------|----------|--------|-------|
-| Case search 1.9 (PostgreSQL FTS) | High | Eng review — no new infra needed | `tsvector` available in existing DB. Deferred because sprint is already 3-4h CC. Add decision record to BACKLOG.md when implementing: explain choice of `tsvector` over ElasticSearch. |
+| ~~Case search 1.9 (PostgreSQL FTS)~~ | High | Eng review — no new infra needed | **Completed: v0.1.0.1 — `GET /api/projects/:id/cases/search?q=` + `<CaseSearchBar>`** |
 | AI generation specificity — angle from CI failures or PRDs | High | CEO subagent review | Generic "generate from suite context" is table-stakes. Differentiating angle: generate from recent failing test patterns or feature description. Deferred for Epic 14 v2 after MVP validates. |
 | AI route rate limiting | Medium | Eng subagent review | Add `@fastify/rate-limit` 10 req/min/userId on AI generation route. Low priority until real users hit it; add when first rate-limit incident occurs. |
 | AI streaming (SSE) for generation modal | Medium | Design review TASTE DECISION | Non-streaming batch is the MVP. SSE improves perceived performance for 3s+ calls. Deferred to after MVP validates. |
-| Epic 17 Smart Test Selection | Medium | /office-hours roadmap | `fileFailureCorrelations` schema already exists. Deferred after Epic 14 value is validated. |
-| Contractor data portability (project export/import) | Medium | /office-hours explicit defer | Required before "contractor persona story end-to-end" claim. Deferred to post-Foundation sprint. |
-| Bulk run status update (2.9) | Low | Sprint scope | Different concern from case bulk ops. Later sprint. |
+| ~~Epic 17 Smart Test Selection~~ | Medium | /office-hours roadmap | **Completed: v0.1.0.1 — smart run UI accordion in CreateRunPage + `/suggest-tests` endpoint** |
+| ~~Bulk run status update (2.9)~~ | Low | Sprint scope | **Completed: v0.1.0.1 — `POST /api/runs/:runId/tests/bulk-status` + BulkStatusBar UI** |
 
 | Item | Priority | Source | Notes |
 |------|----------|--------|-------|
