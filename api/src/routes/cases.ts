@@ -601,15 +601,18 @@ export default async function caseRoutes(app: FastifyInstance) {
 
     if (caseIds.length === 0) return replyError(reply, 400, "caseIds must not be empty", "VALIDATION_ERROR");
 
+    // Deduplicate caseIds — inArray() deduplicates in SQL, causing false "not found" if client sends dupes
+    const uniqueCaseIds = [...new Set(caseIds)];
+
     // Verify all cases belong to this project
     const casesInProject = await db
       .select({ id: testCases.id, sectionId: testCases.sectionId })
       .from(testCases)
       .innerJoin(sections, eq(sections.id, testCases.sectionId))
       .innerJoin(suites, eq(suites.id, sections.suiteId))
-      .where(and(inArray(testCases.id, caseIds), eq(suites.projectId, projectId)));
+      .where(and(inArray(testCases.id, uniqueCaseIds), eq(suites.projectId, projectId)));
 
-    if (casesInProject.length !== caseIds.length) {
+    if (casesInProject.length !== uniqueCaseIds.length) {
       return replyError(reply, 400, "One or more cases not found in this project", "VALIDATION_ERROR");
     }
 
@@ -617,12 +620,15 @@ export default async function caseRoutes(app: FastifyInstance) {
       if (!(await can(payload.sub, projectId, "cases.delete"))) {
         return replyError(reply, 403, "Forbidden", "FORBIDDEN");
       }
-      await db.delete(testCases).where(inArray(testCases.id, caseIds));
+      await db.delete(testCases).where(inArray(testCases.id, uniqueCaseIds));
       await writeAuditLog(db, payload.sub, "case.bulk_deleted", "project", projectId, projectId);
-      return reply.status(200).send({ deleted: caseIds.length });
+      return reply.status(200).send({ deleted: uniqueCaseIds.length });
     }
 
     if (action === "move") {
+      if (!(await can(payload.sub, projectId, "cases.edit"))) {
+        return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+      }
       if (!targetSectionId) return replyError(reply, 400, "targetSectionId required for move", "VALIDATION_ERROR");
       // Verify target section belongs to same project
       const [targetSec] = await db
@@ -632,12 +638,15 @@ export default async function caseRoutes(app: FastifyInstance) {
         .where(and(eq(sections.id, targetSectionId), eq(suites.projectId, projectId)))
         .limit(1);
       if (!targetSec) return replyError(reply, 400, "Target section not found in this project", "VALIDATION_ERROR");
-      await db.update(testCases).set({ sectionId: targetSectionId }).where(inArray(testCases.id, caseIds));
+      await db.update(testCases).set({ sectionId: targetSectionId }).where(inArray(testCases.id, uniqueCaseIds));
       await writeAuditLog(db, payload.sub, "case.bulk_moved", "project", projectId, projectId);
-      return reply.status(200).send({ moved: caseIds.length });
+      return reply.status(200).send({ moved: uniqueCaseIds.length });
     }
 
     if (action === "copy") {
+      if (!(await can(payload.sub, projectId, "cases.create"))) {
+        return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+      }
       if (!targetSectionId) return replyError(reply, 400, "targetSectionId required for copy", "VALIDATION_ERROR");
       const [targetSec] = await db
         .select({ id: sections.id })
@@ -647,9 +656,9 @@ export default async function caseRoutes(app: FastifyInstance) {
         .limit(1);
       if (!targetSec) return replyError(reply, 400, "Target section not found in this project", "VALIDATION_ERROR");
 
-      const sourceCases = await db.select().from(testCases).where(inArray(testCases.id, caseIds));
-      const sourceSteps = await db.select().from(testSteps).where(inArray(testSteps.testCaseId, caseIds));
-      const sourceCfValues = await db.select().from(caseFieldValues).where(inArray(caseFieldValues.testCaseId, caseIds));
+      const sourceCases = await db.select().from(testCases).where(inArray(testCases.id, uniqueCaseIds));
+      const sourceSteps = await db.select().from(testSteps).where(inArray(testSteps.testCaseId, uniqueCaseIds));
+      const sourceCfValues = await db.select().from(caseFieldValues).where(inArray(caseFieldValues.testCaseId, uniqueCaseIds));
 
       const newCaseIds: string[] = await db.transaction(async (tx) => {
         const inserted: string[] = [];

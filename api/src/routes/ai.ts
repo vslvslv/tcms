@@ -90,32 +90,35 @@ Generate ${count} test case(s) for this context.`;
       return replyError(reply, 502, "AI returned invalid JSON", "AI_PARSE_ERROR");
     }
 
-    // Insert cases and steps into DB
-    const createdCases = [];
-    for (const item of generated.slice(0, count)) {
-      if (!item || typeof item !== "object" || !item.title || typeof item.title !== "string") continue;
-      const [newCase] = await db
-        .insert(testCases)
-        .values({
-          sectionId,
-          title: item.title.slice(0, 255),
-          status: "draft",
-        })
-        .returning();
-      const stepsToInsert = Array.isArray(item.steps)
-        ? item.steps.slice(0, 50).map((s, i) => ({
-            testCaseId: newCase.id,
-            content: String(s.content ?? "").slice(0, 1000),
-            expected: String(s.expected ?? "").slice(0, 1000) || null,
-            sortOrder: i,
-            sharedStepId: null,
-          }))
-        : [];
-      if (stepsToInsert.length > 0) {
-        await db.insert(testSteps).values(stepsToInsert);
+    // Insert cases and steps in a transaction — avoids orphan case rows if step insert fails
+    const createdCases = await db.transaction(async (tx) => {
+      const results = [];
+      for (const item of generated.slice(0, count)) {
+        if (!item || typeof item !== "object" || !item.title || typeof item.title !== "string") continue;
+        const [newCase] = await tx
+          .insert(testCases)
+          .values({
+            sectionId,
+            title: item.title.slice(0, 255),
+            status: "draft",
+          })
+          .returning();
+        const stepsToInsert = Array.isArray(item.steps)
+          ? item.steps.slice(0, 50).map((s, i) => ({
+              testCaseId: newCase.id,
+              content: String(s.content ?? "").slice(0, 1000),
+              expected: String(s.expected ?? "").slice(0, 1000) || null,
+              sortOrder: i,
+              sharedStepId: null,
+            }))
+          : [];
+        if (stepsToInsert.length > 0) {
+          await tx.insert(testSteps).values(stepsToInsert);
+        }
+        results.push({ ...newCase, steps: stepsToInsert });
       }
-      createdCases.push({ ...newCase, steps: stepsToInsert });
-    }
+      return results;
+    });
 
     await writeAuditLog(db, payload.sub, "ai.generated_cases", "project", projectId, projectId);
 

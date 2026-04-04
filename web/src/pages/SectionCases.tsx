@@ -20,7 +20,7 @@ export default function SectionCases() {
 
   // Bulk selection state
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkAction, setBulkAction] = useState<"delete" | "move" | "copy">("delete");
+  const [bulkAction, setBulkAction] = useState<"delete" | "move" | "copy">("move");
   const [targetSectionId, setTargetSectionId] = useState("");
   const [siblingsSections, setSiblingsSections] = useState<Section[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
@@ -74,6 +74,9 @@ export default function SectionCases() {
     if ((bulkAction === "move" || bulkAction === "copy") && !targetSectionId) {
       setError("Select a target section for move/copy");
       return;
+    }
+    if (bulkAction === "delete") {
+      if (!window.confirm(`Delete ${selected.size} case(s)? This cannot be undone.`)) return;
     }
     setBulkWorking(true);
     setError("");
@@ -213,9 +216,9 @@ export default function SectionCases() {
             onChange={(e) => setBulkAction(e.target.value as "delete" | "move" | "copy")}
             className="rounded-lg border border-border bg-surface px-2 py-1 text-sm"
           >
-            <option value="delete">Delete</option>
             <option value="move">Move to section</option>
             <option value="copy">Copy to section</option>
+            <option value="delete">Delete</option>
           </Select>
           {needsTarget && siblingsSections.length > 0 && (
             <Select

@@ -10,12 +10,14 @@ type ModalProps = {
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const onCloseRef = useRef(onClose);
+  const triggerRef = useRef<Element | null>(null);
   useLayoutEffect(() => { onCloseRef.current = onClose; });
 
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
     if (isOpen) {
+      triggerRef.current = document.activeElement;
       if (!el.open) el.showModal();
     } else {
       if (el.open) el.close();
@@ -25,7 +27,13 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
-    function onDialogClose() { onCloseRef.current(); }
+    function onDialogClose() {
+      onCloseRef.current();
+      // Restore focus to the element that opened the modal
+      if (triggerRef.current && typeof (triggerRef.current as HTMLElement).focus === "function") {
+        (triggerRef.current as HTMLElement).focus();
+      }
+    }
     el.addEventListener("close", onDialogClose);
     return () => el.removeEventListener("close", onDialogClose);
   }, []); // stable — onCloseRef.current is always up to date
@@ -54,7 +62,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
           type="button"
           onClick={() => onCloseRef.current()}
           className="ml-auto rounded p-1 text-muted hover:bg-surface-raised hover:text-text"
-          aria-label="Close"
+          aria-label={title ? `Close ${title}` : "Close"}
         >
           ✕
         </button>
