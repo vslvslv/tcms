@@ -30,11 +30,12 @@ Generated: 2026-04-03 | Branch: re-design-application | Autoplan run
 ## From previous sprints (BACKLOG ❌ items)
 
 See BACKLOG.md for full list. High-value deferred items:
-- 1.7: Bulk operations on cases (move, copy, delete)
+- ~~1.7: Bulk operations on cases (move, copy, delete)~~ **Completed: v0.1.0.0 (2026-04-04)**
 - 1.9: Case search / full-text filter
 - 2.9: Bulk update test status within a run
 - 3.1-3.5: File attachments (full Epic 3 — schema exists, no API/UI)
-- Epics 14-17: AI test generation, release readiness score, flaky test detection, smart test selection
+- ~~Epic 14: AI test generation~~ **Completed: v0.1.0.0 (2026-04-04)**
+- Epics 15-17: release readiness score (done), flaky test detection (done), smart test selection (deferred)
 
 ---
 
@@ -52,9 +53,9 @@ See BACKLOG.md for full list. High-value deferred items:
 
 | Item | Priority | Source | Notes |
 |------|----------|--------|-------|
-| oklch() token value validator | Medium | Eng review | Phase 1 converts 22 tokens manually; a typo produces a silently invisible color (browsers treat invalid oklch() as transparent). Add postcss-oklch or a simple CI script to validate token values parse correctly before commit. |
-| Docker-based Playwright snapshot generation | Medium | Eng review | Snapshot environment policy recommends Docker (mcr.microsoft.com/playwright) for reproducible baselines across contributor machines. No Dockerfile or script exists yet. Add a `scripts/update-snapshots.sh` wrapper. |
-| Tailwind 4 + shadcn/ui compatibility research | High | Outside voice + Eng review | Before Phase 4: investigate (1) shadcn@latest support for Tailwind 4 @theme inline, (2) whether generated utility classes (bg-primary, text-destructive) resolve in Tailwind 4 without tailwind.config.js, (3) community workarounds (shadcn-tailwind4 fork, manual class mapping). Estimated: 1-2hr research. Blocks Phase 4. |
+| ~~oklch() token value validator~~ | Medium | Eng review | **Completed: v0.1.0.0** — `scripts/validate-oklch.mjs` + `validate:tokens` npm script |
+| ~~Docker-based Playwright snapshot generation~~ | Medium | Eng review | **Completed: v0.1.0.0** — `scripts/update-snapshots.sh` + DESIGN_SYSTEM.md docs |
+| ~~Tailwind 4 + shadcn/ui compatibility research~~ | High | Outside voice + Eng review | **Completed: v0.1.0.0 (Phase 4)** — shadcn/ui integrated, tokens bridge via CSS vars |
 
 ---
 
