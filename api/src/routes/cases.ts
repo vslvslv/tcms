@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
 import { projects, suites, sections, testCases, testSteps, sharedSteps, caseFieldValues, caseVersions, caseTemplates } from "../db/schema.js";
-import { eq, inArray, desc, and } from "drizzle-orm";
+import { eq, inArray, desc, and, ilike } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
 import { can } from "../lib/permissions.js";
@@ -708,5 +708,63 @@ export default async function caseRoutes(app: FastifyInstance) {
     }
 
     return replyError(reply, 400, "Unknown action", "VALIDATION_ERROR");
+  });
+
+  // Case search: GET /api/projects/:projectId/cases/search?q=<query>
+  const searchQuery = z.object({ q: z.string().min(1) });
+
+  app.get("/api/projects/:projectId/cases/search", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsParsed = paramsProjectId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsParsed.success) return replyError(reply, 400, "Invalid projectId", "VALIDATION_ERROR");
+    const queryParsed = searchQuery.safeParse((req as FastifyRequest<{ Querystring: unknown }>).query);
+    if (!queryParsed.success) return replyError(reply, 400, "Query parameter 'q' is required", "VALIDATION_ERROR");
+
+    const { projectId } = paramsParsed.data;
+    const { q } = queryParsed.data;
+    const db = await getDb();
+
+    if (!(await assertProjectAccess(db, projectId, payload.sub))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+
+    // Get all suite IDs for this project
+    const suiteRows = await db.select({ id: suites.id }).from(suites).where(eq(suites.projectId, projectId));
+    if (suiteRows.length === 0) return reply.send([]);
+    const suiteIds = suiteRows.map((s) => s.id);
+
+    // Get all section IDs in these suites
+    const sectionRows = await db
+      .select({ id: sections.id, name: sections.name, parentId: sections.parentId, suiteId: sections.suiteId })
+      .from(sections)
+      .where(inArray(sections.suiteId, suiteIds));
+    if (sectionRows.length === 0) return reply.send([]);
+    const sectionIds = sectionRows.map((s) => s.id);
+
+    // Search cases by title using ILIKE (case-insensitive)
+    const matchingCases = await db
+      .select({ id: testCases.id, title: testCases.title, sectionId: testCases.sectionId })
+      .from(testCases)
+      .where(and(inArray(testCases.sectionId, sectionIds), ilike(testCases.title, `%${q}%`)))
+      .limit(50);
+
+    // Build section breadcrumb
+    const sectionMap = new Map(sectionRows.map((s) => [s.id, s]));
+    function buildBreadcrumb(sectionId: string): string[] {
+      const sec = sectionMap.get(sectionId);
+      if (!sec) return [];
+      if (!sec.parentId) return [sec.name];
+      return [...buildBreadcrumb(sec.parentId), sec.name];
+    }
+
+    const results = matchingCases.map((c) => ({
+      id: c.id,
+      title: c.title,
+      sectionId: c.sectionId,
+      sectionPath: buildBreadcrumb(c.sectionId),
+    }));
+
+    return reply.send(results);
   });
 }

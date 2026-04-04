@@ -4,6 +4,7 @@ import { api, type Suite, type Section } from "../api";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
+import { CaseSearchBar } from "../components/CaseSearchBar";
 
 function buildTree(sections: Section[]): (Section & { children: ReturnType<typeof buildTree> })[] {
   const byParent = new Map<string | null, Section[]>();
@@ -182,9 +183,10 @@ export default function SuiteView() {
   return (
     <div className="max-w-3xl">
       <h1 className="mb-2 text-xl font-semibold text-text font-mono">{suite.name}</h1>
-      <p className="mb-6">
+      <p className="mb-4">
         <Link to={`/suites/${suiteId}/runs/new`} className="text-primary hover:underline">Create run</Link>
       </p>
+      <CaseSearchBar projectId={suite.projectId} />
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Sections</h2>
       <form onSubmit={addRootSection} className="mb-6 flex items-center gap-2">
         <input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="New section name" className="w-48 rounded border border-border bg-surface-raised text-text px-2 py-1.5 text-sm" />

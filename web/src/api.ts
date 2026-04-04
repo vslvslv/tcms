@@ -234,8 +234,12 @@ export type NotificationPref = { event: string; enabled: boolean };
 
 export type SuggestedTest = { caseId: string; caseTitle: string; score: number };
 
+export type CaseSearchResult = { id: string; title: string; sectionId: string; sectionPath: string[] };
+
 export type BulkAction = "delete" | "move" | "copy";
 export type BulkCasesBody = { action: BulkAction; caseIds: string[]; targetSectionId?: string };
+export type BulkStatusBody = { testIds: string[]; status: string };
+export type BulkStatusResult = { updated: number; status: string };
 export type BulkCasesResult =
   | { deleted: number }
   | { moved: number }
