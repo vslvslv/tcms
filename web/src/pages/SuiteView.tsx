@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api, type Suite, type Section } from "../api";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
+import { Modal } from "../components/ui/Modal";
+import { Button } from "../components/ui/Button";
 
 function buildTree(sections: Section[]): (Section & { children: ReturnType<typeof buildTree> })[] {
   const byParent = new Map<string | null, Section[]>();
@@ -17,6 +19,8 @@ function buildTree(sections: Section[]): (Section & { children: ReturnType<typeo
   return children(null);
 }
 
+type AiModalState = { sectionId: string; sectionName: string } | null;
+
 export default function SuiteView() {
   const { suiteId } = useParams<{ suiteId: string }>();
   const [suite, setSuite] = useState<Suite | null>(null);
@@ -27,6 +31,14 @@ export default function SuiteView() {
   const [addingUnderParent, setAddingUnderParent] = useState<string | null>(null);
   const [subSectionName, setSubSectionName] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // AI generation modal
+  const [aiModal, setAiModal] = useState<AiModalState>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiCount, setAiCount] = useState(5);
+  const [aiWorking, setAiWorking] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiResult, setAiResult] = useState<{ created: number } | null>(null);
 
   function load() {
     if (!suiteId) return;
@@ -83,6 +95,43 @@ export default function SuiteView() {
     }
   }
 
+  function openAiModal(sectionId: string, sectionName: string) {
+    setAiModal({ sectionId, sectionName });
+    setAiPrompt("");
+    setAiCount(5);
+    setAiError("");
+    setAiResult(null);
+  }
+
+  function closeAiModal() {
+    setAiModal(null);
+    setAiError("");
+    setAiResult(null);
+  }
+
+  async function handleAiGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!aiModal || !suite) return;
+    setAiWorking(true);
+    setAiError("");
+    setAiResult(null);
+    try {
+      const result = await api<{ created: number }>(`/api/projects/${suite.projectId}/ai/generate-cases`, {
+        method: "POST",
+        body: JSON.stringify({
+          sectionId: aiModal.sectionId,
+          prompt: aiPrompt.trim(),
+          count: aiCount,
+        }),
+      });
+      setAiResult(result);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setAiWorking(false);
+    }
+  }
+
   if (!suiteId) return null;
   if (loading) return <LoadingSpinner />;
   if (error && !suite) return <p className="text-error">{error}</p>;
@@ -104,6 +153,14 @@ export default function SuiteView() {
         <Link to={`/sections/${section.id}/cases/new`} className="text-sm text-primary hover:underline">Add case</Link>
         {" · "}
         <button type="button" className="text-sm text-muted hover:underline" onClick={() => setAddingUnderParent(section.id)}>Add subsection</button>
+        {" · "}
+        <button
+          type="button"
+          className="text-sm text-primary hover:underline"
+          onClick={() => openAiModal(section.id, section.name)}
+        >
+          Generate with AI
+        </button>
         {addingUnderParent === section.id && (
           <form onSubmit={addSubSection} className="mt-2 flex flex-wrap items-center gap-2">
             <input value={subSectionName} onChange={(e) => setSubSectionName(e.target.value)} placeholder="Section name" className="rounded border border-border bg-surface-raised text-text px-2 py-1 text-sm" />
@@ -139,6 +196,64 @@ export default function SuiteView() {
         ))}
         {tree.length === 0 && !newSectionName && <p className="text-muted">No sections. Add one above.</p>}
       </div>
+
+      {/* AI Generation Modal */}
+      <Modal isOpen={!!aiModal} onClose={closeAiModal} title={`Generate test cases — ${aiModal?.sectionName ?? ""}`}>
+        {aiResult ? (
+          <div className="space-y-4">
+            <p className="text-success">
+              Generated {aiResult.created} test case{aiResult.created !== 1 ? "s" : ""} in &quot;{aiModal?.sectionName}&quot;.
+            </p>
+            <p className="text-sm text-muted">
+              <Link to={`/sections/${aiModal?.sectionId}/cases`} className="text-primary hover:underline" onClick={closeAiModal}>
+                View cases &rarr;
+              </Link>
+            </p>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => setAiResult(null)}>Generate more</Button>
+              <Button variant="primary" onClick={closeAiModal}>Done</Button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleAiGenerate} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-muted">
+                Describe what to test
+              </label>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                rows={4}
+                required
+                placeholder="e.g. Login flow with valid and invalid credentials, password reset, session timeout"
+                className="w-full rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-muted">
+                Number of cases (1–20)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={aiCount}
+                onChange={(e) => setAiCount(Math.min(20, Math.max(1, parseInt(e.target.value, 10) || 1)))}
+                className="w-24 rounded-lg border border-border bg-surface-raised text-text px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
+            {aiError && <p className="text-sm text-error">{aiError}</p>}
+            <div className="flex gap-2">
+              <Button type="submit" variant="primary" disabled={aiWorking || !aiPrompt.trim()}>
+                {aiWorking ? "Generating..." : "Generate"}
+              </Button>
+              <Button type="button" variant="secondary" onClick={closeAiModal} disabled={aiWorking}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

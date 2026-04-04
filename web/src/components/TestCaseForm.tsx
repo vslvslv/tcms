@@ -62,6 +62,7 @@ export function TestCaseForm({
   const [myRole, setMyRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [error, setError] = useState("");
 
   // Approval
@@ -310,6 +311,20 @@ export function TestCaseForm({
       setError(err instanceof Error ? err.message : "Approval failed");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDuplicate() {
+    if (!caseId) return;
+    setDuplicating(true);
+    setError("");
+    try {
+      const duplicate = await api<TestCase>(`/api/cases/${caseId}/duplicate`, { method: "POST" });
+      navigate(`/cases/${duplicate.id}/edit`, { replace: false });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Duplicate failed");
+    } finally {
+      setDuplicating(false);
     }
   }
 
@@ -618,6 +633,11 @@ export function TestCaseForm({
             <Button type="submit" variant="primary" disabled={saving}>
               {saving ? "Saving..." : "Save"}
             </Button>
+            {isEdit && (
+              <Button type="button" variant="secondary" onClick={handleDuplicate} disabled={duplicating || saving}>
+                {duplicating ? "Duplicating..." : "Duplicate"}
+              </Button>
+            )}
             {onCancel && (
               <Button type="button" variant="secondary" onClick={onCancel}>
                 Cancel
