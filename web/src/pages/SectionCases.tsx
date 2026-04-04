@@ -25,6 +25,7 @@ export default function SectionCases() {
   const [siblingsSections, setSiblingsSections] = useState<Section[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkSuccess, setBulkSuccess] = useState("");
 
   useEffect(() => {
     if (!sectionId) return;
@@ -76,6 +77,7 @@ export default function SectionCases() {
     }
     setBulkWorking(true);
     setError("");
+    setBulkSuccess("");
     try {
       const body: BulkCasesBody = {
         action: bulkAction,
@@ -93,9 +95,8 @@ export default function SectionCases() {
       const refreshed = await api<(TestCase & { steps?: unknown[]; status?: string })[]>(url);
       setCases(refreshed);
       const count = "deleted" in result ? result.deleted : "moved" in result ? result.moved : result.copied;
-      setImportResult({ created: 0, errors: [] });
-      // Brief success feedback via error area (reuse as info)
-      setError(`${bulkAction.charAt(0).toUpperCase() + bulkAction.slice(1)}: ${count} case(s)`);
+      setImportResult(null);
+      setBulkSuccess(`${bulkAction.charAt(0).toUpperCase() + bulkAction.slice(1)}: ${count} case(s)`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bulk action failed");
     } finally {
@@ -245,6 +246,7 @@ export default function SectionCases() {
       )}
 
       {error && <p className="mb-2 text-sm text-error">{error}</p>}
+      {bulkSuccess && <p className="mb-2 text-sm text-success">{bulkSuccess}</p>}
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[400px] border-collapse text-sm">
