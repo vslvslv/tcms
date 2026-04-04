@@ -121,3 +121,27 @@ See BACKLOG.md for full list. High-value deferred items:
 | Audit log fires unconditionally in generate-from-failure even on empty results | Low | API contract specialist | Should only log when cases are actually created | 88c1814 |
 | No rate limiting on AI endpoints (generate-cases + generate-from-failure) | Medium | Adversarial review | Any member can exhaust Anthropic quota; needs Fastify rate-limit plugin | 88c1814 |
 | Zero test coverage for restore endpoint and generate-from-failure endpoint | High | Testing specialist | No E2E or unit tests for 5 auth branches of restore, nor any path of generate-from-failure | 88c1814 |
+
+---
+
+## From /qa Sprint C (2026-04-04)
+
+### Fixed inline
+
+| Issue | Severity | Fix | Commit |
+|-------|----------|-----|--------|
+| ISSUE-001: recharts ResponsiveContainer warnings on Reports + ProjectDetail | High | Added `minWidth={1} minHeight={1}` to ResponsiveContainer + `style={{ minWidth: 0 }}` on wrapper divs in `Reports.tsx` and `ProjectDetail.tsx` | 4f01415 |
+
+### Deferred (pre-existing gaps, scheduled Sprint D)
+
+| Issue | Severity | Backlog | Notes |
+|-------|----------|---------|-------|
+| ISSUE-002: ReportBuilder shows blank when navigated to directly | Medium | Epic 22.4 | `ReportBuilder.tsx` relies on `ProjectContext`; no in-page project picker. Add picker fallback + sidebar nav link. |
+| ISSUE-003: Project Settings page completely unstyled (raw HTML, inline `style={{}}`) | Medium | Epic 21 (5 stories) | No Card components, no tab nav, hardcoded `#c00` colors. Full redesign needed. |
+| ISSUE-004: Milestone list has no edit/delete buttons | Medium | Epic 20.1-20.2 | `ProjectDetail.tsx:248-257` — API `PATCH/DELETE /api/milestones/:id` exists, no UI wired. |
+| ISSUE-005: Run Activity / Progress / Defects tabs are empty stubs | Medium | Epic 18 (3 stories) | `RunView.tsx:218,226,234` — all three tabs show placeholder text only. |
+| ISSUE-006: "To Do" nav item disabled | Low | Epic 19.1 | `Layout.tsx:83-86` — `cursor-not-allowed`, `aria-disabled="true"`, feature not implemented. |
+
+### Health Score
+- **78/100** — Zero crashes, all core flows functional. Deductions: run tab stubs (-2), Project Settings unstyled (-8), ReportBuilder discovery gap (-3), To Do disabled (-3), minor chart warning fixed this run.
+- Target after Sprint D (Epics 18-22): **90+**
