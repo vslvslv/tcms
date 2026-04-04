@@ -49,6 +49,11 @@ export default function ProjectDetail() {
   const [showNewMilestone, setShowNewMilestone] = useState(false);
   const [newMilestoneName, setNewMilestoneName] = useState("");
   const [newMilestoneDue, setNewMilestoneDue] = useState("");
+  const [newMilestoneDesc, setNewMilestoneDesc] = useState("");
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
+  const [editMilestoneName, setEditMilestoneName] = useState("");
+  const [editMilestoneDesc, setEditMilestoneDesc] = useState("");
+  const [editMilestoneDue, setEditMilestoneDue] = useState("");
   const [showNewPlan, setShowNewPlan] = useState(false);
   const [newPlanName, setNewPlanName] = useState("");
   const [newPlanMilestoneId, setNewPlanMilestoneId] = useState("");
@@ -135,17 +140,51 @@ export default function ProjectDetail() {
         method: "POST",
         body: JSON.stringify({
           name: newMilestoneName.trim(),
+          description: newMilestoneDesc.trim() || undefined,
           dueDate: newMilestoneDue.trim() || undefined,
         }),
       });
       setNewMilestoneName("");
       setNewMilestoneDue("");
+      setNewMilestoneDesc("");
       setShowNewMilestone(false);
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create milestone");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveMilestone(e: React.FormEvent, id: string) {
+    e.preventDefault();
+    if (!editMilestoneName.trim()) return;
+    setSaving(true);
+    try {
+      await api(`/api/milestones/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: editMilestoneName.trim(),
+          description: editMilestoneDesc.trim() || null,
+          dueDate: editMilestoneDue.trim() || null,
+        }),
+      });
+      setEditingMilestoneId(null);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update milestone");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function deleteMilestone(id: string) {
+    if (!window.confirm("Delete this milestone?")) return;
+    try {
+      await api(`/api/milestones/${id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete milestone");
     }
   }
 
@@ -238,19 +277,51 @@ export default function ProjectDetail() {
                 Name <input value={newMilestoneName} onChange={(e) => setNewMilestoneName(e.target.value)} required className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
               </label>
               <label className="flex items-center gap-2">
+                Description <input value={newMilestoneDesc} onChange={(e) => setNewMilestoneDesc(e.target.value)} placeholder="Description" className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              </label>
+              <label className="flex items-center gap-2">
                 Due date <input type="date" value={newMilestoneDue} onChange={(e) => setNewMilestoneDue(e.target.value)} className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
               </label>
               <Button type="submit" variant="primary" disabled={saving}>Create</Button>
-              <Button type="button" onClick={() => { setShowNewMilestone(false); setNewMilestoneName(""); setNewMilestoneDue(""); }}>Cancel</Button>
+              <Button type="button" onClick={() => { setShowNewMilestone(false); setNewMilestoneName(""); setNewMilestoneDue(""); setNewMilestoneDesc(""); }}>Cancel</Button>
             </form>
           )}
           {!showNewMilestone && <Button type="button" variant="primary" onClick={() => setShowNewMilestone(true)} className="mb-3 text-sm">New milestone</Button>}
           <ul className="list-none p-0">
             {milestones.map((m) => (
-              <li key={m.id} className="flex items-center gap-2 py-1.5">
-                <Flag size={14} className="shrink-0 text-violet-500" />
-                <Link to={`/milestones/${m.id}/progress`} className="text-primary hover:underline">{m.name}</Link>
-                <span className="text-xs text-muted">{m.dueDate ? `Due: ${new Date(m.dueDate).toLocaleDateString()}` : "No due date"}</span>
+              <li key={m.id} className="py-1.5">
+                {editingMilestoneId === m.id ? (
+                  <form onSubmit={(e) => saveMilestone(e, m.id)} className="flex flex-wrap items-center gap-2 rounded border border-border bg-surface-raised p-3">
+                    <input autoFocus value={editMilestoneName} onChange={(e) => setEditMilestoneName(e.target.value)} required className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" placeholder="Name" />
+                    <input value={editMilestoneDesc} onChange={(e) => setEditMilestoneDesc(e.target.value)} className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" placeholder="Description" />
+                    <input type="date" value={editMilestoneDue} onChange={(e) => setEditMilestoneDue(e.target.value)} className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+                    <Button type="submit" variant="primary" disabled={saving} className="text-xs">Save</Button>
+                    <Button type="button" className="text-xs" onClick={() => setEditingMilestoneId(null)}>Cancel</Button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Flag size={14} className="shrink-0 text-violet-500" />
+                    <Link to={`/milestones/${m.id}/progress`} className="text-primary hover:underline">{m.name}</Link>
+                    <span className="text-xs text-muted">{m.dueDate ? `Due: ${new Date(m.dueDate).toLocaleDateString()}` : "No due date"}</span>
+                    {m.description && <span className="text-xs text-muted">· {m.description}</span>}
+                    <button
+                      type="button"
+                      className="ml-auto rounded p-0.5 text-muted hover:text-text"
+                      title="Edit milestone"
+                      onClick={() => { setEditingMilestoneId(m.id); setEditMilestoneName(m.name); setEditMilestoneDesc(m.description ?? ""); setEditMilestoneDue(m.dueDate?.slice(0, 10) ?? ""); }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded p-0.5 text-muted hover:text-error"
+                      title="Delete milestone"
+                      onClick={() => deleteMilestone(m.id)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
