@@ -93,7 +93,7 @@ Generate ${count} test case(s) for this context.`;
     // Insert cases and steps into DB
     const createdCases = [];
     for (const item of generated.slice(0, count)) {
-      if (!item.title || typeof item.title !== "string") continue;
+      if (!item || typeof item !== "object" || !item.title || typeof item.title !== "string") continue;
       const [newCase] = await db
         .insert(testCases)
         .values({
