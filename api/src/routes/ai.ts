@@ -149,6 +149,12 @@ Generate ${count} test case(s) for this context.`;
     if (!bodyParsed.success) return replyError(reply, 400, "Invalid body", "VALIDATION_ERROR");
     const { failureLog, context, sectionId } = bodyParsed.data;
 
+    // Check write permission before burning AI tokens — any project member can call this
+    // endpoint, but only those with cases.create can insert into a section.
+    if (sectionId && !(await can(payload.sub, projectId, "cases.create"))) {
+      return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
+    }
+
     let client;
     try {
       client = createAiClient();
@@ -169,9 +175,12 @@ Return ONLY a valid JSON array. Each item must have:
 
 Format: [{"title":"...","steps":[{"content":"...","expected":"..."}],"reasoning":"..."}]`;
 
+    const sanitizeXml = (s: string) =>
+      s.replace(/<\/failure_log>/gi, "[/failure_log]").replace(/<\/context>/gi, "[/context]");
+
     const userPrompt = `<failure_log>
-${failureLog.slice(0, 8000).replace(/<\/failure_log>/gi, "[/failure_log]")}
-</failure_log>${context ? `\n<context>\n${context.replace(/<\/context>/gi, "[/context]")}\n</context>` : ""}
+${sanitizeXml(failureLog.slice(0, 8000))}
+</failure_log>${context ? `\n<context>\n${sanitizeXml(context)}\n</context>` : ""}
 
 Suggest test cases that would catch and prevent this failure.`;
 
@@ -199,12 +208,9 @@ Suggest test cases that would catch and prevent this failure.`;
       return replyError(reply, 502, "AI returned invalid JSON", "AI_PARSE_ERROR");
     }
 
-    // If sectionId provided, insert suggested cases
+    // If sectionId provided, insert suggested cases (permission already checked above)
     let createdCases: { id: string; title: string }[] = [];
     if (sectionId) {
-      if (!(await can(payload.sub, projectId, "cases.create"))) {
-        return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
-      }
       const [sec] = await db.select().from(sections).where(eq(sections.id, sectionId)).limit(1);
       if (!sec) return replyError(reply, 404, "Section not found", "NOT_FOUND");
       const [suite] = await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1);

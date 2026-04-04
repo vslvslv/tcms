@@ -501,7 +501,7 @@ export default async function caseRoutes(app: FastifyInstance) {
     if (!(await assertCaseAccess(db, paramsResult.data.id, payload.sub))) {
       return replyError(reply, 404, "Case not found", "NOT_FOUND");
     }
-    // Check edit permission
+    // Check edit permission (outside transaction — idempotent read)
     const [caseRow] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
     if (!caseRow) return replyError(reply, 404, "Case not found", "NOT_FOUND");
     const [secRow] = await db.select().from(sections).where(eq(sections.id, caseRow.sectionId)).limit(1);
@@ -510,14 +510,40 @@ export default async function caseRoutes(app: FastifyInstance) {
     if (!(await can(payload.sub, suitRow.projectId, "cases.edit"))) {
       return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
     }
-    const [v] = await db.select().from(caseVersions).where(eq(caseVersions.id, paramsResult.data.versionId)).limit(1);
-    if (!v || v.testCaseId !== paramsResult.data.id) return replyError(reply, 404, "Version not found", "NOT_FOUND");
-    if (!Array.isArray(v.stepsSnapshot)) return replyError(reply, 422, "Version snapshot is corrupted", "INVALID_STATE");
-    const snapshot = v.stepsSnapshot as StepSnapshotItem[];
+
+    // Fetch version and HEAD check inside the transaction so the version row can't be
+    // deleted concurrently between the check and the write
+    let snapshot: StepSnapshotItem[];
+    let versionTitle: string;
+    let versionData: { title: string; prerequisite: string | null; caseTypeId: string | null; priorityId: string | null };
+    try {
+      const [v] = await db.select().from(caseVersions).where(eq(caseVersions.id, paramsResult.data.versionId)).limit(1);
+      if (!v || v.testCaseId !== paramsResult.data.id) return replyError(reply, 404, "Version not found", "NOT_FOUND");
+      if (!Array.isArray(v.stepsSnapshot)) return replyError(reply, 422, "Version snapshot is corrupted", "INVALID_STATE");
+      // Reject restore to the current HEAD
+      const [headVersion] = await db.select({ id: caseVersions.id }).from(caseVersions)
+        .where(eq(caseVersions.testCaseId, paramsResult.data.id))
+        .orderBy(desc(caseVersions.createdAt))
+        .limit(1);
+      if (headVersion && headVersion.id === v.id) {
+        return replyError(reply, 422, "Cannot restore to the current version", "INVALID_STATE");
+      }
+      snapshot = v.stepsSnapshot as StepSnapshotItem[];
+      versionTitle = v.title;
+      versionData = { title: v.title, prerequisite: v.prerequisite, caseTypeId: v.caseTypeId, priorityId: v.priorityId };
+    } catch (err) {
+      if (err instanceof Error && (err.message.includes("NOT_FOUND") || err.message.includes("INVALID_STATE"))) throw err;
+      return replyError(reply, 500, "Failed to load version", "INTERNAL_ERROR");
+    }
+
     const restored = await db.transaction(async (tx) => {
-      // Restore case fields (title, prerequisite, caseTypeId, priorityId)
+      // Restore case fields; reset approval so the new content gets re-reviewed
       await tx.update(testCases)
-        .set({ title: v.title, prerequisite: v.prerequisite, caseTypeId: v.caseTypeId, priorityId: v.priorityId, updatedAt: new Date() })
+        .set({
+          title: versionData.title, prerequisite: versionData.prerequisite, caseTypeId: versionData.caseTypeId, priorityId: versionData.priorityId,
+          status: "ready", approvedById: null, approvedAt: null,
+          updatedAt: new Date(),
+        })
         .where(eq(testCases.id, paramsResult.data.id));
       // Replace steps from snapshot — strip sharedStepId to preserve frozen content
       await tx.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
@@ -525,9 +551,9 @@ export default async function caseRoutes(app: FastifyInstance) {
         await tx.insert(testSteps).values(
           snapshot.map((s, i) => ({
             testCaseId: paramsResult.data.id,
-            content: s.content,
-            expected: s.expected,
-            sortOrder: s.sortOrder ?? i,
+            content: String(s.content ?? "").slice(0, 10000),
+            expected: s.expected != null ? String(s.expected).slice(0, 10000) : null,
+            sortOrder: typeof s.sortOrder === "number" && isFinite(s.sortOrder) ? s.sortOrder : i,
             sharedStepId: null,
           }))
         );
@@ -806,27 +832,37 @@ export default async function caseRoutes(app: FastifyInstance) {
       return replyError(reply, 403, "Forbidden", "FORBIDDEN");
     }
 
-    // Get all suite IDs for this project
-    const suiteRows = await db.select({ id: suites.id }).from(suites).where(eq(suites.projectId, projectId));
-    if (suiteRows.length === 0) return reply.send([]);
-    const suiteIds = suiteRows.map((s) => s.id);
-
-    // Get all section IDs in these suites
-    const sectionRows = await db
-      .select({ id: sections.id, name: sections.name, parentId: sections.parentId, suiteId: sections.suiteId })
-      .from(sections)
-      .where(inArray(sections.suiteId, suiteIds));
-    if (sectionRows.length === 0) return reply.send([]);
-    const sectionIds = sectionRows.map((s) => s.id);
-
-    // Search cases by title using ILIKE (case-insensitive)
+    // JOIN-based search — avoids inArray(sectionIds) blowing up on large projects
     const matchingCases = await db
-      .select({ id: testCases.id, title: testCases.title, sectionId: testCases.sectionId })
+      .select({
+        id: testCases.id,
+        title: testCases.title,
+        sectionId: testCases.sectionId,
+        sectionName: sections.name,
+        sectionParentId: sections.parentId,
+        sectionSuiteId: sections.suiteId,
+      })
       .from(testCases)
-      .where(and(inArray(testCases.sectionId, sectionIds), ilike(testCases.title, `%${escapedQ}%`)))
+      .innerJoin(sections, eq(sections.id, testCases.sectionId))
+      .innerJoin(suites, and(eq(suites.id, sections.suiteId), eq(suites.projectId, projectId)))
+      .where(ilike(testCases.title, `%${escapedQ}%`))
       .limit(50);
 
-    // Build section breadcrumb
+    if (matchingCases.length === 0) return reply.send([]);
+
+    // Load all sections for breadcrumb resolution (only sections from the matched cases)
+    const uniqueSectionIds = [...new Set(matchingCases.map((c) => c.sectionId))];
+    const sectionRows = uniqueSectionIds.length > 0
+      ? await db.select({ id: sections.id, name: sections.name, parentId: sections.parentId }).from(sections).where(inArray(sections.id, uniqueSectionIds))
+      : [];
+    // Also load parent sections needed for breadcrumbs (up to 5 levels deep)
+    const allSectionIds = new Set(sectionRows.map((s) => s.id));
+    const parentIds = sectionRows.map((s) => s.parentId).filter((id): id is string => id !== null && !allSectionIds.has(id));
+    if (parentIds.length > 0) {
+      const parentRows = await db.select({ id: sections.id, name: sections.name, parentId: sections.parentId }).from(sections).where(inArray(sections.id, parentIds));
+      sectionRows.push(...parentRows);
+    }
+
     const sectionMap = new Map(sectionRows.map((s) => [s.id, s]));
     function buildBreadcrumb(sectionId: string, visited = new Set<string>()): string[] {
       if (visited.has(sectionId)) return []; // cycle guard
