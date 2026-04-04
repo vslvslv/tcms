@@ -5,6 +5,7 @@ import { sharedSteps, testSteps } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
+import { can } from "../lib/permissions.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 
 const paramsId = z.object({ id: z.string().uuid() });
@@ -50,6 +51,9 @@ export default async function sharedStepRoutes(app: FastifyInstance) {
     if (!(await assertProjectAccess(db, paramsResult.data.projectId, payload.sub))) {
       return replyError(reply, 404, "Project not found", "NOT_FOUND");
     }
+    if (!(await can(payload.sub, paramsResult.data.projectId, "cases.edit"))) {
+      return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
+    }
     const [row] = await db
       .insert(sharedSteps)
       .values({
@@ -90,6 +94,9 @@ export default async function sharedStepRoutes(app: FastifyInstance) {
     if (!(await assertProjectAccess(db, existing.projectId, payload.sub))) {
       return replyError(reply, 404, "Shared step not found", "NOT_FOUND");
     }
+    if (!(await can(payload.sub, existing.projectId, "cases.edit"))) {
+      return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
+    }
     const updatePayload: Record<string, unknown> = { updatedAt: new Date() };
     if (bodyResult.data.content !== undefined) updatePayload.content = bodyResult.data.content;
     if (bodyResult.data.expected !== undefined) updatePayload.expected = bodyResult.data.expected;
@@ -126,6 +133,9 @@ export default async function sharedStepRoutes(app: FastifyInstance) {
     if (!existing) return replyError(reply, 404, "Shared step not found", "NOT_FOUND");
     if (!(await assertProjectAccess(db, existing.projectId, payload.sub))) {
       return replyError(reply, 404, "Shared step not found", "NOT_FOUND");
+    }
+    if (!(await can(payload.sub, existing.projectId, "cases.delete"))) {
+      return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
     }
     await db.transaction(async (tx) => {
       await tx.update(testSteps).set({ sharedStepId: null, content: existing.content, expected: existing.expected, updatedAt: new Date() }).where(eq(testSteps.sharedStepId, parsed.data.id));

@@ -38,6 +38,9 @@ export default async function aiRoutes(app: FastifyInstance) {
     if (!(await assertProjectAccess(db, projectId, payload.sub))) {
       return replyError(reply, 404, "Project not found", "NOT_FOUND");
     }
+    if (!(await can(payload.sub, projectId, "cases.create"))) {
+      return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
+    }
 
     const bodyParsed = generateBody.safeParse(req.body);
     if (!bodyParsed.success) return replyError(reply, 400, "Invalid body", "VALIDATION_ERROR");
@@ -82,10 +85,15 @@ Generate ${count} test case(s) for this context.`;
         system: systemPrompt,
       });
       const block = message.content[0];
-      rawText = block.type === "text" ? block.text : "";
+      if (!block || block.type !== "text") {
+        console.error("[ai.generate-cases] AI returned no text content");
+        return replyError(reply, 502, "AI returned no text content", "AI_ERROR");
+      }
+      rawText = block.text;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "AI request failed";
-      return replyError(reply, 502, `AI generation failed: ${msg}`, "AI_ERROR");
+      console.error("[ai.generate-cases] AI error:", msg);
+      return replyError(reply, 502, "AI generation failed", "AI_ERROR");
     }
 
     // Parse JSON response
@@ -149,9 +157,9 @@ Generate ${count} test case(s) for this context.`;
     if (!bodyParsed.success) return replyError(reply, 400, "Invalid body", "VALIDATION_ERROR");
     const { failureLog, context, sectionId } = bodyParsed.data;
 
-    // Check write permission before burning AI tokens — any project member can call this
-    // endpoint, but only those with cases.create can insert into a section.
-    if (sectionId && !(await can(payload.sub, projectId, "cases.create"))) {
+    // Require cases.create to call AI endpoints — project members without write access
+    // should not be able to invoke LLM calls at Anthropic's expense.
+    if (!(await can(payload.sub, projectId, "cases.create"))) {
       return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
     }
 
@@ -176,7 +184,13 @@ Return ONLY a valid JSON array. Each item must have:
 Format: [{"title":"...","steps":[{"content":"...","expected":"..."}],"reasoning":"..."}]`;
 
     const sanitizeXml = (s: string) =>
-      s.replace(/<\/failure_log>/gi, "[/failure_log]").replace(/<\/context>/gi, "[/context]");
+      s
+        .replace(/<failure_log>/gi, "[failure_log]")
+        .replace(/<\/failure_log>/gi, "[/failure_log]")
+        .replace(/<context>/gi, "[context]")
+        .replace(/<\/context>/gi, "[/context]")
+        .replace(/<system>/gi, "[system]")
+        .replace(/<\/system>/gi, "[/system]");
 
     const userPrompt = `<failure_log>
 ${sanitizeXml(failureLog.slice(0, 8000))}
@@ -193,10 +207,15 @@ Suggest test cases that would catch and prevent this failure.`;
         system: systemPrompt,
       });
       const block = message.content[0];
-      rawText = block.type === "text" ? block.text : "";
+      if (!block || block.type !== "text") {
+        console.error("[ai.generate-from-failure] AI returned no text content");
+        return replyError(reply, 502, "AI returned no text content", "AI_ERROR");
+      }
+      rawText = block.text;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "AI request failed";
-      return replyError(reply, 502, `AI generation failed: ${msg}`, "AI_ERROR");
+      console.error("[ai.generate-from-failure] AI error:", msg);
+      return replyError(reply, 502, "AI generation failed", "AI_ERROR");
     }
 
     let suggestions: { title: string; steps: { content: string; expected: string }[]; reasoning: string }[];

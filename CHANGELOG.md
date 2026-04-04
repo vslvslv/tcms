@@ -2,7 +2,41 @@
 
 All notable changes to TCMS are documented in this file.
 
-## [0.1.0.1] - 2026-04-04
+## [0.2.0.0] - 2026-04-04
+
+### Added
+- **AI Test Generation from CI Failures (Story 14.4):** `POST /api/projects/:id/generate-from-failure` accepts a CI failure log and optional PRD context, returning 3-8 structured test case suggestions with reasoning. Suggestions can be auto-inserted into a suite section. Accessible from the "Generate from CI failure" collapsible panel in SuiteView.
+- **Version Restore (Story 5.6):** `POST /api/cases/:id/versions/:versionId/restore` restores a case to any prior version snapshot (title, prerequisite, steps). Approval status is reset. History UI shows "Restore this version" button with confirmation dialog.
+- **Full UI Redesign:** Dark/light theme with oklch-based design system. Token classes (`bg-surface`, `text-muted`, etc.) replace all hardcoded Tailwind palette references. shadcn/ui integrated with TCMS token bridge. Storybook 8 with stories for all 14 UI primitives.
+- **Docker Development Setup:** `docker-compose.yml` with hot-reload for api + web + PostgreSQL + MinIO. `api/entrypoint.sh` runs migrations + seeds on first boot.
+- **Password Reset Flow:** Token-based reset with email delivery. `ResetRequest` and `ResetConfirm` pages match login card styling.
+- **Google OAuth:** `/api/auth/oauth/google/authorize` + callback. Button visible in light and dark themes.
+- **Enterprise Permissions:** Fine-grained `can(userId, projectId, action)` matrix with admin/lead/tester roles. All mutation endpoints gate on specific actions (`cases.create`, `cases.edit`, `cases.delete`).
+- **File Attachments (Epic 3):** S3-compatible storage via MinIO. `AttachmentPanel` component with inline image thumbnails, lightbox preview, and download links.
+- **Run Intelligence:** Flaky test badge (`FlakyBadge`) in run view, smart run selection UI (suggest tests by changed files), bulk test status update, status filter + checkbox toolbar.
+- **Reporting & Analytics:** `ReportBuilder` with date range filter, status breakdown chart, CSV export. `MilestoneProgress` page. `Dashboard` with 7-day activity chart.
+- **User Management:** Admin user list, profile edit, notification preferences, API token management (SHA-256 hashed, 90-day expiry).
+- **Shared Steps:** Create, edit, delete shared steps with automatic propagation to all referencing test steps via transaction.
+- **Dataset Management:** Column/row grid editor for test datasets.
+- **Case Version History:** Full version history with diff view. Restore to any prior version.
+- **Bulk Case Operations:** Move, copy, delete with permission checks. Case search (FTS via ILIKE).
+- **AI Case Generation (Story 14.1-14.3):** Generate test cases from section context via Claude Haiku.
+- **Webhook Notifications:** Slack/Teams templates for run events.
+- **Keyboard Shortcuts:** Suite view and run view keyboard nav. Re-run failures shortcut.
+- **Visual Regression Testing:** Playwright visual snapshots for dark + light themes. `scripts/update-snapshots.sh` for Docker-consistent baselines.
+- **Accessibility Testing:** axe-core WCAG 2.1 AA audit across 5 pages × 2 themes via `npm run test:a11y`.
+
+### Fixed
+- Transaction atomicity on `testCases` PATCH — all sub-writes (steps, field values, version entry) in a single `db.transaction`.
+- Transaction atomicity on `sharedSteps` PATCH and DELETE — propagation to `testSteps` is atomic.
+- Shared steps write permission — `can(cases.edit)` on POST/PATCH, `can(cases.delete)` on DELETE.
+- AI endpoints permission gate — `can(cases.create)` required before calling Anthropic API.
+- Prompt injection via CI failure log XML tags — both opening and closing variants sanitized.
+- Version restore race condition — version fetch + HEAD check moved inside the transaction.
+- Fastify error status codes from restore endpoint — switched from thrown errors with `statusCode` to typed return values handled via `replyError()`.
+- recharts `ResponsiveContainer` console warnings on Reports and ProjectDetail pages.
+
+
 
 ### Added
 - **Case Search (Story 1.9):** Full-text case title search via `GET /api/projects/:id/cases/search?q=`. `<CaseSearchBar>` component in suite view with 250 ms debounce, keyboard navigation (ArrowUp/Down, Enter, Escape), ARIA `role="search"` + `role="listbox"`, breadcrumb path below each result. ILIKE query limited to 50 results, scoped to project via `assertProjectAccess`.

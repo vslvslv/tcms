@@ -194,8 +194,8 @@ export default function ProjectDetail() {
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Tests in the past 7 days</h2>
         </div>
         <p className="mb-4 text-sm text-muted">Test runs created by day.</p>
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-56" style={{ minWidth: 0 }}>
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
               <XAxis
                 dataKey="displayDate"
