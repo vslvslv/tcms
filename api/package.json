@@ -15,6 +15,7 @@
     "db:cleanup:e2e": "tsx scripts/cleanup-e2e-data.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
     "@aws-sdk/client-s3": "^3.1023.0",
     "@aws-sdk/s3-request-presigner": "^3.1023.0",
     "@fastify/cors": "^10.0.1",

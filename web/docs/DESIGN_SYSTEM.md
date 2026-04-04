@@ -145,6 +145,18 @@ await page.addInitScript((theme) => {
 }, "dark"); // or "light"
 ```
 
+#### Updating Snapshots Across Machines
+
+Snapshot baselines must be generated in the same environment as CI or they will fail on Linux CI after being created on macOS/Windows. Use the Docker wrapper:
+
+```bash
+bash scripts/update-snapshots.sh
+```
+
+This runs inside `mcr.microsoft.com/playwright:v1.42.0-jammy` (the same image CI uses), mounts the repo, and writes new PNG baselines to `web/tests/visual/__snapshots__/`. Review the diff with `git diff web/tests/visual/__snapshots__/` before committing.
+
+Do **not** run `npm run test:visual:update` locally unless your machine matches the CI environment exactly (Linux + Chromium). Use the Docker script instead.
+
 ### Accessibility Audit
 
 ```bash

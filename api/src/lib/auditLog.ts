@@ -22,7 +22,12 @@ export type AuditAction =
   | "shared_step.updated"
   | "shared_step.deleted"
   | "issue_link.added"
-  | "issue_link.removed";
+  | "issue_link.removed"
+  | "case.duplicated"
+  | "case.bulk_deleted"
+  | "case.bulk_moved"
+  | "case.bulk_copied"
+  | "ai.generated_cases";
 
 export async function writeAuditLog(
   db: Awaited<ReturnType<typeof getDb>>,

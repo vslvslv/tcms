@@ -502,4 +502,202 @@ export default async function caseRoutes(app: FastifyInstance) {
     await writeAuditLog(db, payload.sub, "case.deleted", "case", parsed.data.id, suitForAudit?.projectId ?? null);
     return reply.status(204).send();
   });
+
+  // POST /api/cases/:id/duplicate
+  // Creates a copy of the case (+ all steps) in the same section, appending " (Copy)" to the title.
+  // sharedStepId references are preserved as-is — the copy points to the same shared step.
+  app.post("/api/cases/:id/duplicate", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertCaseAccess(db, parsed.data.id, payload.sub))) {
+      return replyError(reply, 404, "Case not found", "NOT_FOUND");
+    }
+    const [source] = await db.select().from(testCases).where(eq(testCases.id, parsed.data.id)).limit(1);
+    if (!source) return replyError(reply, 404, "Case not found", "NOT_FOUND");
+    const [sec] = await db.select().from(sections).where(eq(sections.id, source.sectionId)).limit(1);
+    const [suit] = sec ? await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1) : [null];
+    if (!suit) return replyError(reply, 404, "Case not found", "NOT_FOUND");
+
+    const [duplicate] = await db
+      .insert(testCases)
+      .values({
+        sectionId: source.sectionId,
+        title: `${source.title} (Copy)`,
+        prerequisite: source.prerequisite,
+        caseTypeId: source.caseTypeId,
+        priorityId: source.priorityId,
+        datasetId: source.datasetId,
+        status: source.status,
+        sortOrder: source.sortOrder,
+      })
+      .returning();
+
+    // Copy steps using a single INSERT...SELECT pattern (avoids N+1)
+    const sourceSteps = await db.select().from(testSteps).where(eq(testSteps.testCaseId, source.id));
+    if (sourceSteps.length > 0) {
+      await db.insert(testSteps).values(
+        sourceSteps.map((s) => ({
+          testCaseId: duplicate.id,
+          content: s.content,
+          expected: s.expected,
+          sortOrder: s.sortOrder,
+          sharedStepId: s.sharedStepId,
+        }))
+      );
+    }
+
+    // Copy custom field values
+    const sourceCfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, source.id));
+    if (sourceCfValues.length > 0) {
+      await db.insert(caseFieldValues).values(
+        sourceCfValues.map((f) => ({
+          testCaseId: duplicate.id,
+          caseFieldId: f.caseFieldId,
+          value: f.value,
+        }))
+      );
+    }
+
+    await writeAuditLog(db, payload.sub, "case.duplicated", "case", duplicate.id, suit.projectId);
+
+    // Return the new case with its steps
+    const newSteps = await db.select().from(testSteps).where(eq(testSteps.testCaseId, duplicate.id));
+    const sharedIds = [...new Set(newSteps.map((s) => s.sharedStepId).filter(Boolean) as string[])];
+    const sharedList = sharedIds.length === 0 ? [] : await db.select().from(sharedSteps).where(inArray(sharedSteps.id, sharedIds));
+    const sharedMap = new Map(sharedList.map((sh) => [sh.id, { content: sh.content, expected: sh.expected }]));
+    return reply.status(201).send({
+      ...duplicate,
+      steps: stepsWithSharedResolved(newSteps, sharedMap),
+    });
+  });
+
+  // Bulk operations: delete, move, or copy cases within a project
+  const bulkBody = z.object({
+    action: z.enum(["delete", "move", "copy"]),
+    caseIds: z.array(z.string().uuid()).min(1).max(500),
+    targetSectionId: z.string().uuid().optional(),
+  });
+  const paramsProjectId = z.object({ projectId: z.string().uuid() });
+
+  app.post("/api/projects/:projectId/cases/bulk", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+
+    const paramsParsed = paramsProjectId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsParsed.success) return replyError(reply, 400, "Invalid projectId", "VALIDATION_ERROR");
+    const { projectId } = paramsParsed.data;
+
+    const db = await getDb();
+    if (!(await assertProjectAccess(db, projectId, payload.sub))) {
+      return replyError(reply, 404, "Project not found", "NOT_FOUND");
+    }
+
+    const bodyParsed = bulkBody.safeParse(req.body);
+    if (!bodyParsed.success) return replyError(reply, 400, "Invalid body", "VALIDATION_ERROR");
+    const { action, caseIds, targetSectionId } = bodyParsed.data;
+
+    if (caseIds.length === 0) return replyError(reply, 400, "caseIds must not be empty", "VALIDATION_ERROR");
+
+    // Verify all cases belong to this project
+    const casesInProject = await db
+      .select({ id: testCases.id, sectionId: testCases.sectionId })
+      .from(testCases)
+      .innerJoin(sections, eq(sections.id, testCases.sectionId))
+      .innerJoin(suites, eq(suites.id, sections.suiteId))
+      .where(and(inArray(testCases.id, caseIds), eq(suites.projectId, projectId)));
+
+    if (casesInProject.length !== caseIds.length) {
+      return replyError(reply, 400, "One or more cases not found in this project", "VALIDATION_ERROR");
+    }
+
+    if (action === "delete") {
+      if (!(await can(payload.sub, projectId, "cases.delete"))) {
+        return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+      }
+      await db.delete(testCases).where(inArray(testCases.id, caseIds));
+      await writeAuditLog(db, payload.sub, "case.bulk_deleted", "project", projectId, projectId);
+      return reply.status(200).send({ deleted: caseIds.length });
+    }
+
+    if (action === "move") {
+      if (!targetSectionId) return replyError(reply, 400, "targetSectionId required for move", "VALIDATION_ERROR");
+      // Verify target section belongs to same project
+      const [targetSec] = await db
+        .select({ id: sections.id })
+        .from(sections)
+        .innerJoin(suites, eq(suites.id, sections.suiteId))
+        .where(and(eq(sections.id, targetSectionId), eq(suites.projectId, projectId)))
+        .limit(1);
+      if (!targetSec) return replyError(reply, 400, "Target section not found in this project", "VALIDATION_ERROR");
+      await db.update(testCases).set({ sectionId: targetSectionId }).where(inArray(testCases.id, caseIds));
+      await writeAuditLog(db, payload.sub, "case.bulk_moved", "project", projectId, projectId);
+      return reply.status(200).send({ moved: caseIds.length });
+    }
+
+    if (action === "copy") {
+      if (!targetSectionId) return replyError(reply, 400, "targetSectionId required for copy", "VALIDATION_ERROR");
+      const [targetSec] = await db
+        .select({ id: sections.id })
+        .from(sections)
+        .innerJoin(suites, eq(suites.id, sections.suiteId))
+        .where(and(eq(sections.id, targetSectionId), eq(suites.projectId, projectId)))
+        .limit(1);
+      if (!targetSec) return replyError(reply, 400, "Target section not found in this project", "VALIDATION_ERROR");
+
+      const sourceCases = await db.select().from(testCases).where(inArray(testCases.id, caseIds));
+      const sourceSteps = await db.select().from(testSteps).where(inArray(testSteps.testCaseId, caseIds));
+      const sourceCfValues = await db.select().from(caseFieldValues).where(inArray(caseFieldValues.testCaseId, caseIds));
+
+      const newCaseIds: string[] = await db.transaction(async (tx) => {
+        const inserted: string[] = [];
+        for (const src of sourceCases) {
+          const [newCase] = await tx
+            .insert(testCases)
+            .values({
+              sectionId: targetSectionId,
+              title: `${src.title} (Copy)`,
+              prerequisite: src.prerequisite,
+              caseTypeId: src.caseTypeId,
+              priorityId: src.priorityId,
+              datasetId: src.datasetId,
+              status: src.status,
+              sortOrder: src.sortOrder,
+            })
+            .returning({ id: testCases.id });
+          const caseSteps = sourceSteps.filter((s) => s.testCaseId === src.id);
+          if (caseSteps.length > 0) {
+            await tx.insert(testSteps).values(
+              caseSteps.map((s) => ({
+                testCaseId: newCase.id,
+                content: s.content,
+                expected: s.expected,
+                sortOrder: s.sortOrder,
+                sharedStepId: s.sharedStepId,
+              }))
+            );
+          }
+          const caseCfValues = sourceCfValues.filter((f) => f.testCaseId === src.id);
+          if (caseCfValues.length > 0) {
+            await tx.insert(caseFieldValues).values(
+              caseCfValues.map((f) => ({
+                testCaseId: newCase.id,
+                caseFieldId: f.caseFieldId,
+                value: f.value,
+              }))
+            );
+          }
+          inserted.push(newCase.id);
+        }
+        return inserted;
+      });
+
+      await writeAuditLog(db, payload.sub, "case.bulk_copied", "project", projectId, projectId);
+      return reply.status(201).send({ copied: newCaseIds.length, caseIds: newCaseIds });
+    }
+
+    return replyError(reply, 400, "Unknown action", "VALIDATION_ERROR");
+  });
 }

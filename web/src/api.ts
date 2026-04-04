@@ -233,3 +233,10 @@ export type RunTest = {
 export type NotificationPref = { event: string; enabled: boolean };
 
 export type SuggestedTest = { caseId: string; caseTitle: string; score: number };
+
+export type BulkAction = "delete" | "move" | "copy";
+export type BulkCasesBody = { action: BulkAction; caseIds: string[]; targetSectionId?: string };
+export type BulkCasesResult =
+  | { deleted: number }
+  | { moved: number }
+  | { copied: number; caseIds: string[] };

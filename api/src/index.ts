@@ -35,6 +35,7 @@ import adminRoutes from "./routes/admin.js";
 import tokenRoutes from "./routes/tokens.js";
 import notificationRoutes from "./routes/notifications.js";
 import oauthRoutes from "./routes/oauth.js";
+import aiRoutes from "./routes/ai.js";
 
 const app = Fastify({ logger: true });
 
@@ -100,6 +101,7 @@ await app.register(adminRoutes);
 await app.register(tokenRoutes);
 await app.register(notificationRoutes);
 await app.register(oauthRoutes);
+await app.register(aiRoutes);
 
 app.get("/health", async () => {
   try {

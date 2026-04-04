@@ -10,7 +10,8 @@
     "test:unit": "vitest run",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "validate:tokens": "node ../scripts/validate-oklch.mjs"
   },
   "dependencies": {
     "@radix-ui/react-focus-scope": "^1.1.8",

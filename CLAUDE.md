@@ -70,6 +70,8 @@ SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=noreply@tcms.local
+# AI Test Generation (optional)
+ANTHROPIC_API_KEY=
 ```
 **`web/.env`**
 ```
