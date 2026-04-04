@@ -2,6 +2,25 @@
 
 All notable changes to TCMS are documented in this file.
 
+## [0.3.0.0] - 2026-04-05
+
+### Added
+- **Run Activity Tab (Story 18.1):** Real-time audit log for each test run. Shows who created the run, status changes, and all actions — with timestamps and actor names. Previously a stub.
+- **Run Progress Tab (Story 18.2):** Pass-rate trend chart using Recharts `LineChart`. Plots daily pass percentage as tests are executed. Shows "Not enough data yet" until at least 2 data points exist.
+- **Run Defects Tab (Story 18.3):** Aggregated list of all issue links from results in the run. New `GET /api/runs/:id/defects` endpoint joins issue links across all tests in the run.
+- **Needs Attention Page (Story 19.1):** New `/todo` route shows cases awaiting review (status=ready) and open test runs across all your projects. Loading skeletons, empty state, and batched parallel fetching.
+- **Milestone Inline Edit (Story 20.1):** Pencil icon on each milestone opens an inline form to edit name, description, and due date without leaving the project page.
+- **Milestone Delete (Story 20.2):** Delete button in milestone row with confirmation. Immediately reflects in the milestone list.
+- **Milestone Description Field (Story 20.3):** Create milestone form now includes a description input field.
+- **Project Settings Redesign (Stories 21.1-21.5):** 5-tab layout — General, Members, Case Config, Integrations, Danger. All inline styles and hardcoded colors removed. Audit log auto-loads when Danger tab opens. Project delete requires typing the project name to confirm.
+- **Sidebar Navigation Restructure (Stories 22.1-22.5):** "Project" and "Workspace" section labels. Active project badge. Milestone sub-links with lazy loading and 5-minute cache. To Do nav item links to `/todo`. Report Builder sub-link appears when on `/reports`.
+- **Multi-Suite Cases Overview:** Cases Overview now loads and displays sections from all suites in a project, not just the first.
+- **E2E Spec Consolidation:** 9 sprint-named spec files replaced with 4 domain-organized canonical files (`authentication.spec.ts`, `projects.spec.ts`, `test-design.spec.ts`, `test-execution.spec.ts`).
+
+### Changed
+- `GET /api/projects/:id/audit-log` now accepts `entityId` UUID query parameter for filtering the log to a specific entity (run, case, etc.).
+- Sidebar always visible — `showSidebar` default changed to `true`.
+
 ## [0.2.0.0] - 2026-04-04
 
 ### Added
