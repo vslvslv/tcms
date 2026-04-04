@@ -94,21 +94,24 @@ export default async function sharedStepRoutes(app: FastifyInstance) {
     if (bodyResult.data.content !== undefined) updatePayload.content = bodyResult.data.content;
     if (bodyResult.data.expected !== undefined) updatePayload.expected = bodyResult.data.expected;
     if (bodyResult.data.sortOrder !== undefined) updatePayload.sortOrder = bodyResult.data.sortOrder;
-    const [updated] = await db
-      .update(sharedSteps)
-      .set(updatePayload as typeof sharedSteps.$inferInsert)
-      .where(eq(sharedSteps.id, paramsResult.data.id))
-      .returning();
-    if (bodyResult.data.content !== undefined || bodyResult.data.expected !== undefined) {
-      await db
-        .update(testSteps)
-        .set({
-          content: (bodyResult.data.content ?? existing.content) as string,
-          expected: bodyResult.data.expected !== undefined ? bodyResult.data.expected : existing.expected,
-          updatedAt: new Date(),
-        })
-        .where(eq(testSteps.sharedStepId, paramsResult.data.id));
-    }
+    const updated = await db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(sharedSteps)
+        .set(updatePayload as typeof sharedSteps.$inferInsert)
+        .where(eq(sharedSteps.id, paramsResult.data.id))
+        .returning();
+      if (bodyResult.data.content !== undefined || bodyResult.data.expected !== undefined) {
+        await tx
+          .update(testSteps)
+          .set({
+            content: (bodyResult.data.content ?? existing.content) as string,
+            expected: bodyResult.data.expected !== undefined ? bodyResult.data.expected : existing.expected,
+            updatedAt: new Date(),
+          })
+          .where(eq(testSteps.sharedStepId, paramsResult.data.id));
+      }
+      return row;
+    });
     await writeAuditLog(db, payload.sub, "shared_step.updated", "shared_step", paramsResult.data.id, existing.projectId);
     return reply.send(updated);
   });
@@ -124,8 +127,10 @@ export default async function sharedStepRoutes(app: FastifyInstance) {
     if (!(await assertProjectAccess(db, existing.projectId, payload.sub))) {
       return replyError(reply, 404, "Shared step not found", "NOT_FOUND");
     }
-    await db.update(testSteps).set({ sharedStepId: null, content: existing.content, expected: existing.expected, updatedAt: new Date() }).where(eq(testSteps.sharedStepId, parsed.data.id));
-    await db.delete(sharedSteps).where(eq(sharedSteps.id, parsed.data.id));
+    await db.transaction(async (tx) => {
+      await tx.update(testSteps).set({ sharedStepId: null, content: existing.content, expected: existing.expected, updatedAt: new Date() }).where(eq(testSteps.sharedStepId, parsed.data.id));
+      await tx.delete(sharedSteps).where(eq(sharedSteps.id, parsed.data.id));
+    });
     await writeAuditLog(db, payload.sub, "shared_step.deleted", "shared_step", parsed.data.id, existing.projectId);
     return reply.status(204).send();
   });

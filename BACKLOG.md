@@ -52,7 +52,8 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | 3.3 | Attach screenshots to results (manual) | ✅ | |
 | 3.3b | Auto-attach CI screenshots from Playwright import (base64 attachments in JSON report) | ❌ | Prereq: verified 3.4 done |
 | 3.4 | File storage backend (local disk or S3-compatible) | ✅ | `lib/storage.ts` — MinIO in dev, S3-compatible in prod |
-| 3.5 | Attachment viewer in case/result detail | ❌ | API done, no viewer UI |
+| 3.5 | Attachment viewer in case/result detail | ✅ | `AttachmentPanel.tsx` renders in `TestCaseForm.tsx:714` + `RunTestCaseSidebar.tsx:419` |
+| 3.5b | Inline image preview in AttachmentPanel | ✅ | `AttachmentPanel.tsx:155-168` — thumbnails + lightbox already implemented |
 
 ---
 
@@ -78,10 +79,10 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 |---|-------|--------|-------|
 | 5.1 | Shared steps (create/edit/delete) | ✅ | API + management UI in `ProjectSettings.tsx:55` |
 | 5.2 | Reference shared steps from a case | ✅ | Shared step picker + insert in `TestCaseForm.tsx:337-615` |
-| 5.3 | Propagate shared step edits to all referencing cases | 🔶 | Logic in API, untested in UI |
+| 5.3 | Propagate shared step edits to all referencing cases | ✅ | `sharedSteps.ts:102-111` propagates `content`+`expected` on PATCH; wrapped in `db.transaction` (Sprint C) |
 | 5.4 | Case version history list | ✅ | `CaseVersionHistory.tsx:75-160` — embedded in TestCaseForm |
 | 5.5 | Side-by-side case diff (version A vs B) | ✅ | `CaseVersionHistory.tsx:107-150` — diff UI done |
-| 5.6 | Restore a previous version | ❌ | |
+| 5.6 | Restore a previous version | ✅ | `POST /api/cases/:id/versions/:versionId/restore`; "Restore" button in `CaseVersionHistory.tsx` (Sprint C) |
 | 5.7 | Test parameterization / datasets | ✅ | `DatasetEditor` component + `ProjectSettings.tsx` |
 | 5.8 | Dataset management UI (add columns, rows) | ✅ | `DatasetEditor` component |
 | 5.9 | Per-dataset-row test instances in run | 🔶 | API creates tests per row, no run-creation UI |
@@ -162,7 +163,7 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 |---|-------|--------|-------|
 | 10.1 | Audit log (case/run/result events) | ✅ | `lib/auditLog.ts` |
 | 10.2 | Audit log viewer UI | ✅ | `ProjectSettings.tsx` — embedded viewer |
-| 10.3 | Case approval workflow | 🔶 | API done, no approval UI |
+| 10.3 | Case approval workflow | ✅ | Approve/Revoke buttons in `TestCaseForm.tsx:478-484`; API at `cases.ts:332` |
 | 10.4 | Approval notifications | ✅ | `NotificationSettings.tsx` — "case.approval_requested" preference |
 | 10.5 | Audit log export | ❌ | |
 
@@ -211,7 +212,7 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | 14.1 | "Generate with AI" button in SuiteView — calls Claude API (Haiku) with context, returns suggested cases + steps | ✅ | `routes/ai.ts` + SuiteView modal — Sprint A |
 | 14.2 | AI-generated cases review/accept/discard modal | ✅ | SuiteView AI modal — Sprint A |
 | 14.3 | Prompt: include existing case titles for dedup + XML delimiter injection defense | ✅ | `lib/ai.ts` — Sprint A |
-| 14.4 | v2: Generate from CI failures / PRD — differentiating angle | ❌ | Deferred after MVP validates |
+| 14.4 | v2: Generate from CI failures / PRD — differentiating angle | ✅ | `POST /api/projects/:id/generate-from-failure`; "Generate from CI failure" panel (Sprint C) |
 
 **API shape**: `POST /api/projects/:id/ai/generate-cases` → `{ cases: [{title, steps: [{action, expectedResult}]}] }`  
 **Env**: `ANTHROPIC_API_KEY` in `api/.env`; returns HTTP 503 with message if absent  

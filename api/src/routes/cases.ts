@@ -347,50 +347,49 @@ export default async function caseRoutes(app: FastifyInstance) {
         updatePayload.approvedAt = null;
       }
     }
-    await db.update(testCases).set(updatePayload).where(eq(testCases.id, paramsResult.data.id));
-    if (bodyResult.data.steps !== undefined) {
-      await db.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
-      if (bodyResult.data.steps.length > 0) {
-        const [cas] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
-        const [sec] = cas ? await db.select().from(sections).where(eq(sections.id, cas.sectionId)).limit(1) : [null];
-        const [suit] = sec ? await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1) : [null];
-        const projectId = suit?.projectId;
-        if (!projectId) return replyError(reply, 400, "Case/section/suite not found", "VALIDATION_ERROR");
-        try {
-          const resolved = await resolveStepsForInsert(db, projectId, paramsResult.data.id, bodyResult.data.steps);
-          await db.insert(testSteps).values(resolved);
-        } catch (err) {
-          return replyError(reply, 400, err instanceof Error ? err.message : "Invalid steps", "VALIDATION_ERROR");
+    const { c, steps, sharedMap, cfValues } = await db.transaction(async (tx) => {
+      await tx.update(testCases).set(updatePayload).where(eq(testCases.id, paramsResult.data.id));
+      if (bodyResult.data.steps !== undefined) {
+        await tx.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
+        if (bodyResult.data.steps.length > 0) {
+          const [cas] = await tx.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+          const [sec] = cas ? await tx.select().from(sections).where(eq(sections.id, cas.sectionId)).limit(1) : [null];
+          const [suit] = sec ? await tx.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1) : [null];
+          const projectId = suit?.projectId;
+          if (!projectId) throw new Error("Case/section/suite not found");
+          const resolved = await resolveStepsForInsert(tx as unknown as typeof db, projectId, paramsResult.data.id, bodyResult.data.steps);
+          await tx.insert(testSteps).values(resolved);
         }
       }
-    }
-    if (bodyResult.data.customFields !== undefined) {
-      await db.delete(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
-      if (bodyResult.data.customFields.length > 0) {
-        await db.insert(caseFieldValues).values(
-          bodyResult.data.customFields.map((f) => ({
-            testCaseId: paramsResult.data.id,
-            caseFieldId: f.caseFieldId,
-            value: f.value,
-          }))
-        );
+      if (bodyResult.data.customFields !== undefined) {
+        await tx.delete(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
+        if (bodyResult.data.customFields.length > 0) {
+          await tx.insert(caseFieldValues).values(
+            bodyResult.data.customFields.map((f) => ({
+              testCaseId: paramsResult.data.id,
+              caseFieldId: f.caseFieldId,
+              value: f.value,
+            }))
+          );
+        }
       }
-    }
-    const [c] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
-    const steps = await db.select().from(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
-    const sharedIds = [...new Set(steps.map((s) => s.sharedStepId).filter(Boolean) as string[])];
-    const sharedList = sharedIds.length === 0 ? [] : await db.select().from(sharedSteps).where(inArray(sharedSteps.id, sharedIds));
-    const sharedMap = new Map(sharedList.map((sh) => [sh.id, { content: sh.content, expected: sh.expected }]));
-    const cfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
-    const snapshot = await buildStepsSnapshot(db, paramsResult.data.id);
-    await db.insert(caseVersions).values({
-      testCaseId: paramsResult.data.id,
-      title: c.title,
-      prerequisite: c.prerequisite,
-      caseTypeId: c.caseTypeId,
-      priorityId: c.priorityId,
-      stepsSnapshot: snapshot,
-      createdBy: payload.sub,
+      const [updatedCase] = await tx.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+      const updatedSteps = await tx.select().from(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
+      const sIds = [...new Set(updatedSteps.map((s) => s.sharedStepId).filter(Boolean) as string[])];
+      const sList = sIds.length === 0 ? [] : await tx.select().from(sharedSteps).where(inArray(sharedSteps.id, sIds));
+      const sMap = new Map(sList.map((sh) => [sh.id, { content: sh.content, expected: sh.expected }]));
+      const cfVals = await tx.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
+      const snapshot = await buildStepsSnapshot(tx as unknown as typeof db, paramsResult.data.id);
+      await tx.insert(caseVersions).values({
+        testCaseId: paramsResult.data.id,
+        title: updatedCase.title,
+        prerequisite: updatedCase.prerequisite,
+        caseTypeId: updatedCase.caseTypeId,
+        priorityId: updatedCase.priorityId,
+        stepsSnapshot: snapshot,
+        createdBy: payload.sub,
+      });
+      return { c: updatedCase, steps: updatedSteps, sharedMap: sMap, cfValues: cfVals };
     });
     const [secForAudit] = await db.select().from(sections).where(eq(sections.id, c.sectionId)).limit(1);
     const [suitForAudit] = secForAudit ? await db.select().from(suites).where(eq(suites.id, secForAudit.suiteId)).limit(1) : [null];
@@ -483,6 +482,68 @@ export default async function caseRoutes(app: FastifyInstance) {
       .limit(1);
     if (!v || v.testCaseId !== paramsResult.data.id) return replyError(reply, 404, "Version not found", "NOT_FOUND");
     return reply.send(v);
+  });
+
+  app.post("/api/cases/:id/versions/:versionId/restore", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = z.object({ id: z.string().uuid(), versionId: z.string().uuid() }).safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid params", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertCaseAccess(db, paramsResult.data.id, payload.sub))) {
+      return replyError(reply, 404, "Case not found", "NOT_FOUND");
+    }
+    // Check edit permission
+    const [caseRow] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+    if (!caseRow) return replyError(reply, 404, "Case not found", "NOT_FOUND");
+    const [secRow] = await db.select().from(sections).where(eq(sections.id, caseRow.sectionId)).limit(1);
+    const [suitRow] = secRow ? await db.select().from(suites).where(eq(suites.id, secRow.suiteId)).limit(1) : [null];
+    if (!suitRow) return replyError(reply, 404, "Case not found", "NOT_FOUND");
+    if (!(await can(payload.sub, suitRow.projectId, "cases.edit"))) {
+      return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
+    }
+    const [v] = await db.select().from(caseVersions).where(eq(caseVersions.id, paramsResult.data.versionId)).limit(1);
+    if (!v || v.testCaseId !== paramsResult.data.id) return replyError(reply, 404, "Version not found", "NOT_FOUND");
+    const snapshot = (v.stepsSnapshot ?? []) as StepSnapshotItem[];
+    const restored = await db.transaction(async (tx) => {
+      // Restore case fields (title, prerequisite, caseTypeId, priorityId)
+      await tx.update(testCases)
+        .set({ title: v.title, prerequisite: v.prerequisite, caseTypeId: v.caseTypeId, priorityId: v.priorityId, updatedAt: new Date() })
+        .where(eq(testCases.id, paramsResult.data.id));
+      // Replace steps from snapshot — strip sharedStepId to preserve frozen content
+      await tx.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
+      if (snapshot.length > 0) {
+        await tx.insert(testSteps).values(
+          snapshot.map((s, i) => ({
+            testCaseId: paramsResult.data.id,
+            content: s.content,
+            expected: s.expected,
+            sortOrder: s.sortOrder ?? i,
+            sharedStepId: null,
+          }))
+        );
+      }
+      // Record restore as a new version (restore becomes the new HEAD)
+      const [updatedCase] = await tx.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+      const restoredSteps = await tx.select().from(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
+      const newSnapshot: StepSnapshotItem[] = restoredSteps.sort((a, b) => a.sortOrder - b.sortOrder).map((s) => ({
+        content: s.content,
+        expected: s.expected,
+        sortOrder: s.sortOrder,
+      }));
+      await tx.insert(caseVersions).values({
+        testCaseId: paramsResult.data.id,
+        title: updatedCase.title,
+        prerequisite: updatedCase.prerequisite,
+        caseTypeId: updatedCase.caseTypeId,
+        priorityId: updatedCase.priorityId,
+        stepsSnapshot: newSnapshot,
+        createdBy: payload.sub,
+      });
+      return { updatedCase, restoredSteps };
+    });
+    await writeAuditLog(db, payload.sub, "case.restored", "case", paramsResult.data.id, suitRow.projectId);
+    return reply.send({ ...restored.updatedCase, steps: restored.restoredSteps.sort((a, b) => a.sortOrder - b.sortOrder) });
   });
 
   app.delete("/api/cases/:id", async (req: FastifyRequest, reply: FastifyReply) => {

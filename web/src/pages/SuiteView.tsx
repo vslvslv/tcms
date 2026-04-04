@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { api, type Suite, type Section } from "../api";
+import { api, type Suite, type Section, type AiFailureResult } from "../api";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
 import { CaseSearchBar } from "../components/CaseSearchBar";
+import { Select } from "../components/ui/Select";
 
 function buildTree(sections: Section[]): (Section & { children: ReturnType<typeof buildTree> })[] {
   const byParent = new Map<string | null, Section[]>();
@@ -40,6 +41,15 @@ export default function SuiteView() {
   const [aiWorking, setAiWorking] = useState(false);
   const [aiError, setAiError] = useState("");
   const [aiResult, setAiResult] = useState<{ created: number } | null>(null);
+
+  // CI failure panel
+  const [ciOpen, setCiOpen] = useState(false);
+  const [ciLog, setCiLog] = useState("");
+  const [ciContext, setCiContext] = useState("");
+  const [ciSectionId, setCiSectionId] = useState("");
+  const [ciWorking, setCiWorking] = useState(false);
+  const [ciError, setCiError] = useState("");
+  const [ciResult, setCiResult] = useState<AiFailureResult | null>(null);
 
   function load() {
     if (!suiteId) return;
@@ -133,6 +143,29 @@ export default function SuiteView() {
     }
   }
 
+  async function handleCiGenerate(e: React.FormEvent) {
+    e.preventDefault();
+    if (!suite || !ciLog.trim()) return;
+    setCiWorking(true);
+    setCiError("");
+    setCiResult(null);
+    try {
+      const result = await api<AiFailureResult>(`/api/projects/${suite.projectId}/generate-from-failure`, {
+        method: "POST",
+        body: JSON.stringify({
+          failureLog: ciLog.trim(),
+          context: ciContext.trim() || undefined,
+          sectionId: ciSectionId || undefined,
+        }),
+      });
+      setCiResult(result);
+    } catch (err) {
+      setCiError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setCiWorking(false);
+    }
+  }
+
   if (!suiteId) return null;
   if (loading) return <LoadingSpinner />;
   if (error && !suite) return <p className="text-error">{error}</p>;
@@ -188,6 +221,87 @@ export default function SuiteView() {
       </p>
       <CaseSearchBar projectId={suite.projectId} />
       <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Sections</h2>
+
+      {/* Generate from CI failure panel */}
+      <div className="mb-6 rounded border border-border bg-surface">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-text hover:bg-surface-raised"
+          onClick={() => { setCiOpen((v) => !v); setCiResult(null); setCiError(""); }}
+          aria-expanded={ciOpen}
+        >
+          <span>Generate test cases from CI failure</span>
+          <span className="text-muted">{ciOpen ? "▲" : "▼"}</span>
+        </button>
+        {ciOpen && (
+          <div className="border-t border-border px-4 pb-4 pt-3">
+            {ciResult ? (
+              <div className="space-y-3">
+                <p className="text-sm text-success">
+                  {ciResult.created > 0
+                    ? `Created ${ciResult.created} test case${ciResult.created !== 1 ? "s" : ""} in the selected section.`
+                    : `Found ${ciResult.suggestions.length} suggestion${ciResult.suggestions.length !== 1 ? "s" : ""}.`}
+                </p>
+                <div className="space-y-2">
+                  {ciResult.suggestions.map((s, i) => (
+                    <div key={i} className="rounded border border-border bg-surface-raised p-3 text-sm">
+                      <div className="font-medium text-text">{s.title}</div>
+                      <div className="mt-1 text-xs text-muted">{s.reasoning}</div>
+                      <div className="mt-2 space-y-1">
+                        {s.steps.map((step, j) => (
+                          <div key={j} className="flex gap-2 text-xs text-muted">
+                            <span className="shrink-0 w-4">{j + 1}.</span>
+                            <span>{step.content}{step.expected ? ` → ${step.expected}` : ""}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <Button type="button" variant="secondary" onClick={() => setCiResult(null)}>Try another failure</Button>
+              </div>
+            ) : (
+              <form onSubmit={handleCiGenerate} className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted">CI failure log (paste stack trace, error output, or test failure message)</label>
+                  <textarea
+                    value={ciLog}
+                    onChange={(e) => setCiLog(e.target.value)}
+                    rows={6}
+                    required
+                    placeholder={"FAIL src/auth/login.test.ts\n  ● Login › should reject invalid password\n    expect(received).toBe(expected)\n    Expected: 401\n    Received: 200"}
+                    className="w-full rounded border border-border bg-surface-raised text-text px-2 py-1.5 font-mono text-xs focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted">Additional context (optional — ticket description, PR summary)</label>
+                  <textarea
+                    value={ciContext}
+                    onChange={(e) => setCiContext(e.target.value)}
+                    rows={2}
+                    placeholder="e.g. Auth refactor PR — moved session validation to middleware layer"
+                    className="w-full rounded border border-border bg-surface-raised text-text px-2 py-1.5 text-xs focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-muted">Insert into section (optional)</label>
+                  <Select value={ciSectionId} onChange={(e) => setCiSectionId(e.target.value)} className="w-full text-sm">
+                    <option value="">— Suggestions only, don&apos;t insert —</option>
+                    {sections.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </Select>
+                </div>
+                {ciError && <p className="text-sm text-error">{ciError}</p>}
+                <Button type="submit" variant="primary" disabled={ciWorking || !ciLog.trim()}>
+                  {ciWorking ? "Analyzing…" : "Generate test cases"}
+                </Button>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+
       <form onSubmit={addRootSection} className="mb-6 flex items-center gap-2">
         <input value={newSectionName} onChange={(e) => setNewSectionName(e.target.value)} placeholder="New section name" className="w-48 rounded border border-border bg-surface-raised text-text px-2 py-1.5 text-sm" />
         <button type="submit" disabled={saving} className="rounded border border-primary bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-50">Add section</button>

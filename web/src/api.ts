@@ -235,6 +235,18 @@ export type NotificationPref = { event: string; enabled: boolean };
 
 export type SuggestedTest = { caseId: string; caseTitle: string; score: number };
 
+export type AiFailureSuggestion = {
+  title: string;
+  reasoning: string;
+  steps: { content: string; expected: string }[];
+};
+
+export type AiFailureResult = {
+  suggestions: AiFailureSuggestion[];
+  created: number;
+  cases: { id: string; title: string }[];
+};
+
 export type CaseSearchResult = { id: string; title: string; sectionId: string; sectionPath: string[] };
 
 export type BulkAction = "delete" | "move" | "copy";

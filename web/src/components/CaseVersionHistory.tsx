@@ -21,8 +21,8 @@ function DiffRow({ label, oldVal, newVal }: { label: string; oldVal: string | nu
     <div className="rounded-lg border border-border p-3">
       <div className="mb-1 text-xs font-medium text-muted">{label}</div>
       <div className="flex gap-4">
-        <div className="flex-1 rounded bg-red-50 px-2 py-1 text-sm line-through">{oldVal || "(empty)"}</div>
-        <div className="flex-1 rounded bg-green-50 px-2 py-1 text-sm">{newVal || "(empty)"}</div>
+        <div className="flex-1 rounded bg-error/10 px-2 py-1 text-sm line-through">{oldVal || "(empty)"}</div>
+        <div className="flex-1 rounded bg-success/10 px-2 py-1 text-sm">{newVal || "(empty)"}</div>
       </div>
     </div>
   );
@@ -48,7 +48,7 @@ function StepsDiff({ oldSteps, newSteps }: { oldSteps: StepSnapshot[]; newSteps:
             <div
               key={i}
               className={`flex gap-2 rounded px-2 py-1 text-sm ${
-                removed ? "bg-red-50" : added ? "bg-green-50" : changed ? "bg-yellow-50" : ""
+                removed ? "bg-error/10" : added ? "bg-success/10" : changed ? "bg-warning/10" : ""
               }`}
             >
               <span className="w-6 shrink-0 text-muted">{i + 1}.</span>
@@ -72,7 +72,7 @@ function StepsDiff({ oldSteps, newSteps }: { oldSteps: StepSnapshot[]; newSteps:
   );
 }
 
-export function CaseVersionHistory({ caseId }: { caseId: string }) {
+export function CaseVersionHistory({ caseId, onRestored }: { caseId: string; onRestored?: () => void }) {
   const [versions, setVersions] = useState<CaseVersion[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedFrom, setSelectedFrom] = useState("");
@@ -80,6 +80,7 @@ export function CaseVersionHistory({ caseId }: { caseId: string }) {
   const [diffResult, setDiffResult] = useState<VersionDiffResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [diffLoading, setDiffLoading] = useState(false);
+  const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -115,6 +116,22 @@ export function CaseVersionHistory({ caseId }: { caseId: string }) {
     }
   }
 
+  async function restoreVersion(versionId: string, versionNum: number) {
+    if (!window.confirm(`Restore version v${versionNum}? This will overwrite the current title, prerequisite, and steps. Custom fields and approval status are unchanged.`)) return;
+    setRestoringVersionId(versionId);
+    try {
+      await api(`/api/cases/${caseId}/versions/${versionId}/restore`, { method: "POST" });
+      const updated = await api<CaseVersion[]>(`/api/cases/${caseId}/versions`);
+      setVersions(updated);
+      setDiffResult(null);
+      onRestored?.();
+    } catch {
+      // silent — user stays on page
+    } finally {
+      setRestoringVersionId(null);
+    }
+  }
+
   if (loading) return <LoadingSpinner />;
   if (versions.length === 0) return null;
 
@@ -146,6 +163,18 @@ export function CaseVersionHistory({ caseId }: { caseId: string }) {
                 <span className="ml-2 text-muted">by {resolveUser(v.createdBy)}</span>
               </div>
               <span className="text-xs text-muted">{v.title.slice(0, 40)}{v.title.length > 40 ? "..." : ""}</span>
+              {idx > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => restoreVersion(v.id, versionNum)}
+                  disabled={restoringVersionId !== null}
+                  aria-label={`Restore version v${versionNum} — ${v.title}`}
+                  className="text-xs"
+                >
+                  {restoringVersionId === v.id ? "Restoring…" : "Restore"}
+                </Button>
+              )}
             </div>
           );
         })}
