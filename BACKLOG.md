@@ -77,10 +77,10 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | # | Story | Status | Notes |
 |---|-------|--------|-------|
 | 5.1 | Shared steps (create/edit/delete) | ✅ | API + management UI in `ProjectSettings.tsx:55` |
-| 5.2 | Reference shared steps from a case | 🔶 | API done (`cases.ts:77`), no case-editor integration |
+| 5.2 | Reference shared steps from a case | ✅ | Shared step picker + insert in `TestCaseForm.tsx:337-615` |
 | 5.3 | Propagate shared step edits to all referencing cases | 🔶 | Logic in API, untested in UI |
-| 5.4 | Case version history list | 🔶 | API done, no UI |
-| 5.5 | Side-by-side case diff (version A vs B) | 🔶 | API done (`/versions/diff`), no UI |
+| 5.4 | Case version history list | ✅ | `CaseVersionHistory.tsx:75-160` — embedded in TestCaseForm |
+| 5.5 | Side-by-side case diff (version A vs B) | ✅ | `CaseVersionHistory.tsx:107-150` — diff UI done |
 | 5.6 | Restore a previous version | ❌ | |
 | 5.7 | Test parameterization / datasets | ✅ | `DatasetEditor` component + `ProjectSettings.tsx` |
 | 5.8 | Dataset management UI (add columns, rows) | ✅ | `DatasetEditor` component |
@@ -208,9 +208,9 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 
 | # | Story | Status | Notes |
 |---|-------|--------|-------|
-| 14.1 | "Generate with AI" button in SuiteView — calls Claude API (Haiku) with context, returns suggested cases + steps | ❌ | **Sprint A** |
-| 14.2 | AI-generated cases review/accept/discard modal | ❌ | **Sprint A** |
-| 14.3 | Prompt: include existing case titles for dedup + XML delimiter injection defense | ❌ | **Sprint A** |
+| 14.1 | "Generate with AI" button in SuiteView — calls Claude API (Haiku) with context, returns suggested cases + steps | ✅ | `routes/ai.ts` + SuiteView modal — Sprint A |
+| 14.2 | AI-generated cases review/accept/discard modal | ✅ | SuiteView AI modal — Sprint A |
+| 14.3 | Prompt: include existing case titles for dedup + XML delimiter injection defense | ✅ | `lib/ai.ts` — Sprint A |
 | 14.4 | v2: Generate from CI failures / PRD — differentiating angle | ❌ | Deferred after MVP validates |
 
 **API shape**: `POST /api/projects/:id/ai/generate-cases` → `{ cases: [{title, steps: [{action, expectedResult}]}] }`  
@@ -244,8 +244,8 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | # | Story | Status | Notes |
 |---|-------|--------|-------|
 | 17.1 | DB table `fileFailureCorrelations` | ✅ | `schema.ts:461` — already in schema |
-| 17.2 | Extend CI import to accept `changedFiles: string[]` | ❌ | Sprint B — deferred until Epic 14 validates AI value |
-| 17.3 | `GET /api/projects/:id/suggest-tests?changedFiles=...` | ❌ | Sprint B |
+| 17.2 | Extend CI import to accept `changedFiles: string[]` | ✅ | `importResults.ts:212-241` — done |
+| 17.3 | `GET /api/projects/:id/suggest-tests?changedFiles=...` | ✅ | `runs.ts:466-491` — done |
 | 17.4 | UI: "Smart run" button | ❌ | Sprint B |
 
 ---
@@ -281,7 +281,7 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 
 ---
 
-## Backlog Summary (audited 2026-04-04)
+## Backlog Summary (audited 2026-04-04, Sprint B corrections)
 
 | Epic | Total | ✅ Done | 🔶 Partial | ❌ Missing |
 |------|-------|---------|-----------|-----------|
@@ -289,7 +289,7 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | 2 Test Execution | 13 | 9 | 0 | 4 |
 | 3 Attachments | 6 | 4 | 0 | 2 |
 | 4 Custom Fields & Templates | 9 | 7 | 1 | 1 |
-| 5 Reuse & History | 9 | 2 | 5 | 2 |
+| 5 Reuse & History | 9 | 5 | 2 | 2 |
 | 6 Reporting & Dashboards | 13 | 8 | 2 | 3 |
 | 7 Import & Export | 7 | 4 | 0 | 3 |
 | 8 Integrations | 9 | 6 | 0 | 3 |
@@ -298,10 +298,10 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | 11 Notifications | 5 | 1 | 0 | 4 |
 | 12 Search & Navigation | 4 | 0 | 0 | 4 |
 | 13 UX & Polish | 6 | 2 | 2 | 2 |
-| 14 AI Test Generation | 4 | 0 | 0 | 4 |
+| 14 AI Test Generation | 4 | 4 | 0 | 0 |
 | 15 Release Readiness | 3 | 2 | 0 | 1 |
 | 16 Flaky Detection | 3 | 2 | 0 | 1 |
-| 17 Smart Test Selection | 4 | 1 | 0 | 3 |
-| **Total** | **121** | **65 (54%)** | **11 (9%)** | **45 (37%)** |
+| 17 Smart Test Selection | 4 | 3 | 0 | 1 |
+| **Total** | **121** | **68 (56%)** | **8 (7%)** | **45 (37%)** |
 
-Foundation is 54% complete (was reported as 30% — the prior count was based on stale ❌ entries).
+Foundation is 56% complete. Sprint B code audit corrected 6 stale ❌ entries (5.2, 5.4, 5.5, 17.2, 17.3, Epic 14).
