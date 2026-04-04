@@ -5,6 +5,7 @@ import { suites, sections, testCases, testSteps } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
+import { can } from "../lib/permissions.js";
 import { createAiClient } from "../lib/ai.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 
@@ -192,7 +193,8 @@ Suggest test cases that would catch and prevent this failure.`;
     let suggestions: { title: string; steps: { content: string; expected: string }[]; reasoning: string }[];
     try {
       const parsed = JSON.parse(rawText);
-      suggestions = Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) throw new Error("Expected array");
+      suggestions = parsed;
     } catch {
       return replyError(reply, 502, "AI returned invalid JSON", "AI_PARSE_ERROR");
     }
@@ -200,6 +202,9 @@ Suggest test cases that would catch and prevent this failure.`;
     // If sectionId provided, insert suggested cases
     let createdCases: { id: string; title: string }[] = [];
     if (sectionId) {
+      if (!(await can(payload.sub, projectId, "cases.create"))) {
+        return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
+      }
       const [sec] = await db.select().from(sections).where(eq(sections.id, sectionId)).limit(1);
       if (!sec) return replyError(reply, 404, "Section not found", "NOT_FOUND");
       const [suite] = await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1);
@@ -228,11 +233,11 @@ Suggest test cases that would catch and prevent this failure.`;
 
     await writeAuditLog(db, payload.sub, "ai.generated_cases", "project", projectId, projectId);
 
-    return reply.status(200).send({
+    return reply.status(201).send({
       suggestions: suggestions.slice(0, 8).map((s) => ({
-        title: s.title,
-        reasoning: s.reasoning,
-        steps: s.steps,
+        title: typeof s.title === "string" ? s.title : "",
+        reasoning: typeof s.reasoning === "string" ? s.reasoning : "",
+        steps: Array.isArray(s.steps) ? s.steps : [],
       })),
       created: createdCases.length,
       cases: createdCases,

@@ -79,8 +79,10 @@ export function CaseVersionHistory({ caseId, onRestored }: { caseId: string; onR
   const [selectedTo, setSelectedTo] = useState("");
   const [diffResult, setDiffResult] = useState<VersionDiffResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [diffLoading, setDiffLoading] = useState(false);
   const [restoringVersionId, setRestoringVersionId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -91,7 +93,7 @@ export function CaseVersionHistory({ caseId, onRestored }: { caseId: string; onR
         setVersions(v);
         setUsers(u);
       })
-      .catch(() => {})
+      .catch(() => { setLoadError(true); })
       .finally(() => setLoading(false));
   }, [caseId]);
 
@@ -119,25 +121,28 @@ export function CaseVersionHistory({ caseId, onRestored }: { caseId: string; onR
   async function restoreVersion(versionId: string, versionNum: number) {
     if (!window.confirm(`Restore version v${versionNum}? This will overwrite the current title, prerequisite, and steps. Custom fields and approval status are unchanged.`)) return;
     setRestoringVersionId(versionId);
+    setRestoreError("");
     try {
       await api(`/api/cases/${caseId}/versions/${versionId}/restore`, { method: "POST" });
       const updated = await api<CaseVersion[]>(`/api/cases/${caseId}/versions`);
       setVersions(updated);
       setDiffResult(null);
       onRestored?.();
-    } catch {
-      // silent — user stays on page
+    } catch (err) {
+      setRestoreError(err instanceof Error ? err.message : "Restore failed");
     } finally {
       setRestoringVersionId(null);
     }
   }
 
   if (loading) return <LoadingSpinner />;
+  if (loadError) return <p className="text-sm text-error">Failed to load version history.</p>;
   if (versions.length === 0) return null;
 
   return (
     <Card className="p-6">
       <h3 className="mb-3 text-sm font-semibold text-text">Version History</h3>
+      {restoreError && <p className="mb-2 text-sm text-error">{restoreError}</p>}
       <div className="space-y-1">
         {versions.map((v, idx) => {
           const versionNum = versions.length - idx;
