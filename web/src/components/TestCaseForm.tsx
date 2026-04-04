@@ -713,7 +713,7 @@ export function TestCaseForm({
 
           <AttachmentPanel entityType="case" entityId={caseId} />
 
-          <CaseVersionHistory caseId={caseId} />
+          <CaseVersionHistory caseId={caseId} onRestored={() => window.location.reload()} />
         </>
       )}
     </div>

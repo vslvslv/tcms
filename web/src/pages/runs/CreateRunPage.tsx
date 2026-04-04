@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../../ProjectContext";
-import { api, type Run, type Suite, type Milestone, type TestPlan, type ConfigGroup } from "../../api";
+import { api, type Run, type Suite, type Milestone, type TestPlan, type ConfigGroup, type SuggestedTest } from "../../api";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
@@ -27,6 +27,13 @@ export default function CreateRunPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Smart run state
+  const [smartOpen, setSmartOpen] = useState(false);
+  const [changedFiles, setChangedFiles] = useState("");
+  const [suggestions, setSuggestions] = useState<SuggestedTest[] | null>(null);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState("");
+
   useEffect(() => {
     if (!projectId) {
       setLoading(false);
@@ -51,6 +58,22 @@ export default function CreateRunPage() {
 
   function toggleConfigOption(id: string) {
     setConfigOptionIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function findTests() {
+    if (!projectId || !changedFiles.trim()) return;
+    setSuggestLoading(true);
+    setSuggestError("");
+    setSuggestions(null);
+    const files = changedFiles.split("\n").map((f) => f.trim()).filter(Boolean).join(",");
+    try {
+      const data = await api<SuggestedTest[]>(`/api/projects/${projectId}/suggest-tests?changedFiles=${encodeURIComponent(files)}`);
+      setSuggestions(data);
+    } catch {
+      setSuggestError("Smart selection unavailable right now.");
+    } finally {
+      setSuggestLoading(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -108,6 +131,53 @@ export default function CreateRunPage() {
       <PageTitle className="mb-4">Add Test Run</PageTitle>
       {error && <p className="mb-4 text-error">{error}</p>}
       <form onSubmit={handleSubmit} className="space-y-4" data-testid="create-run-form">
+        {/* Smart selection (optional) */}
+        <div className="rounded border border-border bg-surface">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-text hover:bg-surface-raised"
+            onClick={() => setSmartOpen((v) => !v)}
+            aria-expanded={smartOpen}
+          >
+            <span>Smart selection (optional)</span>
+            <span className="text-muted">{smartOpen ? "▲" : "▼"}</span>
+          </button>
+          {smartOpen && (
+            <div className="border-t border-border px-4 pb-4 pt-3 space-y-3">
+              <Label htmlFor="changed-files">Changed file paths (one per line)</Label>
+              <textarea
+                id="changed-files"
+                value={changedFiles}
+                onChange={(e) => setChangedFiles(e.target.value)}
+                rows={4}
+                placeholder="e.g. src/auth/login.ts"
+                className="mt-1 w-full rounded border border-border bg-surface-raised text-text px-2 py-1.5 text-sm focus:ring-2 focus:ring-primary"
+              />
+              <Button
+                type="button"
+                variant="primary"
+                onClick={findTests}
+                disabled={suggestLoading || !changedFiles.trim()}
+              >
+                {suggestLoading ? "Finding tests…" : "Find tests"}
+              </Button>
+              {suggestError && <p className="text-sm text-error">{suggestError}</p>}
+              {suggestions !== null && suggestions.length === 0 && (
+                <p className="text-sm text-muted">No test suggestions — run CI with file tracking to build correlation data.</p>
+              )}
+              {suggestions && suggestions.length > 0 && (
+                <ul className="space-y-1 text-sm">
+                  {suggestions.map((s) => (
+                    <li key={s.caseId} className="flex items-center gap-2 rounded border border-border px-3 py-2 bg-surface-raised">
+                      <span className="font-medium text-text">{s.caseTitle}</span>
+                      <span className="text-xs text-muted ml-auto">{s.score} run{s.score !== 1 ? "s" : ""} correlated</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
         <div>
           <Label htmlFor="suite">Suite</Label>
           <Select id="suite" value={suiteId} onChange={(e) => setSuiteId(e.target.value)} required className="mt-1 w-full">

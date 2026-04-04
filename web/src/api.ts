@@ -57,6 +57,7 @@ export type CaseSummary = { total: number; draft: number; ready: number; approve
 export type Run = {
   id: string;
   suiteId: string;
+  projectId?: string | null;
   name: string;
   description: string | null;
   planId?: string | null;
@@ -234,8 +235,24 @@ export type NotificationPref = { event: string; enabled: boolean };
 
 export type SuggestedTest = { caseId: string; caseTitle: string; score: number };
 
+export type AiFailureSuggestion = {
+  title: string;
+  reasoning: string;
+  steps: { content: string; expected: string }[];
+};
+
+export type AiFailureResult = {
+  suggestions: AiFailureSuggestion[];
+  created: number;
+  cases: { id: string; title: string }[];
+};
+
+export type CaseSearchResult = { id: string; title: string; sectionId: string; sectionPath: string[] };
+
 export type BulkAction = "delete" | "move" | "copy";
 export type BulkCasesBody = { action: BulkAction; caseIds: string[]; targetSectionId?: string };
+export type BulkStatusBody = { testIds: string[]; status: string };
+export type BulkStatusResult = { updated: number; status: string };
 export type BulkCasesResult =
   | { deleted: number }
   | { moved: number }

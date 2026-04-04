@@ -275,6 +275,7 @@ export default async function runRoutes(app: FastifyInstance) {
     }
     const [run] = await db.select().from(runs).where(eq(runs.id, parsed.data.id)).limit(1);
     if (!run) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    const [runSuite] = await db.select({ projectId: suites.projectId }).from(suites).where(eq(suites.id, run.suiteId)).limit(1);
     const runTests = await db.select().from(tests).where(eq(tests.runId, run.id));
     const caseIds = runTests.map((t) => t.testCaseId);
     const casesRows =
@@ -337,6 +338,7 @@ export default async function runRoutes(app: FastifyInstance) {
     });
     return reply.send({
       ...run,
+      projectId: runSuite?.projectId ?? null,
       tests: testList,
       summary,
     });
@@ -461,6 +463,72 @@ export default async function runRoutes(app: FastifyInstance) {
     }
 
     return reply.status(201).send(newRun);
+  });
+
+  // Bulk update test status in a run
+  const bulkStatusBody = z.object({
+    testIds: z.array(z.string().uuid()).min(1).max(500),
+    status: z.enum(["untested", "passed", "failed", "blocked", "skipped"]),
+  });
+  const paramsRunId = z.object({ runId: z.string().uuid() });
+
+  app.post("/api/runs/:runId/tests/bulk-status", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+
+    const paramsParsed = paramsRunId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsParsed.success) return replyError(reply, 400, "Invalid runId", "VALIDATION_ERROR");
+    const { runId } = paramsParsed.data;
+
+    const bodyParsed = bulkStatusBody.safeParse(req.body);
+    if (!bodyParsed.success) return replyError(reply, 400, bodyParsed.error.issues[0]?.message ?? "Invalid body", "VALIDATION_ERROR");
+    const { testIds, status } = bodyParsed.data;
+
+    const db = await getDb();
+
+    // Resolve run + project for access + permission checks
+    const [run] = await db.select().from(runs).where(eq(runs.id, runId)).limit(1);
+    if (!run) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    const [suite] = await db.select().from(suites).where(eq(suites.id, run.suiteId)).limit(1);
+    if (!suite) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+
+    if (!(await assertProjectAccess(db, suite.projectId, payload.sub))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+    if (!(await can(payload.sub, suite.projectId, "runs.close"))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+
+    // Deduplicate testIds before ownership check (prevents double-insert on dupes)
+    const uniqueTestIds = [...new Set(testIds)];
+
+    // Validate all testIds belong to this run (cross-run security check)
+    const belongCheck = await db
+      .select({ id: tests.id })
+      .from(tests)
+      .where(and(inArray(tests.id, uniqueTestIds), eq(tests.runId, runId)));
+    if (belongCheck.length !== uniqueTestIds.length) {
+      return replyError(reply, 400, "One or more testIds do not belong to this run", "VALIDATION_ERROR");
+    }
+
+    // Batch insert results in a transaction to prevent partial writes
+    await db.transaction(async (tx) => {
+      await tx.insert(results).values(
+        uniqueTestIds.map((testId) => ({
+          testId,
+          status: status as "untested" | "passed" | "failed" | "blocked" | "skipped",
+          createdBy: payload.sub,
+        }))
+      );
+    });
+
+    try {
+      await writeAuditLog(db, payload.sub, "result.bulk_updated", "run", runId, suite.projectId);
+    } catch {
+      // Non-fatal: results are committed; audit log failure should not roll back the operation
+    }
+
+    return reply.status(200).send({ updated: uniqueTestIds.length, status });
   });
 
   // Smart test selection: suggest test cases based on changed files

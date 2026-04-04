@@ -2,7 +2,7 @@
 
 Status key: ✅ Done · 🔶 API exists, UI missing · ❌ Not started
 
-Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
+Last audited: 2026-04-04 (Sprint C ship + full gap audit)
 
 ---
 
@@ -33,7 +33,7 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | 2.4 | Result history per test | ✅ | |
 | 2.5 | Run summary (counts by status) | ✅ | |
 | 2.6 | Test plans with multiple runs | ✅ | |
-| 2.7 | Milestones with due date + progress | ✅ | |
+| 2.7 | Milestones with due date + progress | 🔶 | Create ✅, edit/delete ❌ — `ProjectDetail.tsx:248-257` shows list with link but no edit/delete buttons; API `PATCH/DELETE /api/milestones/:id` exists but no UI |
 | 2.8 | Configurations for runs (OS, browser, device) | ✅ | |
 | 2.9 | Bulk update test status within a run | ❌ | Sprint B |
 | 2.10 | Assign tests to specific users within a run | ❌ | |
@@ -52,7 +52,8 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | 3.3 | Attach screenshots to results (manual) | ✅ | |
 | 3.3b | Auto-attach CI screenshots from Playwright import (base64 attachments in JSON report) | ❌ | Prereq: verified 3.4 done |
 | 3.4 | File storage backend (local disk or S3-compatible) | ✅ | `lib/storage.ts` — MinIO in dev, S3-compatible in prod |
-| 3.5 | Attachment viewer in case/result detail | ❌ | API done, no viewer UI |
+| 3.5 | Attachment viewer in case/result detail | ✅ | `AttachmentPanel.tsx` renders in `TestCaseForm.tsx:714` + `RunTestCaseSidebar.tsx:419` |
+| 3.5b | Inline image preview in AttachmentPanel | ✅ | `AttachmentPanel.tsx:155-168` — thumbnails + lightbox already implemented |
 
 ---
 
@@ -77,11 +78,11 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | # | Story | Status | Notes |
 |---|-------|--------|-------|
 | 5.1 | Shared steps (create/edit/delete) | ✅ | API + management UI in `ProjectSettings.tsx:55` |
-| 5.2 | Reference shared steps from a case | 🔶 | API done (`cases.ts:77`), no case-editor integration |
-| 5.3 | Propagate shared step edits to all referencing cases | 🔶 | Logic in API, untested in UI |
-| 5.4 | Case version history list | 🔶 | API done, no UI |
-| 5.5 | Side-by-side case diff (version A vs B) | 🔶 | API done (`/versions/diff`), no UI |
-| 5.6 | Restore a previous version | ❌ | |
+| 5.2 | Reference shared steps from a case | ✅ | Shared step picker + insert in `TestCaseForm.tsx:337-615` |
+| 5.3 | Propagate shared step edits to all referencing cases | ✅ | `sharedSteps.ts:102-111` propagates `content`+`expected` on PATCH; wrapped in `db.transaction` (Sprint C) |
+| 5.4 | Case version history list | ✅ | `CaseVersionHistory.tsx:75-160` — embedded in TestCaseForm |
+| 5.5 | Side-by-side case diff (version A vs B) | ✅ | `CaseVersionHistory.tsx:107-150` — diff UI done |
+| 5.6 | Restore a previous version | ✅ | `POST /api/cases/:id/versions/:versionId/restore`; "Restore" button in `CaseVersionHistory.tsx` (Sprint C) |
 | 5.7 | Test parameterization / datasets | ✅ | `DatasetEditor` component + `ProjectSettings.tsx` |
 | 5.8 | Dataset management UI (add columns, rows) | ✅ | `DatasetEditor` component |
 | 5.9 | Per-dataset-row test instances in run | 🔶 | API creates tests per row, no run-creation UI |
@@ -100,7 +101,7 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | 6.6 | Dashboard with project-level KPIs | ✅ | `Dashboard.tsx` with recharts BarChart, flaky tests panel |
 | 6.7 | Pass-rate trend chart (over time per project/run) | ✅ | `Dashboard.tsx` BarChart with `activityData` |
 | 6.8 | Test activity feed (who ran what, when) | ❌ | |
-| 6.9 | Report builder (filter, group, export) | ✅ | `ReportBuilder.tsx` |
+| 6.9 | Report builder (filter, group, export) | 🔶 | `ReportBuilder.tsx` exists — date range + status filter + CSV export ✅. Missing: group-by, metric selector, pass-rate trend per run, cross-project comparison |
 | 6.10 | Shareable report links (plan/milestone) | ✅ | Share tokens + `ShareView.tsx` |
 | 6.11 | Scheduled/emailed reports | ❌ | Requires email infra |
 | 6.12 | Export report as CSV / PDF | 🔶 | CSV export for cases/results done, no PDF |
@@ -162,7 +163,7 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 |---|-------|--------|-------|
 | 10.1 | Audit log (case/run/result events) | ✅ | `lib/auditLog.ts` |
 | 10.2 | Audit log viewer UI | ✅ | `ProjectSettings.tsx` — embedded viewer |
-| 10.3 | Case approval workflow | 🔶 | API done, no approval UI |
+| 10.3 | Case approval workflow | ✅ | Approve/Revoke buttons in `TestCaseForm.tsx:478-484`; API at `cases.ts:332` |
 | 10.4 | Approval notifications | ✅ | `NotificationSettings.tsx` — "case.approval_requested" preference |
 | 10.5 | Audit log export | ❌ | |
 
@@ -208,10 +209,10 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 
 | # | Story | Status | Notes |
 |---|-------|--------|-------|
-| 14.1 | "Generate with AI" button in SuiteView — calls Claude API (Haiku) with context, returns suggested cases + steps | ❌ | **Sprint A** |
-| 14.2 | AI-generated cases review/accept/discard modal | ❌ | **Sprint A** |
-| 14.3 | Prompt: include existing case titles for dedup + XML delimiter injection defense | ❌ | **Sprint A** |
-| 14.4 | v2: Generate from CI failures / PRD — differentiating angle | ❌ | Deferred after MVP validates |
+| 14.1 | "Generate with AI" button in SuiteView — calls Claude API (Haiku) with context, returns suggested cases + steps | ✅ | `routes/ai.ts` + SuiteView modal — Sprint A |
+| 14.2 | AI-generated cases review/accept/discard modal | ✅ | SuiteView AI modal — Sprint A |
+| 14.3 | Prompt: include existing case titles for dedup + XML delimiter injection defense | ✅ | `lib/ai.ts` — Sprint A |
+| 14.4 | v2: Generate from CI failures / PRD — differentiating angle | ✅ | `POST /api/projects/:id/generate-from-failure`; "Generate from CI failure" panel (Sprint C) |
 
 **API shape**: `POST /api/projects/:id/ai/generate-cases` → `{ cases: [{title, steps: [{action, expectedResult}]}] }`  
 **Env**: `ANTHROPIC_API_KEY` in `api/.env`; returns HTTP 503 with message if absent  
@@ -244,35 +245,114 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | # | Story | Status | Notes |
 |---|-------|--------|-------|
 | 17.1 | DB table `fileFailureCorrelations` | ✅ | `schema.ts:461` — already in schema |
-| 17.2 | Extend CI import to accept `changedFiles: string[]` | ❌ | Sprint B — deferred until Epic 14 validates AI value |
-| 17.3 | `GET /api/projects/:id/suggest-tests?changedFiles=...` | ❌ | Sprint B |
+| 17.2 | Extend CI import to accept `changedFiles: string[]` | ✅ | `importResults.ts:212-241` — done |
+| 17.3 | `GET /api/projects/:id/suggest-tests?changedFiles=...` | ✅ | `runs.ts:466-491` — done |
 | 17.4 | UI: "Smart run" button | ❌ | Sprint B |
 
 ---
 
-## Sprint Plan (Corrected — post audit 2026-04-04)
+## Epic 18 — Run Tab Stubs *(tracked here — surfaced Sprint C gap audit)*
 
-### Sprint A — True Foundation Gaps (current)
+Three tabs are wired in the UI and sidebar (`Layout.tsx:144-152`) but render placeholder text only.
+
+| # | Story | Status | Notes |
+|---|-------|--------|-------|
+| 18.1 | Run Activity tab — full audit log for this run | ❌ | `RunView.tsx:218` — stub: "Activity for this run will be shown here" |
+| 18.2 | Run Progress tab — pass-rate trend chart over run lifetime | ❌ | `RunView.tsx:226` — stub: "Progress over time will be shown here" |
+| 18.3 | Run Defects tab — defect links for all tests in this run | ❌ | `RunView.tsx:234` — stub present but no content |
+
+---
+
+## Epic 19 — To Do *(tracked here — sidebar item disabled)*
+
+"To Do" appears in the sidebar (`Layout.tsx:83-86`, `ListTodo` icon) but is disabled with `cursor-not-allowed` and title "To Do is being refactored". No route exists.
+
+| # | Story | Status | Notes |
+|---|-------|--------|-------|
+| 19.1 | To-Do page — assigned cases/tests awaiting action by current user | ❌ | Nav item exists, link disabled, no route or page |
+
+---
+
+## Epic 20 — Milestone Management Completeness *(tracked here — surfaced Sprint C gap audit)*
+
+`PATCH /api/milestones/:id` and `DELETE /api/milestones/:id` exist in `milestones.ts` but `ProjectDetail.tsx` only shows name + link, no edit/delete controls.
+
+| # | Story | Status | Notes |
+|---|-------|--------|-------|
+| 20.1 | Milestone edit UI (name, description, due date) | ❌ | API `PATCH /api/milestones/:id` done; no edit button in `ProjectDetail.tsx:248-257` |
+| 20.2 | Milestone delete UI | ❌ | API `DELETE /api/milestones/:id` done; no delete button |
+| 20.3 | Milestone description field in create form | ❌ | `ProjectDetail.tsx:235-246` create form has name + due date only; `description` column exists in schema |
+
+---
+
+## Epic 21 — Project Settings Redesign *(new)*
+
+`ProjectSettings.tsx` is 714 lines of raw HTML (`style={{}}` inline CSS, naked `<h3>`, `<input>`, `<button>`, `<ul>` with no design tokens). Everything is dumped on one scrollable page with no tab navigation. It is the single most visually inconsistent page in the product — the rest of the app uses the design system, this page does not.
+
+**Current sections (all on one page, unstyled):**
+Case types · Shared steps · Case templates · Datasets · Requirements coverage · Audit log · Webhooks · Priorities · Config groups · Case custom fields · Danger zone · Project members
+
+**Problems:**
+- Uses `style={{ ... }}` inline CSS everywhere — hardcoded colors (`#c00`, `#666`, `#eee`), no tokens
+- Uses raw `<h3>`, `<button>`, `<input>` with no `Card`, `Button`, `Input` design system components
+- No tab navigation — 12 unrelated sections stacked vertically
+- `Members` and `Danger zone` are buried below technical config sections
+- `Audit log` requires clicking "Load audit log" to trigger a separate fetch
+
+| # | Story | Status | Notes |
+|---|-------|--------|-------|
+| 21.1 | Add tab/section navigation to ProjectSettings (General / Members / Case Config / Integrations / Danger) | ❌ | `ProjectSettings.tsx:382-713` — one long scroll, no tabs |
+| 21.2 | Replace all inline `style={{}}` with design system tokens and Card/Button/Input components | ❌ | `ProjectSettings.tsx` uses raw HTML throughout |
+| 21.3 | Move Members section to first/most-visible tab (currently buried at line 685) | ❌ | UX — members is the most frequently accessed setting |
+| 21.4 | Auto-load audit log (remove manual "Load" button) | ❌ | `ProjectSettings.tsx:511` — click-to-load is a UX artifact, not a deliberate choice |
+| 21.5 | Add delete button for Case types, Priorities, Config groups (currently add-only UI) | ❌ | List renders name only, no delete; API routes exist |
+
+---
+
+## Epic 22 — Global Navigation Re-organisation *(new)*
+
+The sidebar mixes project-scoped content (Cases, Runs) with global navigation (Reports, Dashboard) without visual hierarchy. "Cases" expands to sub-pages that only make sense with a project selected, but the project picker is a dropdown at the top — not tied to navigation state. Discovery of features like ReportBuilder, MilestoneProgress, and PlanSummary requires knowing the URLs.
+
+| # | Story | Status | Notes |
+|---|-------|--------|-------|
+| 22.1 | Group sidebar into "Project" section (Cases, Runs, Milestones) vs "Workspace" section (Dashboard, Reports, Admin) | ❌ | `Layout.tsx:72-240` — flat list with no visual grouping |
+| 22.2 | Show active project name prominently in sidebar header | ❌ | Project is only shown in a dropdown at top of sidebar — easy to miss |
+| 22.3 | Add Milestones sub-links (list of project milestones) into sidebar Milestones section | ❌ | `Layout.tsx:190-240` — Milestones section toggles but shows no milestone list |
+| 22.4 | Link Reports sub-nav to both Reports overview and Report Builder | ❌ | `reports/builder` route exists but no nav link to it — only reachable if you know the URL |
+| 22.5 | Wire "To Do" nav item to actual page once 19.1 is implemented | ❌ | `Layout.tsx:83` — `cursor-not-allowed`, disabled |
+
+---
+
+## Sprint Plan (Corrected — post Sprint C ship + full gap audit 2026-04-04)
+
+### Sprint A — True Foundation Gaps (done)
 1. **Bulk operations** (1.7) — `POST /api/projects/:projectId/cases/bulk` + checkbox UI
 2. **Case duplication** (1.8) — `POST /api/cases/:id/duplicate` + button
 3. **oklch() validator** — `scripts/validate-oklch.mjs`
 4. **Docker Playwright snapshots** — `scripts/update-snapshots.sh`
 5. **Epic 14 AI Test Generation** — `lib/ai.ts` + `routes/ai.ts` + SuiteView modal
 
-### Sprint B — Reuse UI + Remaining Intelligence
+### Sprint B — Reuse UI + Remaining Intelligence (done)
 1. **Shared steps UI** (5.2) — insert into case editor
 2. **Case version history + diff UI** (5.4, 5.5)
 3. **Case search** (1.9) — PostgreSQL `tsvector`
 4. **Epic 17 Smart Test Selection** (17.2-17.4)
 5. **Flaky badge in RunView** (16.3)
 
-### Sprint C — Attachments
-1. Attachment viewer UI (3.5)
-2. Auto-attach CI screenshots (3.3b)
+### Sprint C — AI from CI failures + Version Restore (done)
+1. **Case version restore** (5.6) — `POST /api/cases/:id/versions/:versionId/restore`
+2. **AI from CI failures** (14.4) — `POST /api/projects/:id/generate-from-failure`
 
-### Sprint D — Remaining Reporting
-1. Report builder enhancements (6.8, 6.9)
-2. Score history chart (15.3)
+### Sprint D — Run Stubs + Milestone Management + Reports + Settings
+1. **Run Activity tab** (18.1) — render project audit log filtered to this run
+2. **Run Progress tab** (18.2) — pass-rate chart per day over run lifetime
+3. **Run Defects tab** (18.3) — defect links for all tests in this run
+4. **Milestone edit/delete/description** (20.1-20.3)
+5. **To Do page** (19.1)
+6. **Report builder enhancements** (6.8, 6.9) — group-by, metric selector
+7. **Score history chart** (15.3)
+8. **Project Settings redesign** (21.1-21.5) — tabs, design tokens, delete actions, auto-load audit
+9. **Global nav re-organisation** (22.1-22.4) — section grouping, milestone list, ReportBuilder link
 
 ### Sprint E — Contractor Portability + Enterprise
 1. Full project export/import (7.5) — contractor data portability
@@ -281,16 +361,16 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 
 ---
 
-## Backlog Summary (audited 2026-04-04)
+## Backlog Summary (audited 2026-04-04, post Sprint C + gap audit)
 
 | Epic | Total | ✅ Done | 🔶 Partial | ❌ Missing |
 |------|-------|---------|-----------|-----------|
 | 1 Core Test Design | 10 | 6 | 0 | 4 |
-| 2 Test Execution | 13 | 9 | 0 | 4 |
-| 3 Attachments | 6 | 4 | 0 | 2 |
+| 2 Test Execution | 13 | 8 | 1 | 4 |
+| 3 Attachments | 6 | 6 | 0 | 0 |
 | 4 Custom Fields & Templates | 9 | 7 | 1 | 1 |
-| 5 Reuse & History | 9 | 2 | 5 | 2 |
-| 6 Reporting & Dashboards | 13 | 8 | 2 | 3 |
+| 5 Reuse & History | 9 | 7 | 1 | 1 |
+| 6 Reporting & Dashboards | 13 | 7 | 3 | 3 |
 | 7 Import & Export | 7 | 4 | 0 | 3 |
 | 8 Integrations | 9 | 6 | 0 | 3 |
 | 9 User & Access Management | 11 | 8 | 0 | 3 |
@@ -298,10 +378,15 @@ Last audited: 2026-04-04 (Sprint A autoplan review — code verification pass)
 | 11 Notifications | 5 | 1 | 0 | 4 |
 | 12 Search & Navigation | 4 | 0 | 0 | 4 |
 | 13 UX & Polish | 6 | 2 | 2 | 2 |
-| 14 AI Test Generation | 4 | 0 | 0 | 4 |
+| 14 AI Test Generation | 4 | 4 | 0 | 0 |
 | 15 Release Readiness | 3 | 2 | 0 | 1 |
 | 16 Flaky Detection | 3 | 2 | 0 | 1 |
-| 17 Smart Test Selection | 4 | 1 | 0 | 3 |
-| **Total** | **121** | **65 (54%)** | **11 (9%)** | **45 (37%)** |
+| 17 Smart Test Selection | 4 | 3 | 0 | 1 |
+| 18 Run Tab Stubs | 3 | 0 | 0 | 3 |
+| 19 To Do | 1 | 0 | 0 | 1 |
+| 20 Milestone Management | 3 | 0 | 0 | 3 |
+| 21 Project Settings Redesign | 5 | 0 | 0 | 5 |
+| 22 Navigation Re-organisation | 5 | 0 | 0 | 5 |
+| **Total** | **138** | **76 (55%)** | **9 (7%)** | **53 (38%)** |
 
-Foundation is 54% complete (was reported as 30% — the prior count was based on stale ❌ entries).
+Sprints A+B+C are complete. Epics 18-22 added in Sprint C gap audit — 17 stories previously untracked. Sprint D scope: run stubs, milestone CRUD, To Do, report enhancements, settings redesign, nav re-organisation.

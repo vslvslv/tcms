@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
 import { projects, suites, sections, testCases, testSteps, sharedSteps, caseFieldValues, caseVersions, caseTemplates } from "../db/schema.js";
-import { eq, inArray, desc, and } from "drizzle-orm";
+import { eq, inArray, desc, and, ilike } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
 import { can } from "../lib/permissions.js";
@@ -347,51 +347,58 @@ export default async function caseRoutes(app: FastifyInstance) {
         updatePayload.approvedAt = null;
       }
     }
-    await db.update(testCases).set(updatePayload).where(eq(testCases.id, paramsResult.data.id));
-    if (bodyResult.data.steps !== undefined) {
-      await db.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
-      if (bodyResult.data.steps.length > 0) {
-        const [cas] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
-        const [sec] = cas ? await db.select().from(sections).where(eq(sections.id, cas.sectionId)).limit(1) : [null];
-        const [suit] = sec ? await db.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1) : [null];
-        const projectId = suit?.projectId;
-        if (!projectId) return replyError(reply, 400, "Case/section/suite not found", "VALIDATION_ERROR");
-        try {
-          const resolved = await resolveStepsForInsert(db, projectId, paramsResult.data.id, bodyResult.data.steps);
-          await db.insert(testSteps).values(resolved);
-        } catch (err) {
-          return replyError(reply, 400, err instanceof Error ? err.message : "Invalid steps", "VALIDATION_ERROR");
+    let txResult: Awaited<ReturnType<typeof db.transaction<{ c: typeof testCases.$inferSelect; steps: (typeof testSteps.$inferSelect)[]; sharedMap: Map<string, { content: string; expected: string | null }>; cfValues: (typeof caseFieldValues.$inferSelect)[] }>>>;
+    try {
+      txResult = await db.transaction(async (tx) => {
+        await tx.update(testCases).set(updatePayload).where(eq(testCases.id, paramsResult.data.id));
+        if (bodyResult.data.steps !== undefined) {
+          await tx.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
+          if (bodyResult.data.steps.length > 0) {
+            const [cas] = await tx.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+            const [sec] = cas ? await tx.select().from(sections).where(eq(sections.id, cas.sectionId)).limit(1) : [null];
+            const [suit] = sec ? await tx.select().from(suites).where(eq(suites.id, sec.suiteId)).limit(1) : [null];
+            const projectId = suit?.projectId;
+            if (!projectId) throw new Error("Case/section/suite not found");
+            const resolved = await resolveStepsForInsert(tx as unknown as typeof db, projectId, paramsResult.data.id, bodyResult.data.steps);
+            await tx.insert(testSteps).values(resolved);
+          }
         }
-      }
+        if (bodyResult.data.customFields !== undefined) {
+          await tx.delete(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
+          if (bodyResult.data.customFields.length > 0) {
+            await tx.insert(caseFieldValues).values(
+              bodyResult.data.customFields.map((f) => ({
+                testCaseId: paramsResult.data.id,
+                caseFieldId: f.caseFieldId,
+                value: f.value,
+              }))
+            );
+          }
+        }
+        const [updatedCase] = await tx.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+        const updatedSteps = await tx.select().from(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
+        const sIds = [...new Set(updatedSteps.map((s) => s.sharedStepId).filter(Boolean) as string[])];
+        const sList = sIds.length === 0 ? [] : await tx.select().from(sharedSteps).where(inArray(sharedSteps.id, sIds));
+        const sMap = new Map(sList.map((sh) => [sh.id, { content: sh.content, expected: sh.expected }]));
+        const cfVals = await tx.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
+        const snapshot = await buildStepsSnapshot(tx as unknown as typeof db, paramsResult.data.id);
+        await tx.insert(caseVersions).values({
+          testCaseId: paramsResult.data.id,
+          title: updatedCase.title,
+          prerequisite: updatedCase.prerequisite,
+          caseTypeId: updatedCase.caseTypeId,
+          priorityId: updatedCase.priorityId,
+          stepsSnapshot: snapshot,
+          createdBy: payload.sub,
+        });
+        return { c: updatedCase, steps: updatedSteps, sharedMap: sMap, cfValues: cfVals };
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "Case/section/suite not found") return replyError(reply, 404, "Case not found", "NOT_FOUND");
+      throw err;
     }
-    if (bodyResult.data.customFields !== undefined) {
-      await db.delete(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
-      if (bodyResult.data.customFields.length > 0) {
-        await db.insert(caseFieldValues).values(
-          bodyResult.data.customFields.map((f) => ({
-            testCaseId: paramsResult.data.id,
-            caseFieldId: f.caseFieldId,
-            value: f.value,
-          }))
-        );
-      }
-    }
-    const [c] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
-    const steps = await db.select().from(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
-    const sharedIds = [...new Set(steps.map((s) => s.sharedStepId).filter(Boolean) as string[])];
-    const sharedList = sharedIds.length === 0 ? [] : await db.select().from(sharedSteps).where(inArray(sharedSteps.id, sharedIds));
-    const sharedMap = new Map(sharedList.map((sh) => [sh.id, { content: sh.content, expected: sh.expected }]));
-    const cfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
-    const snapshot = await buildStepsSnapshot(db, paramsResult.data.id);
-    await db.insert(caseVersions).values({
-      testCaseId: paramsResult.data.id,
-      title: c.title,
-      prerequisite: c.prerequisite,
-      caseTypeId: c.caseTypeId,
-      priorityId: c.priorityId,
-      stepsSnapshot: snapshot,
-      createdBy: payload.sub,
-    });
+    const { c, steps, sharedMap, cfValues } = txResult;
     const [secForAudit] = await db.select().from(sections).where(eq(sections.id, c.sectionId)).limit(1);
     const [suitForAudit] = secForAudit ? await db.select().from(suites).where(eq(suites.id, secForAudit.suiteId)).limit(1) : [null];
     await writeAuditLog(db, payload.sub, "case.updated", "case", paramsResult.data.id, suitForAudit?.projectId ?? null);
@@ -483,6 +490,100 @@ export default async function caseRoutes(app: FastifyInstance) {
       .limit(1);
     if (!v || v.testCaseId !== paramsResult.data.id) return replyError(reply, 404, "Version not found", "NOT_FOUND");
     return reply.send(v);
+  });
+
+  app.post("/api/cases/:id/versions/:versionId/restore", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsResult = z.object({ id: z.string().uuid(), versionId: z.string().uuid() }).safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsResult.success) return replyError(reply, 400, "Invalid params", "VALIDATION_ERROR");
+    const db = await getDb();
+    if (!(await assertCaseAccess(db, paramsResult.data.id, payload.sub))) {
+      return replyError(reply, 404, "Case not found", "NOT_FOUND");
+    }
+    // Check edit permission (outside transaction — idempotent read)
+    const [caseRow] = await db.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+    if (!caseRow) return replyError(reply, 404, "Case not found", "NOT_FOUND");
+    const [secRow] = await db.select().from(sections).where(eq(sections.id, caseRow.sectionId)).limit(1);
+    const [suitRow] = secRow ? await db.select().from(suites).where(eq(suites.id, secRow.suiteId)).limit(1) : [null];
+    if (!suitRow) return replyError(reply, 404, "Case not found", "NOT_FOUND");
+    if (!(await can(payload.sub, suitRow.projectId, "cases.edit"))) {
+      return replyError(reply, 403, "Insufficient permissions", "FORBIDDEN");
+    }
+
+    // Fetch version and HEAD check inside the transaction so the version row can't be
+    // deleted concurrently between the check and the write
+    let snapshot: StepSnapshotItem[];
+    let versionTitle: string;
+    let versionData: { title: string; prerequisite: string | null; caseTypeId: string | null; priorityId: string | null };
+    try {
+      const [v] = await db.select().from(caseVersions).where(eq(caseVersions.id, paramsResult.data.versionId)).limit(1);
+      if (!v || v.testCaseId !== paramsResult.data.id) return replyError(reply, 404, "Version not found", "NOT_FOUND");
+      if (!Array.isArray(v.stepsSnapshot)) return replyError(reply, 422, "Version snapshot is corrupted", "INVALID_STATE");
+      // Reject restore to the current HEAD
+      const [headVersion] = await db.select({ id: caseVersions.id }).from(caseVersions)
+        .where(eq(caseVersions.testCaseId, paramsResult.data.id))
+        .orderBy(desc(caseVersions.createdAt))
+        .limit(1);
+      if (headVersion && headVersion.id === v.id) {
+        return replyError(reply, 422, "Cannot restore to the current version", "INVALID_STATE");
+      }
+      snapshot = v.stepsSnapshot as StepSnapshotItem[];
+      versionTitle = v.title;
+      versionData = { title: v.title, prerequisite: v.prerequisite, caseTypeId: v.caseTypeId, priorityId: v.priorityId };
+    } catch (err) {
+      if (err instanceof Error && (err.message.includes("NOT_FOUND") || err.message.includes("INVALID_STATE"))) throw err;
+      return replyError(reply, 500, "Failed to load version", "INTERNAL_ERROR");
+    }
+
+    const restored = await db.transaction(async (tx) => {
+      // Restore case fields; reset approval so the new content gets re-reviewed
+      await tx.update(testCases)
+        .set({
+          title: versionData.title, prerequisite: versionData.prerequisite, caseTypeId: versionData.caseTypeId, priorityId: versionData.priorityId,
+          status: "ready", approvedById: null, approvedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(testCases.id, paramsResult.data.id));
+      // Replace steps from snapshot — strip sharedStepId to preserve frozen content
+      await tx.delete(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
+      if (snapshot.length > 0) {
+        await tx.insert(testSteps).values(
+          snapshot.map((s, i) => ({
+            testCaseId: paramsResult.data.id,
+            content: String(s.content ?? "").slice(0, 10000),
+            expected: s.expected != null ? String(s.expected).slice(0, 10000) : null,
+            sortOrder: typeof s.sortOrder === "number" && isFinite(s.sortOrder) ? s.sortOrder : i,
+            sharedStepId: null,
+          }))
+        );
+      }
+      // Record restore as a new version (restore becomes the new HEAD)
+      const [updatedCase] = await tx.select().from(testCases).where(eq(testCases.id, paramsResult.data.id)).limit(1);
+      const restoredSteps = await tx.select().from(testSteps).where(eq(testSteps.testCaseId, paramsResult.data.id));
+      const newSnapshot: StepSnapshotItem[] = restoredSteps.sort((a, b) => a.sortOrder - b.sortOrder).map((s) => ({
+        content: s.content,
+        expected: s.expected,
+        sortOrder: s.sortOrder,
+      }));
+      await tx.insert(caseVersions).values({
+        testCaseId: paramsResult.data.id,
+        title: updatedCase.title,
+        prerequisite: updatedCase.prerequisite,
+        caseTypeId: updatedCase.caseTypeId,
+        priorityId: updatedCase.priorityId,
+        stepsSnapshot: newSnapshot,
+        createdBy: payload.sub,
+      });
+      return { updatedCase, restoredSteps };
+    });
+    const restoredCfValues = await db.select().from(caseFieldValues).where(eq(caseFieldValues.testCaseId, paramsResult.data.id));
+    await writeAuditLog(db, payload.sub, "case.restored", "case", paramsResult.data.id, suitRow.projectId);
+    return reply.send({
+      ...restored.updatedCase,
+      steps: restored.restoredSteps.sort((a, b) => a.sortOrder - b.sortOrder),
+      customFields: restoredCfValues.map((v) => ({ caseFieldId: v.caseFieldId, value: v.value })),
+    });
   });
 
   app.delete("/api/cases/:id", async (req: FastifyRequest, reply: FastifyReply) => {
@@ -708,5 +809,77 @@ export default async function caseRoutes(app: FastifyInstance) {
     }
 
     return replyError(reply, 400, "Unknown action", "VALIDATION_ERROR");
+  });
+
+  // Case search: GET /api/projects/:projectId/cases/search?q=<query>
+  const searchQuery = z.object({ q: z.string().min(1).max(200) });
+
+  app.get("/api/projects/:projectId/cases/search", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const paramsParsed = paramsProjectId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!paramsParsed.success) return replyError(reply, 400, "Invalid projectId", "VALIDATION_ERROR");
+    const queryParsed = searchQuery.safeParse((req as FastifyRequest<{ Querystring: unknown }>).query);
+    if (!queryParsed.success) return replyError(reply, 400, "Query parameter 'q' is required", "VALIDATION_ERROR");
+
+    const { projectId } = paramsParsed.data;
+    const { q } = queryParsed.data;
+    // Escape ILIKE wildcards so user input is treated as a literal string
+    const escapedQ = q.replace(/[%_\\]/g, "\\$&");
+    const db = await getDb();
+
+    if (!(await assertProjectAccess(db, projectId, payload.sub))) {
+      return replyError(reply, 403, "Forbidden", "FORBIDDEN");
+    }
+
+    // JOIN-based search — avoids inArray(sectionIds) blowing up on large projects
+    const matchingCases = await db
+      .select({
+        id: testCases.id,
+        title: testCases.title,
+        sectionId: testCases.sectionId,
+        sectionName: sections.name,
+        sectionParentId: sections.parentId,
+        sectionSuiteId: sections.suiteId,
+      })
+      .from(testCases)
+      .innerJoin(sections, eq(sections.id, testCases.sectionId))
+      .innerJoin(suites, and(eq(suites.id, sections.suiteId), eq(suites.projectId, projectId)))
+      .where(ilike(testCases.title, `%${escapedQ}%`))
+      .limit(50);
+
+    if (matchingCases.length === 0) return reply.send([]);
+
+    // Load all sections for breadcrumb resolution (only sections from the matched cases)
+    const uniqueSectionIds = [...new Set(matchingCases.map((c) => c.sectionId))];
+    const sectionRows = uniqueSectionIds.length > 0
+      ? await db.select({ id: sections.id, name: sections.name, parentId: sections.parentId }).from(sections).where(inArray(sections.id, uniqueSectionIds))
+      : [];
+    // Also load parent sections needed for breadcrumbs (up to 5 levels deep)
+    const allSectionIds = new Set(sectionRows.map((s) => s.id));
+    const parentIds = sectionRows.map((s) => s.parentId).filter((id): id is string => id !== null && !allSectionIds.has(id));
+    if (parentIds.length > 0) {
+      const parentRows = await db.select({ id: sections.id, name: sections.name, parentId: sections.parentId }).from(sections).where(inArray(sections.id, parentIds));
+      sectionRows.push(...parentRows);
+    }
+
+    const sectionMap = new Map(sectionRows.map((s) => [s.id, s]));
+    function buildBreadcrumb(sectionId: string, visited = new Set<string>()): string[] {
+      if (visited.has(sectionId)) return []; // cycle guard
+      const sec = sectionMap.get(sectionId);
+      if (!sec) return [];
+      if (!sec.parentId) return [sec.name];
+      visited.add(sectionId);
+      return [...buildBreadcrumb(sec.parentId, visited), sec.name];
+    }
+
+    const results = matchingCases.map((c) => ({
+      id: c.id,
+      title: c.title,
+      sectionId: c.sectionId,
+      sectionPath: buildBreadcrumb(c.sectionId),
+    }));
+
+    return reply.send(results);
   });
 }
