@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 
 type ModalProps = {
   isOpen: boolean;
@@ -9,6 +9,8 @@ type ModalProps = {
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const onCloseRef = useRef(onClose);
+  useLayoutEffect(() => { onCloseRef.current = onClose; });
 
   useEffect(() => {
     const el = dialogRef.current;
@@ -23,10 +25,10 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
-    function onDialogClose() { onClose(); }
+    function onDialogClose() { onCloseRef.current(); }
     el.addEventListener("close", onDialogClose);
     return () => el.removeEventListener("close", onDialogClose);
-  }, [onClose]);
+  }, []); // stable — onCloseRef.current is always up to date
 
   // Close on backdrop click
   function handleClick(e: React.MouseEvent<HTMLDialogElement>) {
@@ -36,7 +38,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       e.clientX < rect.left || e.clientX > rect.right ||
       e.clientY < rect.top || e.clientY > rect.bottom
     ) {
-      onClose();
+      onCloseRef.current();
     }
   }
 
@@ -50,7 +52,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         {title && <h2 className="text-lg font-semibold text-text font-mono">{title}</h2>}
         <button
           type="button"
-          onClick={onClose}
+          onClick={() => onCloseRef.current()}
           className="ml-auto rounded p-1 text-muted hover:bg-surface-raised hover:text-text"
           aria-label="Close"
         >
