@@ -157,6 +157,7 @@ This runs inside `mcr.microsoft.com/playwright:v1.42.0-jammy` (the same image CI
 
 Do **not** run `npm run test:visual:update` locally unless your machine matches the CI environment exactly (Linux + Chromium). Use the Docker script instead.
 
+
 ### Accessibility Audit
 
 ```bash
