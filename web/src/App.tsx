@@ -32,6 +32,7 @@ import CreateRunPage from "./pages/runs/CreateRunPage";
 import ShareView from "./pages/ShareView";
 import ResetRequest from "./pages/ResetRequest";
 import ResetConfirm from "./pages/ResetConfirm";
+import Todo from "./pages/Todo";
 
 function AppRoutes() {
   return (
@@ -50,6 +51,7 @@ function AppRoutes() {
         }
       >
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="todo" element={<Todo />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="cases/overview" element={<CasesOverview />} />
