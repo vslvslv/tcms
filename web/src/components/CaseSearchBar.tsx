@@ -20,24 +20,21 @@ export function CaseSearchBar({ projectId }: CaseSearchBarProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CaseSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const listRef = useRef<HTMLUListElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const debouncedQuery = useDebounce(query, 250);
+  // Derived: loading while query has changed but debounce hasn't caught up yet
+  const loading = query.trim() !== debouncedQuery.trim() && query.trim().length > 0;
 
   useEffect(() => {
-    if (!debouncedQuery.trim()) {
-      setResults([]);
-      setActiveIndex(-1);
-      return;
-    }
-    setLoading(true);
+    if (!debouncedQuery.trim()) return;
+    let cancelled = false;
     api<CaseSearchResult[]>(`/api/projects/${projectId}/cases/search?q=${encodeURIComponent(debouncedQuery)}`)
-      .then((data) => { setResults(data); setActiveIndex(-1); })
-      .catch(() => setResults([]))
-      .finally(() => setLoading(false));
+      .then((data) => { if (!cancelled) { setResults(data); setActiveIndex(-1); } })
+      .catch(() => { if (!cancelled) setResults([]); });
+    return () => { cancelled = true; };
   }, [debouncedQuery, projectId]);
 
   const clear = useCallback(() => {

@@ -53,13 +53,13 @@ function StepsDiff({ oldSteps, newSteps }: { oldSteps: StepSnapshot[]; newSteps:
             >
               <span className="w-6 shrink-0 text-muted">{i + 1}.</span>
               <div className="flex-1">
-                {removed && <span className="line-through text-red-700">{old.content}</span>}
-                {added && <span className="text-green-700">{cur.content}</span>}
+                {removed && <span className="line-through text-error">{old.content}</span>}
+                {added && <span className="text-success">{cur.content}</span>}
                 {changed && (
                   <>
-                    <span className="line-through text-red-700">{old.content}</span>
+                    <span className="line-through text-error">{old.content}</span>
                     {" → "}
-                    <span className="text-green-700">{cur.content}</span>
+                    <span className="text-success">{cur.content}</span>
                   </>
                 )}
                 {unchanged && <span>{cur.content}</span>}
