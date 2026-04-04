@@ -87,7 +87,7 @@ export class CasesOverviewPage extends BasePage {
   /** Project badge showing current project name. */
   projectBadge(name?: string) {
     if (name) return this.page.getByText(name, { exact: false }).filter({ has: this.page.locator("span") }).first();
-    return this.page.locator("span.rounded-md.bg-slate-100").first();
+    return this.page.locator("span.rounded-md.bg-surface-raised, span.rounded-md.bg-slate-100").first();
   }
 
   /** Section header row containing the section name (with expand/collapse, edit, delete). */

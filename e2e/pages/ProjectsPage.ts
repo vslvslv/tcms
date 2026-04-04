@@ -59,15 +59,25 @@ export class ProjectsPage extends BasePage {
     await this.createProjectSubmitButton.click();
   }
 
-  /** Delete a project by name: go to its Settings and click Delete project (accepts confirm dialog). */
+  /** Delete a project by name: go to its Settings > Danger tab, type name to confirm, then click delete. */
   async deleteProjectByName(name: string) {
     await this.goto();
     await this.page.waitForLoadState("networkidle");
     const row = this.page.getByRole("row").filter({ has: this.page.getByRole("link", { name: name }) });
     await row.getByRole("link", { name: /settings/i }).click();
     await this.page.waitForLoadState("networkidle");
-    this.page.once("dialog", (d) => d.accept());
-    await this.page.getByRole("button", { name: /delete project/i }).click();
+    // Navigate to Danger tab
+    const dangerBtn = this.page.getByRole("button", { name: /danger/i });
+    await dangerBtn.waitFor({ state: "visible", timeout: 10000 });
+    await dangerBtn.click();
+    // Type project name to unlock delete button
+    const confirmInput = this.page.getByPlaceholder(name);
+    await confirmInput.waitFor({ state: "visible", timeout: 5000 });
+    await confirmInput.fill(name);
+    // Click delete
+    const deleteBtn = this.page.getByRole("button", { name: /delete project permanently/i });
+    await deleteBtn.waitFor({ state: "visible", timeout: 5000 });
+    await deleteBtn.click();
     await this.page.waitForLoadState("networkidle");
   }
 }
