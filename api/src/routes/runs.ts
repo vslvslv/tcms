@@ -14,6 +14,7 @@ import {
   milestones,
   datasetRows,
   fileFailureCorrelations,
+  issueLinks,
 } from "../db/schema.js";
 import { eq, inArray, desc, and, gte } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
@@ -594,5 +595,37 @@ export default async function runRoutes(app: FastifyInstance) {
       .sort((a, b) => b.score - a.score);
 
     return reply.send(ranked);
+  });
+
+  // GET /api/runs/:id/defects — all issue links for results in this run
+  app.get("/api/runs/:id/defects", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid run id", "VALIDATION_ERROR");
+    const db = await getDb();
+    const [run] = await db.select({ id: runs.id, suiteId: runs.suiteId }).from(runs).where(eq(runs.id, parsed.data.id)).limit(1);
+    if (!run) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    const suite = await db.select({ projectId: suites.projectId }).from(suites).where(eq(suites.id, run.suiteId)).limit(1);
+    if (!suite[0]) return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    if (!(await assertProjectAccess(db, suite[0].projectId, payload.sub))) {
+      return replyError(reply, 404, "Run not found", "NOT_FOUND");
+    }
+    const runTests = await db.select({ id: tests.id }).from(tests).where(eq(tests.runId, parsed.data.id));
+    if (runTests.length === 0) return reply.send([]);
+    const testResultIds = await db
+      .select({ id: results.id })
+      .from(results)
+      .where(inArray(results.testId, runTests.map((t) => t.id)));
+    if (testResultIds.length === 0) return reply.send([]);
+    const defects = await db
+      .select()
+      .from(issueLinks)
+      .where(and(
+        eq(issueLinks.entityType, "result"),
+        inArray(issueLinks.entityId, testResultIds.map((r) => r.id))
+      ))
+      .limit(250);
+    return reply.send(defects);
   });
 }
