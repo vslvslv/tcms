@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { api, type Run, type RunTest } from "../api";
+import { api, type Run, type RunTest, type FlakyTest, type BulkStatusResult } from "../api";
+import { useProject } from "../ProjectContext";
+import { FlakyBadge } from "../components/FlakyBadge";
 import { RunTestCaseSidebar } from "../components/RunTestCaseSidebar";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
@@ -52,6 +54,7 @@ export default function RunView() {
   const { runId } = useParams<{ runId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { projectId } = useProject();
   const tab = runId ? getRunTab(location.pathname) : "tests";
   const [run, setRun] = useState<Run | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +63,12 @@ export default function RunView() {
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [sortBy, setSortBy] = useState<string>("section");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [flakyMap, setFlakyMap] = useState<Map<string, number>>(new Map());
+  const [selectedTestIds, setSelectedTestIds] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<string>("passed");
+  const [bulkApplying, setBulkApplying] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
   function loadRun() {
     if (!runId) return;
@@ -73,8 +82,25 @@ export default function RunView() {
     loadRun();
   }, [runId]);
 
+  useEffect(() => {
+    if (!projectId) return;
+    api<FlakyTest[]>(`/api/projects/${projectId}/flaky-tests`)
+      .then((data) => {
+        const m = new Map<string, number>();
+        for (const ft of data) m.set(ft.caseId, ft.flakinessScore);
+        setFlakyMap(m);
+      })
+      .catch(() => { /* silent — badge hidden if unavailable */ });
+  }, [projectId]);
+
   const testsForSections = run?.tests ?? [];
-  const sections = useMemo(() => groupTestsBySection(testsForSections), [testsForSections]);
+  const filteredTests = useMemo(
+    () => statusFilter === "all"
+      ? testsForSections
+      : testsForSections.filter((t) => (t.latestResult?.status ?? "untested") === statusFilter),
+    [testsForSections, statusFilter]
+  );
+  const sections = useMemo(() => groupTestsBySection(filteredTests), [filteredTests]);
   /** Flat list in display order (for Pass & Next in sidebar) */
   const allTestsInOrder = useMemo(
     () => sections.flatMap((s) => s.tests),
@@ -126,6 +152,25 @@ export default function RunView() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedTestId, allTestsInOrder, setStatusViaShortcut]);
+
+  async function applyBulkStatus() {
+    if (!runId || selectedTestIds.size === 0) return;
+    setBulkApplying(true);
+    setBulkMessage(null);
+    try {
+      const res = await api<BulkStatusResult>(`/api/runs/${runId}/tests/bulk-status`, {
+        method: "POST",
+        body: JSON.stringify({ testIds: [...selectedTestIds], status: bulkStatus }),
+      });
+      setBulkMessage({ text: `Updated ${res.updated} test${res.updated !== 1 ? "s" : ""} to ${res.status}`, type: "success" });
+      setSelectedTestIds(new Set());
+      loadRun();
+    } catch (err) {
+      setBulkMessage({ text: err instanceof Error ? err.message : "Failed to update", type: "error" });
+    } finally {
+      setBulkApplying(false);
+    }
+  }
 
   async function importResults(file: File) {
     if (!runId) return;
@@ -226,11 +271,58 @@ export default function RunView() {
         </Card>
       </div>
 
-      {/* Toolbar */}
+      {/* Toolbar / Bulk Status Bar */}
+      {selectedTestIds.size > 0 ? (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded border border-border bg-surface-raised px-3 py-2">
+          <span className="text-sm font-medium text-text">{selectedTestIds.size} selected</span>
+          <span className="text-sm text-muted">Set status:</span>
+          <Select
+            value={bulkStatus}
+            onChange={(e) => setBulkStatus(e.target.value)}
+            aria-label={`Set status for ${selectedTestIds.size} selected tests`}
+            className="w-32 text-sm"
+            disabled={bulkApplying}
+          >
+            <option value="passed">Passed</option>
+            <option value="failed">Failed</option>
+            <option value="blocked">Blocked</option>
+            <option value="skipped">Skipped</option>
+            <option value="untested">Untested</option>
+          </Select>
+          <Button variant="primary" onClick={applyBulkStatus} disabled={bulkApplying}>
+            {bulkApplying ? "Applying…" : "Apply"}
+          </Button>
+          <button
+            type="button"
+            className="text-sm text-muted hover:text-text"
+            onClick={() => { setSelectedTestIds(new Set()); setBulkMessage(null); }}
+          >
+            Deselect all
+          </button>
+          {bulkMessage && (
+            <span className={cn("ml-auto text-sm", bulkMessage.type === "success" ? "text-success" : "text-error")}>
+              {bulkMessage.text}
+            </span>
+          )}
+        </div>
+      ) : (
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="w-40 text-sm">
           <option value="section">Sort: Section</option>
           <option value="status">Sort: Status</option>
+        </Select>
+        <Select
+          value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setSelectedTestId(null); }}
+          aria-label="Filter by status"
+          className="w-36 text-sm"
+        >
+          <option value="all">All statuses</option>
+          <option value="passed">Passed</option>
+          <option value="failed">Failed</option>
+          <option value="blocked">Blocked</option>
+          <option value="skipped">Skipped</option>
+          <option value="untested">Untested</option>
         </Select>
         <label className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface px-3 py-1.5 text-sm hover:bg-surface-raised">
           <span>+ Add Results</span>
@@ -273,6 +365,7 @@ export default function RunView() {
           ? Shortcuts
         </button>
       </div>
+      )}
 
       {showShortcutHelp && (
         <Card className="mb-4 p-4 text-sm">
@@ -295,7 +388,11 @@ export default function RunView() {
         <div className={cn("min-w-0 flex-1", selectedTest && "md:max-w-[calc(100%-380px)] lg:max-w-[calc(100%-420px)]")}>
           <Card className="overflow-hidden p-0">
             {sections.length === 0 ? (
-              <p className="p-6 text-muted">No tests in this run.</p>
+              <p className="p-6 text-muted">
+                {statusFilter !== "all"
+                  ? (<>No {statusFilter} tests in this run. <button type="button" className="text-primary hover:underline" onClick={() => setStatusFilter("all")}>Clear filter</button></>)
+                  : "No tests in this run."}
+              </p>
             ) : (
               sections.map(({ sectionName, tests: sectionTests }) => (
                 <div key={sectionName} className="border-b border-border last:border-b-0">
@@ -303,6 +400,23 @@ export default function RunView() {
                   <Table>
                     <TableHead>
                       <TableHeaderRow>
+                        <TableHeadCell className="w-8">
+                          <input
+                            type="checkbox"
+                            aria-label="Select all tests in section"
+                            checked={sectionTests.every((t) => selectedTestIds.has(t.id))}
+                            onChange={(e) => {
+                              setSelectedTestIds((prev) => {
+                                const next = new Set(prev);
+                                for (const t of sectionTests) {
+                                  if (e.target.checked) next.add(t.id);
+                                  else next.delete(t.id);
+                                }
+                                return next;
+                              });
+                            }}
+                          />
+                        </TableHeadCell>
                         <TableHeadCell>ID</TableHeadCell>
                         <TableHeadCell>Title</TableHeadCell>
                         <TableHeadCell>Test Labels</TableHeadCell>
@@ -315,6 +429,7 @@ export default function RunView() {
                       {sectionTests.map((t) => {
                         const status = t.latestResult?.status ?? "untested";
                         const isSelected = selectedTestId === t.id;
+                        const isChecked = selectedTestIds.has(t.id);
                         return (
                           <TableRow
                             key={t.id}
@@ -329,12 +444,29 @@ export default function RunView() {
                             }}
                             className={cn(
                               "cursor-pointer",
-                              isSelected && "bg-primary/5"
+                              isSelected && "bg-primary/5",
+                              isChecked && "bg-warning/5"
                             )}
                           >
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                aria-label={`Select test: ${t.caseTitle}`}
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  setSelectedTestIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (e.target.checked) next.add(t.id);
+                                    else next.delete(t.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </TableCell>
                             <TableCell className="font-mono text-xs text-muted">{t.id.slice(0, 8)}</TableCell>
                             <TableCell className="font-medium text-text">
                               {t.caseTitle}
+                              <FlakyBadge score={flakyMap.get(t.testCaseId ?? "") ?? 0} />
                               {t.datasetRow && Object.keys(t.datasetRow).length > 0 && (
                                 <span className="ml-1 text-muted">— {Object.entries(t.datasetRow).map(([k, v]) => `${k}: ${v}`).join(", ")}</span>
                               )}
