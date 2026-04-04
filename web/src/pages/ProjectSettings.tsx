@@ -17,6 +17,9 @@ import {
   type AuditLogEntry,
 } from "../api";
 import { Select } from "../components/ui/Select";
+import { Button } from "../components/ui/Button";
+import { Card } from "../components/ui/Card";
+import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { DatasetEditor } from "../components/DatasetEditor";
 
 type ProjectMemberWithDetails = {
@@ -72,6 +75,8 @@ export default function ProjectSettings() {
   const [saving, setSaving] = useState(false);
   const [myRole, setMyRole] = useState<string | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [activeTab, setActiveTab] = useState<"general" | "members" | "case-config" | "integrations" | "danger">("general");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   function load() {
     if (!projectId) return;
@@ -120,6 +125,41 @@ export default function ProjectSettings() {
   useEffect(() => {
     load();
   }, [projectId]);
+
+  // Auto-load audit log when Danger tab is activated
+  useEffect(() => {
+    if (activeTab === "danger") loadAuditLog();
+  }, [activeTab]);
+
+  async function deleteCaseType(id: string) {
+    if (!confirm("Delete this case type?")) return;
+    try {
+      await api(`/api/projects/${projectId}/case-types/${id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    }
+  }
+
+  async function deletePriority(id: string) {
+    if (!confirm("Delete this priority?")) return;
+    try {
+      await api(`/api/projects/${projectId}/priorities/${id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    }
+  }
+
+  async function deleteConfigGroup(id: string) {
+    if (!confirm("Delete this config group?")) return;
+    try {
+      await api(`/api/projects/${projectId}/config-groups/${id}`, { method: "DELETE" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    }
+  }
 
   async function addCaseType(e: React.FormEvent) {
     e.preventDefault();
@@ -373,341 +413,454 @@ export default function ProjectSettings() {
   }
 
   if (!projectId) return null;
-  if (loading) return <p>Loading…</p>;
-  if (error && !project) return <p style={{ color: "red" }}>{error}</p>;
-  if (!project) return <p>Project not found</p>;
+  if (loading) return <LoadingSpinner />;
+  if (error && !project) return <p className="text-error">{error}</p>;
+  if (!project) return <p className="text-muted">Project not found</p>;
 
   const canManage = myRole === "admin" || myRole === "lead";
+  const tabs = [
+    { key: "general", label: "General" },
+    { key: "members", label: "Members" },
+    { key: "case-config", label: "Case Config" },
+    { key: "integrations", label: "Integrations" },
+    ...(canManage ? [{ key: "danger", label: "Danger" }] : []),
+  ] as const;
 
   return (
-    <div className="max-w-2xl text-text">
-      <h1 className="mb-2 font-mono text-xl font-semibold text-text">Settings</h1>
-      <p className="mb-6 text-sm text-muted">
+    <div className="max-w-2xl">
+      <h1 className="mb-1 font-mono text-xl font-semibold text-text">Settings</h1>
+      <p className="mb-5 text-sm text-muted">
         <Link to={`/projects/${projectId}`} className="text-primary hover:underline">← {project.name}</Link>
       </p>
       {error && <p className="mb-4 text-sm text-error">{error}</p>}
 
-      <section style={{ marginBottom: 32 }}>
-        <h3>Case types</h3>
-        <form onSubmit={addCaseType} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <input value={newCaseTypeName} onChange={(e) => setNewCaseTypeName(e.target.value)} placeholder="Name" />
-          <button type="submit" disabled={saving}>Add</button>
-        </form>
-        <ul style={{ listStyle: "none", padding: 0 }}>{caseTypes.map((c) => <li key={c.id}>{c.name}</li>)}</ul>
-      </section>
+      {/* Tab bar */}
+      <div className="mb-6 flex gap-1 border-b border-border">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setActiveTab(t.key)}
+            className={`px-4 py-2 text-sm font-medium transition-colors duration-150 border-b-2 -mb-px ${activeTab === t.key ? "border-primary text-primary" : "border-transparent text-muted hover:text-text"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      <section style={{ marginBottom: 32 }}>
-        <h3>Shared steps</h3>
-        <p style={{ fontSize: 12, color: "#666" }}>Reusable steps you can insert into test cases. Edit once, updates everywhere.</p>
-        <form onSubmit={addSharedStep} style={{ marginBottom: 12 }}>
-          <div style={{ marginBottom: 4 }}>
-            <input value={newSharedContent} onChange={(e) => setNewSharedContent(e.target.value)} placeholder="Action" style={{ width: "100%" }} required />
-          </div>
-          <div style={{ marginBottom: 4 }}>
-            <input value={newSharedExpected} onChange={(e) => setNewSharedExpected(e.target.value)} placeholder="Expected result" style={{ width: "100%" }} />
-          </div>
-          <button type="submit" disabled={saving}>Add shared step</button>
-        </form>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {sharedSteps.map((s) => (
-            <li key={s.id} style={{ border: "1px solid #eee", padding: 8, marginBottom: 8 }}>
-              {editingSharedId === s.id ? (
-                <>
-                  <input value={editSharedContent} onChange={(e) => setEditSharedContent(e.target.value)} style={{ width: "100%", marginBottom: 4 }} />
-                  <input value={editSharedExpected} onChange={(e) => setEditSharedExpected(e.target.value)} style={{ width: "100%", marginBottom: 4 }} />
-                  <button type="button" onClick={() => updateSharedStep(s.id)} disabled={saving}>Save</button>
-                  <button type="button" onClick={() => { setEditingSharedId(null); }}>Cancel</button>
-                </>
-              ) : (
-                <>
-                  <div><strong>Action:</strong> {s.content}</div>
-                  {s.expected && <div><strong>Expected:</strong> {s.expected}</div>}
-                  <button type="button" style={{ marginRight: 8 }} onClick={() => { setEditingSharedId(s.id); setEditSharedContent(s.content); setEditSharedExpected(s.expected ?? ""); }}>Edit</button>
-                  <button type="button" onClick={() => deleteSharedStep(s.id)}>Delete</button>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section style={{ marginBottom: 32 }}>
-        <h3>Case templates</h3>
-        <p style={{ fontSize: 12, color: "#666" }}>Create cases from a template with pre-filled steps. One line per step; use " | " to separate action and expected result.</p>
-        <form onSubmit={addCaseTemplate} style={{ marginBottom: 12 }}>
-          <input value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} placeholder="Template name" style={{ width: "100%", marginBottom: 4 }} required />
-          <textarea value={newTemplateSteps} onChange={(e) => setNewTemplateSteps(e.target.value)} placeholder="Step 1 action | expected&#10;Step 2 action" rows={4} style={{ width: "100%", marginBottom: 4 }} />
-          <button type="submit" disabled={saving}>Add template</button>
-        </form>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {caseTemplates.map((t) => (
-            <li key={t.id} style={{ marginBottom: 8 }}>
-              {t.name} ({t.templateType})
-              <button type="button" style={{ marginLeft: 8 }} onClick={() => deleteCaseTemplate(t.id)}>Delete</button>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section style={{ marginBottom: 32 }}>
-        <h3>Datasets</h3>
-        <p style={{ fontSize: 12, color: "#666" }}>Parameterize cases: one test per row when running.</p>
-        {expandedDatasetId ? (
-          <DatasetEditor
-            datasetId={expandedDatasetId}
-            onBack={() => { setExpandedDatasetId(null); load(); }}
-          />
-        ) : (
-          <>
-            <form onSubmit={addDataset} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <input value={newDatasetName} onChange={(e) => setNewDatasetName(e.target.value)} placeholder="Dataset name" />
-              <button type="submit" disabled={saving}>Add dataset</button>
+      {/* General tab */}
+      {activeTab === "general" && (
+        <div className="flex flex-col gap-6">
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Project Info</h2>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!projectId) return;
+                setSaving(true);
+                try {
+                  await api(`/api/projects/${projectId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ name: project.name, description: project.description }),
+                  });
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Failed");
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              className="flex flex-col gap-3"
+            >
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">Name</span>
+                <input
+                  value={project.name}
+                  onChange={(e) => setProject((p) => p ? { ...p, name: e.target.value } : p)}
+                  className="rounded border border-border bg-surface-raised px-3 py-2 text-text"
+                  required
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">Description</span>
+                <textarea
+                  value={project.description ?? ""}
+                  onChange={(e) => setProject((p) => p ? { ...p, description: e.target.value } : p)}
+                  rows={3}
+                  className="rounded border border-border bg-surface-raised px-3 py-2 text-text"
+                />
+              </label>
+              <Button type="submit" variant="primary" disabled={saving} className="self-start">Save</Button>
             </form>
-            <ul style={{ listStyle: "none", padding: 0 }}>
-              {datasetsList.map((d) => (
-                <li key={d.id} style={{ marginBottom: 8, padding: 8, border: "1px solid #eee", borderRadius: 8, display: "flex", alignItems: "center", gap: 12 }}>
-                  <strong style={{ flex: 1 }}>{d.name}</strong>
-                  <span style={{ fontSize: 12, color: "#666" }}>{d.columns?.length ?? 0} cols, {d.rows?.length ?? 0} rows</span>
-                  <button type="button" onClick={() => setExpandedDatasetId(d.id)} style={{ fontSize: 13 }}>Manage</button>
-                  <button type="button" onClick={() => deleteDataset(d.id)} style={{ fontSize: 13, color: "#c00" }}>Delete</button>
+          </Card>
+        </div>
+      )}
+
+      {/* Members tab */}
+      {activeTab === "members" && (
+        <div className="flex flex-col gap-6">
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Members</h2>
+            <ul className="mb-4 divide-y divide-border">
+              {members.map((m) => (
+                <li key={m.id} className="flex items-center gap-3 py-2">
+                  <span className="flex-1 text-sm text-text">{m.user?.email ?? m.userId}</span>
+                  <span className="rounded bg-surface-raised px-2 py-0.5 text-xs text-muted">{m.role?.name ?? m.roleId}</span>
+                  {canManage && (
+                    <Button variant="secondary" className="text-xs" onClick={() => removeMember(m.userId)}>Remove</Button>
+                  )}
                 </li>
               ))}
             </ul>
-          </>
-        )}
-      </section>
-
-      <section style={{ marginBottom: 32 }}>
-        <h3>Requirements coverage</h3>
-        <p style={{ fontSize: 12, color: "#666" }}>Requirement refs linked to cases (add links in case editor).</p>
-        {requirementsCoverage.length === 0 ? (
-          <p>No requirement links yet.</p>
-        ) : (
-          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 14 }}>
-            <thead>
-              <tr>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>Requirement ref</th>
-                <th style={{ textAlign: "left", borderBottom: "1px solid #ccc" }}>Title</th>
-                <th style={{ textAlign: "right", borderBottom: "1px solid #ccc" }}>Cases</th>
-              </tr>
-            </thead>
-            <tbody>
-              {requirementsCoverage.map((row) => (
-                <tr key={row.requirementRef}>
-                  <td style={{ borderBottom: "1px solid #eee" }}>{row.requirementRef}</td>
-                  <td style={{ borderBottom: "1px solid #eee" }}>{row.title ?? "—"}</td>
-                  <td style={{ textAlign: "right", borderBottom: "1px solid #eee" }}>{row.caseCount}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      {canManage && (
-      <section style={{ marginBottom: 32 }}>
-        <h3>Audit log</h3>
-        <p style={{ fontSize: 12, color: "#666" }}>Recent activity in this project. Only admin/lead can view.</p>
-        <button type="button" onClick={loadAuditLog}>Load audit log</button>
-        {auditLog.length > 0 && (
-          <ul style={{ listStyle: "none", padding: 0, marginTop: 8, fontSize: 13 }}>
-            {auditLog.map((e) => (
-              <li key={e.id} style={{ borderBottom: "1px solid #eee", padding: "4px 0" }}>
-                <strong>{e.action}</strong> {e.entityType} {e.entityId} — {new Date(e.createdAt).toLocaleString()}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+            {canManage && (
+              <form onSubmit={addMember} className="flex flex-wrap items-center gap-2">
+                <Select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)} required>
+                  <option value="">Select user</option>
+                  {users.filter((u) => !members.some((m) => m.userId === u.id)).map((u) => (
+                    <option key={u.id} value={u.id}>{u.email} ({u.name})</option>
+                  ))}
+                </Select>
+                <Select value={addMemberRoleId} onChange={(e) => setAddMemberRoleId(e.target.value)} required>
+                  <option value="">Role</option>
+                  {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </Select>
+                <Button type="submit" variant="primary" disabled={saving}>Add member</Button>
+              </form>
+            )}
+          </Card>
+        </div>
       )}
 
-      {canManage && (
-      <section style={{ marginBottom: 32 }}>
-        <h3>Webhooks</h3>
-        <p style={{ fontSize: 12, color: "#666" }}>POST to URL on events (case/run/result). Optional secret for X-Webhook-Signature (HMAC-SHA256).</p>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {webhooksList.map((w) => (
-            <li key={w.id} style={{ marginBottom: 8, padding: 8, border: "1px solid #eee" }}>
-              <a href={w.url} target="_blank" rel="noopener noreferrer">{w.url}</a>
-              <span style={{ marginLeft: 8, fontSize: 12 }}>{w.events?.join(", ")}</span>
-              <button
-                type="button"
-                style={{ marginLeft: 8 }}
-                onClick={async () => {
+      {/* Case Config tab */}
+      {activeTab === "case-config" && (
+        <div className="flex flex-col gap-6">
+          {/* Case Types */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Case Types</h2>
+            <form onSubmit={addCaseType} className="mb-3 flex gap-2">
+              <input value={newCaseTypeName} onChange={(e) => setNewCaseTypeName(e.target.value)} placeholder="Name" className="flex-1 rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              <Button type="submit" variant="primary" disabled={saving}>Add</Button>
+            </form>
+            <ul className="divide-y divide-border">
+              {caseTypes.map((c) => (
+                <li key={c.id} className="flex items-center gap-2 py-1.5">
+                  <span className="flex-1 text-sm text-text">{c.name}</span>
+                  <Button variant="secondary" className="text-xs" onClick={() => deleteCaseType(c.id)}>Delete</Button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {/* Priorities */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Priorities</h2>
+            <form onSubmit={addPriority} className="mb-3 flex gap-2">
+              <input value={newPriorityName} onChange={(e) => setNewPriorityName(e.target.value)} placeholder="Name" className="flex-1 rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              <Button type="submit" variant="primary" disabled={saving}>Add</Button>
+            </form>
+            <ul className="divide-y divide-border">
+              {priorities.map((p) => (
+                <li key={p.id} className="flex items-center gap-2 py-1.5">
+                  <span className="flex-1 text-sm text-text">{p.name}</span>
+                  <Button variant="secondary" className="text-xs" onClick={() => deletePriority(p.id)}>Delete</Button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {/* Config Groups */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Config Groups</h2>
+            <form onSubmit={addConfigGroup} className="mb-3 flex gap-2">
+              <input value={newConfigGroupName} onChange={(e) => setNewConfigGroupName(e.target.value)} placeholder="Group name" className="flex-1 rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              <Button type="submit" variant="primary" disabled={saving}>Add group</Button>
+            </form>
+            <ul className="divide-y divide-border">
+              {configGroups.map((g) => (
+                <li key={g.id} className="py-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 text-sm font-medium text-text">{g.name}</span>
+                    {g.options && g.options.length > 0 && (
+                      <span className="text-xs text-muted">({g.options.map((o) => o.name).join(", ")})</span>
+                    )}
+                    {addingOptionGroupId === g.id ? (
+                      <>
+                        <input value={newConfigOptionName} onChange={(e) => setNewConfigOptionName(e.target.value)} placeholder="Option" className="rounded border border-border bg-surface-raised px-2 py-1 text-xs text-text w-24" />
+                        <Button type="button" variant="primary" className="text-xs" onClick={() => addConfigOption(g.id)} disabled={saving}>Add</Button>
+                        <Button type="button" className="text-xs" onClick={() => { setAddingOptionGroupId(null); setNewConfigOptionName(""); }}>Cancel</Button>
+                      </>
+                    ) : (
+                      <Button type="button" variant="secondary" className="text-xs" onClick={() => setAddingOptionGroupId(g.id)}>+ Option</Button>
+                    )}
+                    <Button variant="secondary" className="text-xs" onClick={() => deleteConfigGroup(g.id)}>Delete</Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {/* Custom Fields */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Case Custom Fields</h2>
+            <form onSubmit={addCaseField} className="mb-3 flex flex-wrap gap-2">
+              <input value={newCaseFieldName} onChange={(e) => setNewCaseFieldName(e.target.value)} placeholder="Field name" className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              <Select value={newCaseFieldType} onChange={(e) => setNewCaseFieldType(e.target.value as typeof newCaseFieldType)}>
+                <option value="text">Text</option>
+                <option value="multiline">Multiline</option>
+                <option value="number">Number</option>
+                <option value="dropdown">Dropdown</option>
+              </Select>
+              {newCaseFieldType === "dropdown" && (
+                <input value={newCaseFieldOptions} onChange={(e) => setNewCaseFieldOptions(e.target.value)} placeholder="Options (comma-separated)" className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              )}
+              <Button type="submit" variant="primary" disabled={saving}>Add field</Button>
+            </form>
+            <ul className="divide-y divide-border">
+              {caseFields.map((f) => (
+                <li key={f.id} className="py-1.5 text-sm text-text">{f.name} <span className="text-muted">({f.fieldType})</span></li>
+              ))}
+            </ul>
+          </Card>
+
+          {/* Case Templates */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Case Templates</h2>
+            <p className="mb-3 text-xs text-muted">Create cases from a template with pre-filled steps. One line per step; use " | " to separate action and expected result.</p>
+            <form onSubmit={addCaseTemplate} className="mb-3 flex flex-col gap-2">
+              <input value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} placeholder="Template name" required className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              <textarea value={newTemplateSteps} onChange={(e) => setNewTemplateSteps(e.target.value)} placeholder={"Step 1 action | expected\nStep 2 action"} rows={4} className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              <Button type="submit" variant="primary" disabled={saving} className="self-start">Add template</Button>
+            </form>
+            <ul className="divide-y divide-border">
+              {caseTemplates.map((t) => (
+                <li key={t.id} className="flex items-center gap-2 py-1.5">
+                  <span className="flex-1 text-sm text-text">{t.name} <span className="text-muted">({t.templateType})</span></span>
+                  <Button variant="secondary" className="text-xs" onClick={() => deleteCaseTemplate(t.id)}>Delete</Button>
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {/* Datasets */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Datasets</h2>
+            <p className="mb-3 text-xs text-muted">Parameterize cases: one test per row when running.</p>
+            {expandedDatasetId ? (
+              <DatasetEditor datasetId={expandedDatasetId} onBack={() => { setExpandedDatasetId(null); load(); }} />
+            ) : (
+              <>
+                <form onSubmit={addDataset} className="mb-3 flex gap-2">
+                  <input value={newDatasetName} onChange={(e) => setNewDatasetName(e.target.value)} placeholder="Dataset name" className="flex-1 rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+                  <Button type="submit" variant="primary" disabled={saving}>Add</Button>
+                </form>
+                <ul className="divide-y divide-border">
+                  {datasetsList.map((d) => (
+                    <li key={d.id} className="flex items-center gap-3 py-2">
+                      <span className="flex-1 text-sm font-medium text-text">{d.name}</span>
+                      <span className="text-xs text-muted">{d.columns?.length ?? 0} cols, {d.rows?.length ?? 0} rows</span>
+                      <Button variant="secondary" className="text-xs" onClick={() => setExpandedDatasetId(d.id)}>Manage</Button>
+                      <Button variant="secondary" className="text-xs text-error" onClick={() => deleteDataset(d.id)}>Delete</Button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* Integrations tab */}
+      {activeTab === "integrations" && (
+        <div className="flex flex-col gap-6">
+          {/* Shared Steps */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Shared Steps</h2>
+            <p className="mb-3 text-xs text-muted">Reusable steps you can insert into test cases. Edit once, updates everywhere.</p>
+            <form onSubmit={addSharedStep} className="mb-3 flex flex-col gap-2">
+              <input value={newSharedContent} onChange={(e) => setNewSharedContent(e.target.value)} placeholder="Action" required className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              <input value={newSharedExpected} onChange={(e) => setNewSharedExpected(e.target.value)} placeholder="Expected result" className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+              <Button type="submit" variant="primary" disabled={saving} className="self-start">Add step</Button>
+            </form>
+            <ul className="divide-y divide-border">
+              {sharedSteps.map((s) => (
+                <li key={s.id} className="py-2">
+                  {editingSharedId === s.id ? (
+                    <div className="flex flex-col gap-2">
+                      <input value={editSharedContent} onChange={(e) => setEditSharedContent(e.target.value)} className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+                      <input value={editSharedExpected} onChange={(e) => setEditSharedExpected(e.target.value)} className="rounded border border-border bg-surface-raised px-2 py-1 text-sm text-text" />
+                      <div className="flex gap-2">
+                        <Button variant="primary" className="text-xs" onClick={() => updateSharedStep(s.id)} disabled={saving}>Save</Button>
+                        <Button className="text-xs" onClick={() => setEditingSharedId(null)}>Cancel</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1 text-sm text-text">
+                        <div><span className="font-medium">Action:</span> {s.content}</div>
+                        {s.expected && <div className="text-muted"><span className="font-medium">Expected:</span> {s.expected}</div>}
+                      </div>
+                      <Button variant="secondary" className="text-xs" onClick={() => { setEditingSharedId(s.id); setEditSharedContent(s.content); setEditSharedExpected(s.expected ?? ""); }}>Edit</Button>
+                      <Button variant="secondary" className="text-xs text-error" onClick={() => deleteSharedStep(s.id)}>Delete</Button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </Card>
+
+          {/* Requirements Coverage */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Requirements Coverage</h2>
+            <p className="mb-3 text-xs text-muted">Requirement refs linked to cases (add links in case editor).</p>
+            {requirementsCoverage.length === 0 ? (
+              <p className="text-sm text-muted">No requirement links yet.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs font-semibold uppercase text-muted">
+                    <th className="py-1.5 pr-4">Ref</th>
+                    <th className="py-1.5 pr-4">Title</th>
+                    <th className="py-1.5 text-right">Cases</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {requirementsCoverage.map((row) => (
+                    <tr key={row.requirementRef}>
+                      <td className="py-1.5 pr-4 text-text">{row.requirementRef}</td>
+                      <td className="py-1.5 pr-4 text-muted">{row.title ?? "—"}</td>
+                      <td className="py-1.5 text-right text-text">{row.caseCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+
+          {/* Webhooks */}
+          {canManage && (
+            <Card className="p-4">
+              <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Webhooks</h2>
+              <p className="mb-3 text-xs text-muted">POST to URL on events (case/run/result).</p>
+              <ul className="mb-4 divide-y divide-border">
+                {webhooksList.map((w) => (
+                  <li key={w.id} className="flex items-center gap-3 py-2">
+                    <a href={w.url} target="_blank" rel="noopener noreferrer" className="flex-1 truncate text-sm text-primary hover:underline">{w.url}</a>
+                    <span className="text-xs text-muted">{w.events?.join(", ")}</span>
+                    <Button variant="secondary" className="text-xs" onClick={async () => {
+                      try {
+                        await api(`/api/webhooks/${w.id}`, { method: "DELETE" });
+                        setWebhooksList((prev) => prev.filter((x) => x.id !== w.id));
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : "Delete failed");
+                      }
+                    }}>Delete</Button>
+                  </li>
+                ))}
+              </ul>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!projectId || !newWebhookUrl.trim() || newWebhookEvents.length === 0) return;
+                  setSaving(true);
                   try {
-                    await api(`/api/webhooks/${w.id}`, { method: "DELETE" });
-                    setWebhooksList((prev) => prev.filter((x) => x.id !== w.id));
+                    const created = await api<Webhook>(`/api/projects/${projectId}/webhooks`, {
+                      method: "POST",
+                      body: JSON.stringify({ url: newWebhookUrl.trim(), events: newWebhookEvents }),
+                    });
+                    setWebhooksList((prev) => [...prev, created]);
+                    setNewWebhookUrl("");
+                    setNewWebhookEvents([]);
+                    setWebhookTemplate("custom");
                   } catch (err) {
-                    setError(err instanceof Error ? err.message : "Delete failed");
+                    setError(err instanceof Error ? err.message : "Add webhook failed");
+                  } finally {
+                    setSaving(false);
                   }
                 }}
+                className="flex flex-col gap-3"
               >
-                Delete
-              </button>
-            </li>
-          ))}
-        </ul>
-        <form
-          style={{ marginTop: 12 }}
-          onSubmit={async (e) => {
-            e.preventDefault();
-            if (!projectId || !newWebhookUrl.trim() || newWebhookEvents.length === 0) return;
-            setSaving(true);
-            try {
-              const created = await api<Webhook>(`/api/projects/${projectId}/webhooks`, {
-                method: "POST",
-                body: JSON.stringify({ url: newWebhookUrl.trim(), events: newWebhookEvents }),
-              });
-              setWebhooksList((prev) => [...prev, created]);
-              setNewWebhookUrl("");
-              setNewWebhookEvents([]);
-              setWebhookTemplate("custom");
-            } catch (err) {
-              setError(err instanceof Error ? err.message : "Add webhook failed");
-            } finally {
-              setSaving(false);
-            }
-          }}
-        >
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ marginRight: 12 }}><input type="radio" name="wh-tpl" checked={webhookTemplate === "custom"} onChange={() => { setWebhookTemplate("custom"); }} /> Custom</label>
-            <label style={{ marginRight: 12 }}><input type="radio" name="wh-tpl" checked={webhookTemplate === "slack"} onChange={() => { setWebhookTemplate("slack"); setNewWebhookEvents(["run.completed"]); }} /> Slack</label>
-            <label><input type="radio" name="wh-tpl" checked={webhookTemplate === "teams"} onChange={() => { setWebhookTemplate("teams"); setNewWebhookEvents(["run.completed"]); }} /> Microsoft Teams</label>
-          </div>
-          {webhookTemplate === "slack" && (
-            <div style={{ marginBottom: 8, padding: 8, background: "#f8f8f8", borderRadius: 4, fontSize: 12 }}>
-              <strong>Slack Incoming Webhook</strong> — Paste your Slack incoming webhook URL below. On <code>run.completed</code>, TCMS will POST a Block Kit message with run name, pass rate, and failure count.
-            </div>
+                <div className="flex gap-4 text-sm">
+                  <label className="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="wh-tpl" checked={webhookTemplate === "custom"} onChange={() => setWebhookTemplate("custom")} /> Custom</label>
+                  <label className="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="wh-tpl" checked={webhookTemplate === "slack"} onChange={() => { setWebhookTemplate("slack"); setNewWebhookEvents(["run.completed"]); }} /> Slack</label>
+                  <label className="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="wh-tpl" checked={webhookTemplate === "teams"} onChange={() => { setWebhookTemplate("teams"); setNewWebhookEvents(["run.completed"]); }} /> Teams</label>
+                </div>
+                {webhookTemplate === "slack" && <p className="rounded bg-surface-raised p-2 text-xs text-muted">Paste your Slack incoming webhook URL. On run.completed, TCMS posts a Block Kit message.</p>}
+                {webhookTemplate === "teams" && <p className="rounded bg-surface-raised p-2 text-xs text-muted">Paste your Teams connector URL. On run.completed, TCMS posts an Adaptive Card.</p>}
+                <input value={newWebhookUrl} onChange={(e) => setNewWebhookUrl(e.target.value)} placeholder="https://..." required className="rounded border border-border bg-surface-raised px-3 py-2 text-sm text-text" />
+                {webhookTemplate === "custom" && (
+                  <div className="flex flex-wrap gap-3 text-sm">
+                    {["case.created", "case.updated", "run.created", "run.completed", "result.created"].map((ev) => (
+                      <label key={ev} className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={newWebhookEvents.includes(ev)}
+                          onChange={(e) => setNewWebhookEvents((prev) => e.target.checked ? [...prev, ev] : prev.filter((x) => x !== ev))}
+                        />
+                        {ev}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <Button type="submit" variant="primary" disabled={saving} className="self-start">Add webhook</Button>
+              </form>
+            </Card>
           )}
-          {webhookTemplate === "teams" && (
-            <div style={{ marginBottom: 8, padding: 8, background: "#f8f8f8", borderRadius: 4, fontSize: 12 }}>
-              <strong>Teams Incoming Webhook</strong> — Paste your Teams connector URL below. On <code>run.completed</code>, TCMS will POST an Adaptive Card with run name, pass rate, and failure count.
-            </div>
-          )}
-          <div style={{ marginBottom: 8 }}>
-            <input value={newWebhookUrl} onChange={(e) => setNewWebhookUrl(e.target.value)} placeholder="https://..." style={{ width: 320, marginRight: 8 }} required />
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            {["case.created", "case.updated", "run.created", "run.completed", "result.created"].map((ev) => (
-              <label key={ev} style={{ marginRight: 12 }}>
-                <input
-                  type="checkbox"
-                  checked={newWebhookEvents.includes(ev)}
-                  onChange={(e) => setNewWebhookEvents((prev) => (e.target.checked ? [...prev, ev] : prev.filter((x) => x !== ev)))}
-                />
-                {ev}
-              </label>
-            ))}
-          </div>
-          <button type="submit" disabled={saving}>Add webhook</button>
-        </form>
-      </section>
+        </div>
       )}
 
-      <section style={{ marginBottom: 32 }}>
-        <h3>Priorities</h3>
-        <form onSubmit={addPriority} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <input value={newPriorityName} onChange={(e) => setNewPriorityName(e.target.value)} placeholder="Name" />
-          <button type="submit" disabled={saving}>Add</button>
-        </form>
-        <ul style={{ listStyle: "none", padding: 0 }}>{priorities.map((p) => <li key={p.id}>{p.name}</li>)}</ul>
-      </section>
-
-      <section style={{ marginBottom: 32 }}>
-        <h3>Config groups</h3>
-        <form onSubmit={addConfigGroup} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <input value={newConfigGroupName} onChange={(e) => setNewConfigGroupName(e.target.value)} placeholder="Group name" />
-          <button type="submit" disabled={saving}>Add group</button>
-        </form>
-        <ul style={{ listStyle: "none", padding: 0 }}>
-          {configGroups.map((g) => (
-            <li key={g.id} style={{ marginBottom: 8 }}>
-              <strong>{g.name}</strong>
-              {g.options && g.options.length > 0 && (
-                <span style={{ marginLeft: 8 }}>({g.options.map((o) => o.name).join(", ")})</span>
-              )}
-              {addingOptionGroupId === g.id ? (
-                <span style={{ marginLeft: 8 }}>
-                  <input value={newConfigOptionName} onChange={(e) => setNewConfigOptionName(e.target.value)} placeholder="Option name" size={12} />
-                  <button type="button" onClick={() => addConfigOption(g.id)} disabled={saving}>Add</button>
-                  <button type="button" onClick={() => { setAddingOptionGroupId(null); setNewConfigOptionName(""); }}>Cancel</button>
-                </span>
-              ) : (
-                <button type="button" style={{ marginLeft: 8 }} onClick={() => setAddingOptionGroupId(g.id)}>+ Option</button>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section style={{ marginBottom: 32 }}>
-        <h3>Case custom fields</h3>
-        <form onSubmit={addCaseField} style={{ marginBottom: 8 }}>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <input value={newCaseFieldName} onChange={(e) => setNewCaseFieldName(e.target.value)} placeholder="Field name" />
-            <Select value={newCaseFieldType} onChange={(e) => setNewCaseFieldType(e.target.value as typeof newCaseFieldType)}>
-              <option value="text">Text</option>
-              <option value="multiline">Multiline</option>
-              <option value="number">Number</option>
-              <option value="dropdown">Dropdown</option>
-            </Select>
-            {newCaseFieldType === "dropdown" && (
-              <input value={newCaseFieldOptions} onChange={(e) => setNewCaseFieldOptions(e.target.value)} placeholder="Options (comma-separated)" size={24} />
+      {/* Danger tab */}
+      {activeTab === "danger" && canManage && (
+        <div className="flex flex-col gap-6">
+          {/* Audit log */}
+          <Card className="p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Audit Log</h2>
+            <p className="mb-3 text-xs text-muted">Recent activity in this project.</p>
+            {auditLog.length === 0 ? (
+              <p className="text-sm text-muted">No activity loaded yet.</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {auditLog.map((e) => (
+                  <li key={e.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+                    <span className="rounded bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">{e.action}</span>
+                    <span className="text-muted">{e.entityType}</span>
+                    <span className="text-muted">·</span>
+                    <span className="font-mono text-xs text-muted">{e.entityId.slice(0, 8)}</span>
+                    <span className="ml-auto text-xs text-muted">{new Date(e.createdAt).toLocaleString()}</span>
+                  </li>
+                ))}
+              </ul>
             )}
-            <button type="submit" disabled={saving}>Add field</button>
-          </div>
-        </form>
-        <ul style={{ listStyle: "none", padding: 0 }}>{caseFields.map((f) => <li key={f.id}>{f.name} ({f.fieldType})</li>)}</ul>
-      </section>
+          </Card>
 
-      {canManage && (
-        <section style={{ marginBottom: 32 }}>
-          <h3>Danger zone</h3>
-          <p style={{ fontSize: 12, color: "#666" }}>Only admin/lead can delete the project.</p>
-          <button
-            type="button"
-            style={{ background: "#c00", color: "#fff", border: "none", padding: "8px 12px" }}
-            onClick={async () => {
-              if (!projectId || !confirm("Delete this project and all its data? This cannot be undone.")) return;
-              try {
-                await api(`/api/projects/${projectId}`, { method: "DELETE" });
-                navigate("/projects");
-              } catch (err) {
-                setError(err instanceof Error ? err.message : "Delete failed");
-              }
-            }}
-          >
-            Delete project
-          </button>
-        </section>
-      )}
-
-      {canManage && (
-        <section style={{ marginBottom: 32 }}>
-          <h3>Project members</h3>
-          <ul style={{ listStyle: "none", padding: 0 }}>
-            {members.map((m) => (
-              <li key={m.id} style={{ marginBottom: 4 }}>
-                {m.user?.email ?? m.userId} — {m.role?.name ?? m.roleId}
-                <button type="button" style={{ marginLeft: 8 }} onClick={() => removeMember(m.userId)}>Remove</button>
-              </li>
-            ))}
-          </ul>
-          <form onSubmit={addMember} style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginTop: 8 }}>
-            <Select value={addMemberUserId} onChange={(e) => setAddMemberUserId(e.target.value)} required>
-              <option value="">Select user</option>
-              {users.filter((u) => !members.some((m) => m.userId === u.id)).map((u) => (
-                <option key={u.id} value={u.id}>{u.email} ({u.name})</option>
-              ))}
-            </Select>
-            <Select value={addMemberRoleId} onChange={(e) => setAddMemberRoleId(e.target.value)} required>
-              <option value="">Role</option>
-              {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </Select>
-            <button type="submit" disabled={saving}>Add member</button>
-          </form>
-        </section>
+          {/* Delete project */}
+          <Card className="border-error/30 p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-error">Delete Project</h2>
+            <p className="mb-4 text-sm text-muted">This permanently deletes <span className="font-medium text-text">{project.name}</span> and all its data. This cannot be undone.</p>
+            <p className="mb-2 text-sm text-muted">Type <span className="font-mono font-semibold text-text">{project.name}</span> to confirm:</p>
+            <input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={project.name}
+              className="mb-3 w-full rounded border border-border bg-surface-raised px-3 py-2 text-sm text-text"
+            />
+            <Button
+              variant="primary"
+              disabled={deleteConfirmText !== project.name}
+              onClick={async () => {
+                if (!projectId || deleteConfirmText !== project.name) return;
+                try {
+                  await api(`/api/projects/${projectId}`, { method: "DELETE" });
+                  navigate("/projects");
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Delete failed");
+                }
+              }}
+              className="bg-error text-white hover:bg-error/90 disabled:opacity-40"
+            >
+              Delete project permanently
+            </Button>
+          </Card>
+        </div>
       )}
     </div>
   );
-}
+}

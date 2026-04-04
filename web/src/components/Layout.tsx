@@ -5,7 +5,7 @@ import { FocusScope } from "@radix-ui/react-focus-scope";
 import { useAuth } from "../AuthContext";
 import { useProject } from "../ProjectContext";
 import { useTheme } from "../ThemeContext";
-import { api, type Project } from "../api";
+import { api, type Project, type Milestone } from "../api";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Button } from "./ui/Button";
 import { Select } from "./ui/Select";
@@ -40,6 +40,8 @@ function SidebarNav({
   const [runsSummaryLoading, setRunsSummaryLoading] = useState(false);
   const [groupBy, setGroupBy] = useState<string>("none");
   const [orderBy, setOrderBy] = useState<string>("date");
+  // Milestone sub-links: cached after first fetch
+  const [milestones, setMilestones] = useState<Milestone[] | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -58,11 +60,29 @@ function SidebarNav({
       .finally(() => setRunsSummaryLoading(false));
   }, [projectId, isRunsOverview]);
 
+  // Fetch milestones when milestone section expands (cached in state — no re-fetch on collapse/expand)
+  useEffect(() => {
+    if (expanded !== "milestones" || !projectId || milestones !== null) return;
+    api<Milestone[]>(`/api/projects/${projectId}/milestones`)
+      .then(setMilestones)
+      .catch(() => setMilestones([]));
+  }, [expanded, projectId, milestones]);
+
+  // Reset milestone cache when project changes
+  useEffect(() => {
+    setMilestones(null);
+  }, [projectId]);
+
   const openCount = projectRuns.filter((r) => !r.isCompleted).length;
   const completedCount = projectRuns.filter((r) => r.isCompleted).length;
 
   const subLinkClass = (active: boolean) =>
     `block rounded py-1.5 pl-8 pr-3 text-sm no-underline transition-colors duration-150 ${active ? "font-medium text-primary bg-primary/10" : "text-muted hover:bg-surface-raised hover:text-text"}`;
+
+  const navItemClass = (active: boolean) =>
+    `flex items-center gap-2 rounded px-3 py-2 text-sm no-underline transition-colors duration-150 ${active ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`;
+
+  const sectionLabel = "px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted/60 select-none";
 
   const toggle = (section: NavSection) => setExpanded((s) => (s === section ? null : section));
 
@@ -70,159 +90,186 @@ function SidebarNav({
 
   return (
     <nav className="mt-2 flex flex-col px-0">
+      {/* Project section */}
       {projectId && (
-        <Link
-          to={`/projects/${projectId}`}
-          onClick={onNavigate}
-          className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline transition-colors duration-150 ${isProjectOverview ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
-        >
-          <LayoutDashboard size={iconSize} className="shrink-0" />
-          Overview
-        </Link>
-      )}
-      <span className="flex items-center gap-2 rounded px-3 py-2 text-sm text-muted/50 cursor-not-allowed" aria-disabled="true" title="To Do is being refactored">
-        <ListTodo size={iconSize} className="shrink-0" />
-        To Do
-      </span>
+        <>
+          <span className={sectionLabel}>Project</span>
+          <Link to={`/projects/${projectId}`} onClick={onNavigate} className={navItemClass(isProjectOverview)}>
+            <LayoutDashboard size={iconSize} className="shrink-0" />
+            Overview
+          </Link>
+          <Link to="/todo" onClick={onNavigate} className={navItemClass(path === "/todo")}>
+            <ListTodo size={iconSize} className="shrink-0" />
+            To Do
+          </Link>
 
-      {/* Cases — sub-menu */}
-      <div className="mt-0.5">
-        <button
-          type="button"
-          onClick={() => toggle("cases")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${(path.startsWith("/projects") && !path.includes("/settings")) || path.startsWith("/cases/") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
-          aria-expanded={expanded === "cases"}
-        >
-          <span className="flex items-center gap-2">
-            <FolderOpen size={iconSize} className="shrink-0" />
-            Cases
-          </span>
-          <ChevronRight size={16} className={`shrink-0 transition-transform ${expanded === "cases" ? "rotate-90" : ""}`} />
-        </button>
-        {expanded === "cases" && (
-          <div className="mb-1 flex flex-col">
-            <Link to="/cases/overview" onClick={onNavigate} className={subLinkClass(path === "/cases/overview")} data-testid="nav-cases-overview">
-              Overview
-            </Link>
-            <Link to={path.startsWith("/cases/details") ? path : "/cases/details"} onClick={onNavigate} className={subLinkClass(path.startsWith("/cases/details"))}>
-              Details
-            </Link>
-            <Link to="/cases/status" onClick={onNavigate} className={subLinkClass(path === "/cases/status")}>
-              Status
-            </Link>
-            <Link to="/cases/defects" onClick={onNavigate} className={subLinkClass(path === "/cases/defects")}>
-              Defects
-            </Link>
-          </div>
-        )}
-      </div>
-
-      {/* Test Runs & Results — sub-menu */}
-      <div className="mt-0.5">
-        <button
-          type="button"
-          onClick={() => toggle("runs")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${path.startsWith("/runs") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
-          aria-expanded={expanded === "runs"}
-        >
-          <span className="flex items-center gap-2">
-            <FlaskConical size={iconSize} className="shrink-0" />
-            Test Runs &amp; Results
-          </span>
-          <ChevronRight size={16} className={`shrink-0 transition-transform ${expanded === "runs" ? "rotate-90" : ""}`} />
-        </button>
-        {expanded === "runs" && (
-          <div className="mb-1 flex flex-col">
-            <Link to="/runs/overview" onClick={onNavigate} className={subLinkClass(isRunsOverview)} data-testid="nav-runs-overview">
-              Overview
-            </Link>
-            {isRunDetail && (
-              <>
-                <Link to={`/runs/${runId}`} onClick={onNavigate} className={subLinkClass(path === `/runs/${runId}` && !path.includes("/activity") && !path.includes("/progress") && !path.includes("/defects"))} data-testid="run-view-tests-tab">
-                  Tests &amp; Results
+          {/* Cases — sub-menu */}
+          <div className="mt-0.5">
+            <button
+              type="button"
+              onClick={() => toggle("cases")}
+              className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${(path.startsWith("/projects") && !path.includes("/settings")) || path.startsWith("/cases/") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
+              aria-expanded={expanded === "cases"}
+            >
+              <span className="flex items-center gap-2">
+                <FolderOpen size={iconSize} className="shrink-0" />
+                Cases
+              </span>
+              <ChevronRight size={16} className={`shrink-0 transition-transform ${expanded === "cases" ? "rotate-90" : ""}`} />
+            </button>
+            {expanded === "cases" && (
+              <div className="mb-1 flex flex-col">
+                <Link to="/cases/overview" onClick={onNavigate} className={subLinkClass(path === "/cases/overview")} data-testid="nav-cases-overview">
+                  Overview
                 </Link>
-                <Link to={`/runs/${runId}/activity`} onClick={onNavigate} className={subLinkClass(path.includes("/activity"))}>
-                  Activity
+                <Link to={path.startsWith("/cases/details") ? path : "/cases/details"} onClick={onNavigate} className={subLinkClass(path.startsWith("/cases/details"))}>
+                  Details
                 </Link>
-                <Link to={`/runs/${runId}/progress`} onClick={onNavigate} className={subLinkClass(path.includes("/progress"))}>
-                  Progress
+                <Link to="/cases/status" onClick={onNavigate} className={subLinkClass(path === "/cases/status")}>
+                  Status
                 </Link>
-                <Link to={`/runs/${runId}/defects`} onClick={onNavigate} className={subLinkClass(path.includes("/defects"))}>
+                <Link to="/cases/defects" onClick={onNavigate} className={subLinkClass(path === "/cases/defects")}>
                   Defects
                 </Link>
-              </>
-            )}
-            {isRunsOverview && (
-              <div className="mt-2 space-y-2 border-t border-border pt-2">
-                <div className="flex flex-col gap-1.5">
-                  <Link to="/runs/new" onClick={onNavigate}>
-                    <Button variant="primary" className="w-full justify-center text-sm">+ Add Test Run</Button>
-                  </Link>
-                  <Link to={projectId ? `/projects/${projectId}` : "/projects"} onClick={onNavigate}>
-                    <Button variant="secondary" className="w-full justify-center text-sm">+ Add Test Plan</Button>
-                  </Link>
-                </div>
-                {!runsSummaryLoading && (openCount > 0 || completedCount > 0) && (
-                  <p className="px-2 text-xs text-muted">
-                    {openCount} open and {completedCount} completed test run{openCount + completedCount !== 1 ? "s" : ""} in this project.
-                  </p>
-                )}
-                <div className="space-y-1 px-2">
-                  <label className="block text-xs text-muted">Group By</label>
-                  <Select value={groupBy} onChange={(e) => setGroupBy(e.target.value)} className="w-full text-sm">
-                    <option value="none">None</option>
-                    <option value="milestone">Milestone</option>
-                  </Select>
-                </div>
-                <div className="space-y-1 px-2">
-                  <label className="block text-xs text-muted">Order By</label>
-                  <Select value={orderBy} onChange={(e) => setOrderBy(e.target.value)} className="w-full text-sm">
-                    <option value="date">Date</option>
-                    <option value="name">Name</option>
-                  </Select>
-                </div>
               </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* Milestones — sub-menu */}
+          {/* Test Runs & Results — sub-menu */}
+          <div className="mt-0.5">
+            <button
+              type="button"
+              onClick={() => toggle("runs")}
+              className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${path.startsWith("/runs") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
+              aria-expanded={expanded === "runs"}
+            >
+              <span className="flex items-center gap-2">
+                <FlaskConical size={iconSize} className="shrink-0" />
+                Test Runs &amp; Results
+              </span>
+              <ChevronRight size={16} className={`shrink-0 transition-transform ${expanded === "runs" ? "rotate-90" : ""}`} />
+            </button>
+            {expanded === "runs" && (
+              <div className="mb-1 flex flex-col">
+                <Link to="/runs/overview" onClick={onNavigate} className={subLinkClass(isRunsOverview)} data-testid="nav-runs-overview">
+                  Overview
+                </Link>
+                {isRunDetail && (
+                  <>
+                    <Link to={`/runs/${runId}`} onClick={onNavigate} className={subLinkClass(path === `/runs/${runId}` && !path.includes("/activity") && !path.includes("/progress") && !path.includes("/defects"))} data-testid="run-view-tests-tab">
+                      Tests &amp; Results
+                    </Link>
+                    <Link to={`/runs/${runId}/activity`} onClick={onNavigate} className={subLinkClass(path.includes("/activity"))}>
+                      Activity
+                    </Link>
+                    <Link to={`/runs/${runId}/progress`} onClick={onNavigate} className={subLinkClass(path.includes("/progress"))}>
+                      Progress
+                    </Link>
+                    <Link to={`/runs/${runId}/defects`} onClick={onNavigate} className={subLinkClass(path.includes("/defects"))}>
+                      Defects
+                    </Link>
+                  </>
+                )}
+                {isRunsOverview && (
+                  <div className="mt-2 space-y-2 border-t border-border pt-2">
+                    <div className="flex flex-col gap-1.5">
+                      <Link to="/runs/new" onClick={onNavigate}>
+                        <Button variant="primary" className="w-full justify-center text-sm">+ Add Test Run</Button>
+                      </Link>
+                      <Link to={projectId ? `/projects/${projectId}` : "/projects"} onClick={onNavigate}>
+                        <Button variant="secondary" className="w-full justify-center text-sm">+ Add Test Plan</Button>
+                      </Link>
+                    </div>
+                    {!runsSummaryLoading && (openCount > 0 || completedCount > 0) && (
+                      <p className="px-2 text-xs text-muted">
+                        {openCount} open and {completedCount} completed test run{openCount + completedCount !== 1 ? "s" : ""} in this project.
+                      </p>
+                    )}
+                    <div className="space-y-1 px-2">
+                      <label className="block text-xs text-muted">Group By</label>
+                      <Select value={groupBy} onChange={(e) => setGroupBy(e.target.value)} className="w-full text-sm">
+                        <option value="none">None</option>
+                        <option value="milestone">Milestone</option>
+                      </Select>
+                    </div>
+                    <div className="space-y-1 px-2">
+                      <label className="block text-xs text-muted">Order By</label>
+                      <Select value={orderBy} onChange={(e) => setOrderBy(e.target.value)} className="w-full text-sm">
+                        <option value="date">Date</option>
+                        <option value="name">Name</option>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Milestones — sub-menu */}
+          <div className="mt-0.5">
+            <button
+              type="button"
+              onClick={() => toggle("milestones")}
+              className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${path.startsWith("/milestones") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
+              aria-expanded={expanded === "milestones"}
+            >
+              <span className="flex items-center gap-2">
+                <Flag size={iconSize} className="shrink-0" />
+                Milestones
+              </span>
+              <ChevronRight size={16} className={`shrink-0 transition-transform ${expanded === "milestones" ? "rotate-90" : ""}`} />
+            </button>
+            {expanded === "milestones" && (
+              <div className="mb-1 flex flex-col">
+                {milestones === null ? (
+                  <span className={subLinkClass(false) + " opacity-50"}>Loading…</span>
+                ) : milestones.length === 0 ? (
+                  <span className={subLinkClass(false) + " opacity-50"}>No milestones</span>
+                ) : (
+                  milestones.map((m) => (
+                    <Link key={m.id} to={`/milestones/${m.id}/progress`} onClick={onNavigate} className={subLinkClass(path === `/milestones/${m.id}/progress`)}>
+                      {m.name}
+                    </Link>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Workspace section */}
+      <span className={`${sectionLabel} ${projectId ? "mt-3" : "mt-1"}`}>Workspace</span>
+      {!projectId && (
+        <Link to="/todo" onClick={onNavigate} className={navItemClass(path === "/todo")}>
+          <ListTodo size={iconSize} className="shrink-0" />
+          To Do
+        </Link>
+      )}
+      <Link to="/dashboard" onClick={onNavigate} className={navItemClass(path === "/dashboard")}>
+        <LayoutDashboard size={iconSize} className="shrink-0" />
+        Dashboard
+      </Link>
       <div className="mt-0.5">
         <button
           type="button"
-          onClick={() => toggle("milestones")}
-          className={`flex w-full items-center justify-between rounded px-3 py-2 text-left text-sm transition-colors duration-150 ${path.startsWith("/milestones") ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}
-          aria-expanded={expanded === "milestones"}
+          onClick={() => {/* no sub-menu expand needed — reports has inline sub-links */}}
+          className={navItemClass(path.startsWith("/reports"))}
+          style={{ display: "contents" }}
         >
-          <span className="flex items-center gap-2">
-            <Flag size={iconSize} className="shrink-0" />
-            Milestones
-          </span>
-          <ChevronRight size={16} className={`shrink-0 transition-transform ${expanded === "milestones" ? "rotate-90" : ""}`} />
         </button>
-        {expanded === "milestones" && (
+        <Link to="/reports" onClick={onNavigate} className={navItemClass(path === "/reports" && !path.startsWith("/reports/"))}>
+          <BarChart2 size={iconSize} className="shrink-0" />
+          Reports
+        </Link>
+        {path.startsWith("/reports") && (
           <div className="mb-1 flex flex-col">
-            <Link to="/projects" onClick={onNavigate} className={subLinkClass(false)}>
-              Overview
-            </Link>
-            <Link to="/projects" onClick={onNavigate} className={subLinkClass(false)}>
-              Details
-            </Link>
-            <Link to="/reports" onClick={onNavigate} className={subLinkClass(path === "/reports")}>
-              Status
-            </Link>
-            <Link to="/reports" onClick={onNavigate} className={subLinkClass(false)}>
-              Defects
+            <Link to="/reports/builder" onClick={onNavigate} className={subLinkClass(path === "/reports/builder")}>
+              Report Builder
             </Link>
           </div>
         )}
       </div>
-
-      <Link to="/reports" onClick={onNavigate} className={`flex items-center gap-2 rounded px-3 py-2 text-sm no-underline transition-colors duration-150 ${path === "/reports" ? "font-semibold text-text bg-surface-raised" : "text-muted hover:bg-surface-raised hover:text-text"}`}>
-        <BarChart2 size={iconSize} className="shrink-0" />
-        Reports
-      </Link>
     </nav>
   );
 }
@@ -245,7 +292,7 @@ export default function Layout() {
   // Ref to hamburger button — focus returns here when drawer closes (WCAG 2.4.3)
   const hamburgerRef = useRef<HTMLButtonElement>(null);
 
-  const showSidebar = projectId != null;
+  const showSidebar = true;
 
   // Body scroll lock — prevent background scroll when mobile drawer is open
   useEffect(() => {
@@ -359,9 +406,14 @@ export default function Layout() {
                 aria-modal={sidebarOpen || undefined}
                 data-testid="sidebar-nav"
               >
-              {/* Project switcher */}
+              {/* Active project badge + Project switcher */}
               <div className="border-b border-border p-3 pb-3" data-testid="project-switcher">
-                <div className="mb-1 text-xs font-medium text-muted">Project</div>
+                {currentProject && (
+                  <div className="mb-2 truncate rounded bg-primary/10 px-2 py-1 text-xs font-medium text-primary" title={currentProject.name}>
+                    {currentProject.name}
+                  </div>
+                )}
+                <div className="mb-1 text-xs font-medium text-muted">Switch project</div>
                 <Dropdown
                   trigger={<>{currentProject ? currentProject.name : projects.length === 0 ? "No projects" : "Select project…"}</>}
                   aria-haspopup="listbox"
