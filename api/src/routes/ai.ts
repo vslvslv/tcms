@@ -58,11 +58,11 @@ Return ONLY valid JSON — no markdown, no explanation, no extra text.
 Format: [{"title":"...","steps":[{"content":"...","expected":"..."},...]}]`;
 
     const userPrompt = `<context>
-Section: ${sec.name}
-Suite: ${suite.name}
+Section: ${sec.name.replace(/</g, "&lt;")}
+Suite: ${suite.name.replace(/</g, "&lt;")}
 </context>
 <request>
-${prompt}
+${prompt.replace(/<\/request>/gi, "[/request]")}
 </request>
 Generate ${count} test case(s) for this context.`;
 
