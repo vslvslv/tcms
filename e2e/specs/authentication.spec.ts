@@ -1,7 +1,67 @@
 import { test, expect } from "@playwright/test";
 import { LoginPage } from "../pages/LoginPage";
 
-test.describe("Password Reset Flow", () => {
+// ---------------------------------------------------------------------------
+// Authentication & Access › Login
+// ---------------------------------------------------------------------------
+
+test.describe("Authentication & Access › Login", () => {
+  test("shows login form", async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await expect(loginPage.emailInput).toBeVisible();
+    await expect(loginPage.passwordInput).toBeVisible();
+    await expect(loginPage.submitButton).toBeVisible();
+    await expect(loginPage.registerLink).toBeVisible();
+  });
+
+  test("shows error on invalid credentials", async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await loginPage.emailInput.fill("invalid@example.com");
+    await loginPage.passwordInput.fill("wrongpassword");
+    await loginPage.submitButton.click();
+    await expect(loginPage.errorAlert).toBeVisible();
+  });
+
+  test("redirects to /dashboard on successful login", async ({ page }) => {
+    const email = process.env.E2E_USER_EMAIL ?? "";
+    const password = process.env.E2E_USER_PASSWORD ?? "";
+    const loginPage = new LoginPage(page);
+    await loginPage.login(email, password);
+    await expect(page).toHaveURL(/\/dashboard\/?/);
+  });
+
+  test("Google sign-in button is visible in light mode", async ({ page }) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+
+    await page.evaluate(() => {
+      localStorage.setItem("tcms-theme", "light");
+      document.documentElement.dataset.theme = "light";
+    });
+    await page.reload();
+
+    const googleButton = page.getByRole("link", { name: /sign in with google/i });
+    await expect(googleButton).toBeVisible();
+
+    const bgColor = await googleButton.evaluate((el) =>
+      window.getComputedStyle(el).backgroundColor
+    );
+    const color = await googleButton.evaluate((el) =>
+      window.getComputedStyle(el).color
+    );
+    expect(bgColor).not.toBe("rgba(0, 0, 0, 0)");
+    expect(color).not.toBe("rgba(0, 0, 0, 0)");
+    expect(bgColor).not.toBe("rgb(255, 255, 255)");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Authentication & Access › Password Reset
+// ---------------------------------------------------------------------------
+
+test.describe("Authentication & Access › Password Reset", () => {
   test("login page shows forgot password link", async ({ page }) => {
     const loginPage = new LoginPage(page);
     await loginPage.goto();
@@ -37,18 +97,15 @@ test.describe("Password Reset Flow", () => {
   });
 
   test("reset confirm page validates password mismatch", async ({ page }) => {
-    // Request a token first
     await page.goto("/reset-password");
     await page.getByLabel(/email/i).fill("admin@tcms.local");
     await page.getByRole("button", { name: /send reset link/i }).click();
     await expect(page.getByText(/mvp mode/i)).toBeVisible({ timeout: 10000 });
 
-    // Click the MVP link
     const resetLink = page.getByRole("link").filter({ hasText: /reset-password\// });
     await resetLink.click();
     await expect(page).toHaveURL(/\/reset-password\/[a-f0-9]+/);
 
-    // Try mismatched passwords
     await page.getByLabel(/new password/i).fill("newpassword123");
     await page.getByLabel(/confirm password/i).fill("different456");
     await page.getByRole("button", { name: /reset password/i }).click();
@@ -56,26 +113,21 @@ test.describe("Password Reset Flow", () => {
   });
 
   test("full reset flow: request token, set new password, login with new password", async ({ page }) => {
-    // Request token
     await page.goto("/reset-password");
     await page.getByLabel(/email/i).fill("admin@tcms.local");
     await page.getByRole("button", { name: /send reset link/i }).click();
     await expect(page.getByText(/mvp mode/i)).toBeVisible({ timeout: 10000 });
 
-    // Follow reset link
     const resetLink = page.getByRole("link").filter({ hasText: /reset-password\// });
     await resetLink.click();
     await expect(page).toHaveURL(/\/reset-password\/[a-f0-9]+/);
 
-    // Set new password (same as old for test stability)
     await page.getByLabel(/new password/i).fill("password123");
     await page.getByLabel(/confirm password/i).fill("password123");
     await page.getByRole("button", { name: /reset password/i }).click();
 
-    // Should redirect to login
     await expect(page).toHaveURL(/\/login/, { timeout: 5000 });
 
-    // Login with the password
     const loginPage = new LoginPage(page);
     await loginPage.emailInput.fill("admin@tcms.local");
     await loginPage.passwordInput.fill("password123");
@@ -83,7 +135,7 @@ test.describe("Password Reset Flow", () => {
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10000 });
   });
 
-  test("back to login links work on both reset pages", async ({ page }) => {
+  test("back to login link works on reset request page", async ({ page }) => {
     await page.goto("/reset-password");
     await page.getByRole("link", { name: /back to login/i }).click();
     await expect(page).toHaveURL(/\/login/);

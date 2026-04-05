@@ -17,7 +17,7 @@ export default async function auditRoutes(app: FastifyInstance) {
     if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
     const parsed = paramsProjectId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
     if (!parsed.success) return replyError(reply, 400, "Invalid projectId", "VALIDATION_ERROR");
-    const q = (req as FastifyRequest<{ Querystring: { limit?: string; offset?: string; entityType?: string; action?: string } }>).query;
+    const q = (req as FastifyRequest<{ Querystring: { limit?: string; offset?: string; entityType?: string; action?: string; entityId?: string } }>).query;
     const limit = Math.min(Math.max(1, parseInt(q.limit ?? "50", 10)), 100);
     const offset = Math.max(0, parseInt(q.offset ?? "0", 10));
     const db = await getDb();
@@ -30,6 +30,8 @@ export default async function auditRoutes(app: FastifyInstance) {
     const conditions = [eq(auditLog.projectId, parsed.data.projectId)];
     if (q.entityType) conditions.push(eq(auditLog.entityType, q.entityType));
     if (q.action) conditions.push(eq(auditLog.action, q.action));
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (q.entityId && uuidRegex.test(q.entityId)) conditions.push(eq(auditLog.entityId, q.entityId));
     const whereCond = conditions.length === 1 ? conditions[0]! : and(...conditions);
     const list = await db
       .select()

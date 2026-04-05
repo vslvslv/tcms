@@ -131,7 +131,8 @@ export default function CasesOverview() {
           setSections([]);
           return;
         }
-        return api<Section[]>(`/api/suites/${sList[0].id}/sections`).then(setSections);
+        return Promise.all(sList.map((s) => api<Section[]>(`/api/suites/${s.id}/sections`)))
+          .then((allSections) => setSections(allSections.flat()));
       })
       .catch((err) => setOverviewError(err instanceof Error ? err.message : "Failed to load"))
       .finally(() => setOverviewLoading(false));
@@ -675,7 +676,7 @@ export default function CasesOverview() {
                 action={<Link to={`/projects/${projectId}`} className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-hover">Go to project</Link>}
               />
             </Card>
-          ) : (
+          ) : suites.length === 1 ? (
             <Card className="rounded-xl border-border/80 p-6 shadow-sm">
               <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-border pb-4">
                 {showAddSection ? (
@@ -725,6 +726,47 @@ export default function CasesOverview() {
                 ))
               )}
             </Card>
+          ) : (
+            <div className="space-y-6">
+              {suites.map((suiteItem) => {
+                const suiteSections = sortedTree.filter((s) => s.suiteId === suiteItem.id);
+                const suiteCaseCount = suiteSections.reduce((n, s) => n + totalCaseCount(s), 0);
+                return (
+                  <Card key={suiteItem.id} className="rounded-xl border-border/80 p-6 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-semibold text-text">{suiteItem.name}</h2>
+                        <span className="rounded-full bg-surface-raised px-2 py-0.5 text-xs font-medium text-muted">
+                          {suiteCaseCount} case{suiteCaseCount !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <Link
+                        to={`/suites/${suiteItem.id}`}
+                        className="text-xs font-medium text-muted no-underline hover:text-primary hover:underline"
+                      >
+                        Manage sections
+                      </Link>
+                    </div>
+                    {suiteSections.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border bg-surface-raised/40 py-8 text-center text-sm text-muted">
+                        No sections in this suite.
+                      </div>
+                    ) : (
+                      suiteSections.map((s) => (
+                        <SectionBlock
+                          key={s.id}
+                          section={s}
+                          depth={0}
+                          caseDisplayIdsMap={caseDisplayIds}
+                          onDeleteSection={handleDeleteSection}
+                          onDeleteCase={handleDeleteCase}
+                        />
+                      ))
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </>
       )}

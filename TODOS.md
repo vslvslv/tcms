@@ -137,11 +137,21 @@ See BACKLOG.md for full list. High-value deferred items:
 | Issue | Severity | Backlog | Notes |
 |-------|----------|---------|-------|
 | ISSUE-002: ReportBuilder shows blank when navigated to directly | Medium | Epic 22.4 | `ReportBuilder.tsx` relies on `ProjectContext`; no in-page project picker. Add picker fallback + sidebar nav link. |
-| ISSUE-003: Project Settings page completely unstyled (raw HTML, inline `style={{}}`) | Medium | Epic 21 (5 stories) | No Card components, no tab nav, hardcoded `#c00` colors. Full redesign needed. |
-| ISSUE-004: Milestone list has no edit/delete buttons | Medium | Epic 20.1-20.2 | `ProjectDetail.tsx:248-257` — API `PATCH/DELETE /api/milestones/:id` exists, no UI wired. |
-| ISSUE-005: Run Activity / Progress / Defects tabs are empty stubs | Medium | Epic 18 (3 stories) | `RunView.tsx:218,226,234` — all three tabs show placeholder text only. |
-| ISSUE-006: "To Do" nav item disabled | Low | Epic 19.1 | `Layout.tsx:83-86` — `cursor-not-allowed`, `aria-disabled="true"`, feature not implemented. |
+| ~~ISSUE-003: Project Settings page completely unstyled (raw HTML, inline `style={{}}`)~~ | ~~Medium~~ | ~~Epic 21 (5 stories)~~ | **Completed v0.3.0.0** — 5-tab layout, all design tokens, audit log auto-load, typed delete. |
+| ~~ISSUE-004: Milestone list has no edit/delete buttons~~ | ~~Medium~~ | ~~Epic 20.1-20.2~~ | **Completed v0.3.0.0** — inline edit, delete with confirm, description field added. |
+| ~~ISSUE-005: Run Activity / Progress / Defects tabs are empty stubs~~ | ~~Medium~~ | ~~Epic 18 (3 stories)~~ | **Completed v0.3.0.0** — all 3 tabs implemented (audit log, pass-rate chart, defect links). |
+| ~~ISSUE-006: "To Do" nav item disabled~~ | ~~Low~~ | ~~Epic 19.1~~ | **Completed v0.3.0.0** — `/todo` route wired, Needs Attention page with cases + runs. |
+
+### Sprint E Carry-forwards (from /review Sprint D)
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Todo.tsx N+1 query pattern | P2 | 340 req for 10 projects. Add `/api/projects/needs-attention` aggregate endpoint. |
+| Todo.tsx silent run-fetch failure | P3 | Runs API errors swallowed silently. Show error state in "Open test runs" section. |
+| No E2E coverage for /reports or /integrations routes | P2 | `reporting.spec.ts` + `integrations.spec.ts` needed. |
+| Sidebar project name stale after rename | P3 | Layout.tsx fetches projects once (empty deps). Refetch on navigation or use ProjectContext subscription. |
 
 ### Health Score
 - **78/100** — Zero crashes, all core flows functional. Deductions: run tab stubs (-2), Project Settings unstyled (-8), ReportBuilder discovery gap (-3), To Do disabled (-3), minor chart warning fixed this run.
 - Target after Sprint D (Epics 18-22): **90+**
+- Sprint D delivered: ISSUE-003, 004, 005, 006 all resolved.

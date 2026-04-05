@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
-import { api, type Run, type RunTest, type FlakyTest, type BulkStatusResult } from "../api";
+import { api, type Run, type RunTest, type FlakyTest, type BulkStatusResult, type AuditLogEntry, type IssueLink } from "../api";
 import { useProject } from "../ProjectContext";
 import { FlakyBadge } from "../components/FlakyBadge";
 import { RunTestCaseSidebar } from "../components/RunTestCaseSidebar";
@@ -19,6 +19,8 @@ import {
   TableRow,
 } from "../components/ui/Table";
 import { cn } from "../lib/cn";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Activity, TrendingUp, Bug } from "lucide-react";
 
 function statusBadgeClass(s: string): string {
   switch (s) {
@@ -210,30 +212,15 @@ export default function RunView() {
   const passPct = total > 0 ? Math.round((summary.passed / total) * 100) : 0;
   const runBadgeId = run.id.slice(0, 8).toUpperCase();
 
-  // Tab content: stubs for Activity, Progress, Defects
+  // Tab content: Activity, Progress, Defects
   if (tab === "activity") {
-    return (
-      <div>
-        <RunTitle runName={run.name} badgeId={runBadgeId} />
-        <Card className="mt-4 p-8 text-center text-muted">Activity for this run will be shown here (e.g. audit log).</Card>
-      </div>
-    );
+    return <RunActivityTab run={run} runBadgeId={runBadgeId} projectId={run.projectId ?? projectId ?? ""} />;
   }
   if (tab === "progress") {
-    return (
-      <div>
-        <RunTitle runName={run.name} badgeId={runBadgeId} />
-        <Card className="mt-4 p-8 text-center text-muted">Progress over time will be shown here.</Card>
-      </div>
-    );
+    return <RunProgressTab run={run} runBadgeId={runBadgeId} />;
   }
   if (tab === "defects") {
-    return (
-      <div>
-        <RunTitle runName={run.name} badgeId={runBadgeId} />
-        <Card className="mt-4 p-8 text-center text-muted">Defects linked to this run will be listed here.</Card>
-      </div>
-    );
+    return <RunDefectsTab run={run} runBadgeId={runBadgeId} />;
   }
 
   // Tests & Results tab (sections already computed above)
@@ -511,6 +498,187 @@ function RunTitle({ runName, badgeId }: { runName: string; badgeId: string }) {
     <div className="mb-4 flex items-center gap-2">
       <span className="inline-flex rounded bg-primary/10 px-2 py-0.5 font-mono text-sm font-medium text-primary">{badgeId}</span>
       <PageTitle className="mb-0">{runName}</PageTitle>
+    </div>
+  );
+}
+
+// --- Activity Tab ---
+
+function RunActivityTab({ run, runBadgeId, projectId }: { run: Run; runBadgeId: string; projectId: string }) {
+  const [entries, setEntries] = useState<AuditLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!projectId || !run.id) { setLoading(false); return; }
+    api<AuditLogEntry[]>(`/api/projects/${projectId}/audit-log?entityType=run&entityId=${run.id}&limit=100`)
+      .then(setEntries)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [projectId, run.id]);
+
+  return (
+    <div>
+      <RunTitle runName={run.name} badgeId={runBadgeId} />
+      <Card className="mt-4">
+        <h2 className="px-4 pt-4 text-sm font-semibold text-text">Activity</h2>
+        {loading ? (
+          <div className="p-8 text-center"><LoadingSpinner /></div>
+        ) : entries.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 p-10 text-muted">
+            <Activity className="h-8 w-8 opacity-40" />
+            <span className="text-sm">No activity recorded for this run yet.</span>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border px-4 pb-4">
+            {entries.map((e) => (
+              <li key={e.id} className="flex items-start gap-3 py-3">
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                  <Activity className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-muted">{e.action}</span>
+                    <span className="text-xs text-muted">{new Date(e.createdAt).toLocaleString()}</span>
+                  </div>
+                  <p className="mt-0.5 truncate text-sm text-text">
+                    {e.entityType} · {e.entityId.slice(0, 8)}
+                    {e.metadata && Object.keys(e.metadata).length > 0 && (
+                      <span className="ml-2 text-muted">{JSON.stringify(e.metadata).slice(0, 80)}</span>
+                    )}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// --- Progress Tab ---
+
+type DayPoint = { date: string; passRate: number; passed: number; failed: number; total: number };
+
+function RunProgressTab({ run, runBadgeId }: { run: Run; runBadgeId: string }) {
+  const chartData = useMemo<DayPoint[]>(() => {
+    const byDay = new Map<string, { passed: number; failed: number; total: number }>();
+    for (const test of run.tests ?? []) {
+      for (const result of (test as RunTest & { results?: { status: string; createdAt: string }[] }).results ?? []) {
+        const day = result.createdAt.slice(0, 10);
+        const cur = byDay.get(day) ?? { passed: 0, failed: 0, total: 0 };
+        cur.total++;
+        if (result.status === "passed") cur.passed++;
+        else if (result.status === "failed") cur.failed++;
+        byDay.set(day, cur);
+      }
+      // fall back to latestResult if no results array
+      if (!(test as RunTest & { results?: unknown[] }).results) {
+        const r = test.latestResult;
+        if (r && r.status !== "untested") {
+          const day = (r as { createdAt?: string }).createdAt?.slice(0, 10) ?? "";
+          if (day) {
+            const cur = byDay.get(day) ?? { passed: 0, failed: 0, total: 0 };
+            cur.total++;
+            if (r.status === "passed") cur.passed++;
+            else if (r.status === "failed") cur.failed++;
+            byDay.set(day, cur);
+          }
+        }
+      }
+    }
+    return [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, { passed, failed, total }]) => ({
+        date,
+        passRate: total > 0 ? Math.round((passed / total) * 100) : 0,
+        passed,
+        failed,
+        total,
+      }));
+  }, [run.tests]);
+
+  return (
+    <div>
+      <RunTitle runName={run.name} badgeId={runBadgeId} />
+      <Card className="mt-4 p-4">
+        <h2 className="mb-4 text-sm font-semibold text-text">Pass Rate Over Time</h2>
+        {chartData.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-10 text-muted">
+            <TrendingUp className="h-8 w-8 opacity-40" />
+            <span className="text-sm">No results recorded yet. Results will appear as tests are executed.</span>
+          </div>
+        ) : chartData.length < 2 ? (
+          <div className="flex flex-col items-center gap-2 py-10 text-muted">
+            <TrendingUp className="h-8 w-8 opacity-40" />
+            <span className="text-sm">Not enough data yet. Run tests on at least 2 different days to see the trend.</span>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} />
+              <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />
+              <Tooltip
+                formatter={(_value, _name, props) => {
+                  const d = props.payload as DayPoint;
+                  return [`${d.passRate}% (${d.passed} passed / ${d.failed} failed / ${d.total} total)`, "Pass rate"];
+                }}
+              />
+              <Line type="monotone" dataKey="passRate" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// --- Defects Tab ---
+
+function RunDefectsTab({ run, runBadgeId }: { run: Run; runBadgeId: string }) {
+  const [defects, setDefects] = useState<IssueLink[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api<IssueLink[]>(`/api/runs/${run.id}/defects`)
+      .then(setDefects)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [run.id]);
+
+  return (
+    <div>
+      <RunTitle runName={run.name} badgeId={runBadgeId} />
+      <Card className="mt-4">
+        <h2 className="px-4 pt-4 text-sm font-semibold text-text">Linked Defects</h2>
+        {loading ? (
+          <div className="p-8 text-center"><LoadingSpinner /></div>
+        ) : defects.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 p-10 text-muted">
+            <Bug className="h-8 w-8 opacity-40" />
+            <span className="text-sm">No defects linked to this run.</span>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border px-4 pb-4">
+            {defects.map((d) => (
+              <li key={d.id} className="flex items-center gap-3 py-3">
+                <Bug className="h-4 w-4 shrink-0 text-error" />
+                <a
+                  href={d.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-w-0 flex-1 truncate text-sm text-primary hover:underline"
+                >
+                  {d.title ?? d.url}
+                </a>
+                {d.externalId && (
+                  <span className="shrink-0 rounded bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-muted">{d.externalId}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   );
 }

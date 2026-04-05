@@ -40,7 +40,7 @@ export class RunViewPage extends BasePage {
 
   /** Sidebar container (visible when a test is selected; right-hand panel with border-l). */
   get sidebar() {
-    return this.page.locator("div.border-l.border-slate-200").first();
+    return this.page.locator("div.border-l.border-border, div.border-l.border-slate-200").first();
   }
 
   // --- Sidebar header ---
