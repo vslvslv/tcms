@@ -2,6 +2,13 @@
 
 All notable changes to TCMS are documented in this file.
 
+## [0.3.0.1] - 2026-04-05
+
+### Fixed
+- **E2E test cleanup reliability:** Serial test blocks now skip cleanly when `beforeAll` setup fails (e.g. no suite available), instead of failing with an unhelpful assertion error.
+- **Project cleanup hook:** Fixed a bug where a successful project deletion would corrupt the cleanup list if the project name appeared more than once or cleanup had already run.
+- **Run View test robustness:** Converted `setup` test to `beforeAll` with isolated page, ensuring test setup does not count toward the test suite's reported failures.
+
 ## [0.3.0.0] - 2026-04-05
 
 ### Added
