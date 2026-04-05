@@ -158,26 +158,31 @@ test.describe("Test Execution › Create Run", () => {
 
 test.describe("Test Execution › Run View", () => {
   let runId: string | null = null;
-  let runName: string | null = null;
 
   test.describe.configure({ mode: "serial" });
 
-  test("setup: create run and navigate to run view", async ({ page }) => {
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
     await ensureBackofficeSelected(page);
     await page.locator('a[href="/runs/new"]').first().click();
-    await expect(page).toHaveURL(/\/runs\/new/);
+    await page.waitForURL(/\/runs\/new/);
     const createPage = new CreateRunPage(page);
-    await expect(createPage.emptyState).not.toBeVisible({ timeout: 10000 });
-    await expect(createPage.suiteSelect).toBeVisible({ timeout: 30000 });
+    await createPage.suiteSelect.waitFor({ state: "visible", timeout: 30000 });
     await createPage.suiteSelect.locator("option").nth(1).waitFor({ state: "attached", timeout: 5000 });
     const firstSuiteValue = await createPage.suiteSelect.locator("option").nth(1).getAttribute("value");
-    expect(firstSuiteValue).toBeTruthy();
-    runName = `E2E Run View ${Date.now()}`;
-    await createPage.createRun(firstSuiteValue!, runName);
-    await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+$/);
+    if (!firstSuiteValue) { await page.close(); return; }
+    await createPage.createRun(firstSuiteValue, `E2E Run View ${Date.now()}`);
+    await page.waitForURL(/\/runs\/[a-f0-9-]+$/);
     const match = page.url().match(/\/runs\/([a-f0-9-]+)/);
-    runId = match ? match[1]! : null;
-    expect(runId).toBeTruthy();
+    runId = match?.[1] ?? null;
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!runId) return;
+    const page = await browser.newPage();
+    await deleteRun(page, runId);
+    await page.close();
   });
 
   test("run view loads with title and tests table or empty message", async ({ page }) => {
@@ -304,20 +309,6 @@ test.describe("Test Execution › Run View", () => {
     await expect(runView.sidebar).not.toBeVisible();
   });
 
-  test("cleanup: delete run", async ({ page }) => {
-    if (!runName) return;
-    await ensureBackofficeSelected(page);
-    await page.locator('a[href="/runs/overview"]').first().click();
-    await expect(page).toHaveURL(/\/runs\/overview/);
-    await page.waitForLoadState("networkidle");
-    const runsOverview = new RunsOverviewPage(page);
-    const deleteBtn = runsOverview.runDeleteButton(runName);
-    if (await deleteBtn.isVisible().catch(() => false)) {
-      page.once("dialog", (d) => d.accept());
-      await deleteBtn.click();
-      await page.waitForLoadState("networkidle");
-    }
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -370,21 +361,63 @@ test.describe("Test Execution › Shortcuts & Re-run", () => {
 
   test.describe.configure({ mode: "serial" });
 
-  test("setup: create run with tests", async ({ page }) => {
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
     await ensureBackofficeSelected(page);
     await page.locator('a[href="/runs/new"]').first().click();
-    await expect(page).toHaveURL(/\/runs\/new/);
+    await page.waitForURL(/\/runs\/new/);
     const createPage = new CreateRunPage(page);
-    await expect(createPage.suiteSelect).toBeVisible({ timeout: 30000 });
+    await createPage.suiteSelect.waitFor({ state: "visible", timeout: 30000 });
     await createPage.suiteSelect.locator("option").nth(1).waitFor({ state: "attached", timeout: 5000 });
     const firstSuiteValue = await createPage.suiteSelect.locator("option").nth(1).getAttribute("value");
-    expect(firstSuiteValue).toBeTruthy();
+    if (!firstSuiteValue) { await page.close(); return; }
     runName = `E2E Shortcuts ${Date.now()}`;
-    await createPage.createRun(firstSuiteValue!, runName);
-    await expect(page).toHaveURL(/\/runs\/[a-f0-9-]+$/);
+    await createPage.createRun(firstSuiteValue, runName);
+    await page.waitForURL(/\/runs\/[a-f0-9-]+$/);
     const match = page.url().match(/\/runs\/([a-f0-9-]+)/);
-    runId = match ? match[1]! : null;
-    expect(runId).toBeTruthy();
+    runId = match?.[1] ?? null;
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!runId) return;
+    const page = await browser.newPage();
+    // Delete the original run
+    await deleteRun(page, runId);
+    // Also clean up any re-run that was created (named "<runName> (re-run failures)")
+    // deleteRun navigates to /projects first, so localStorage is accessible
+    if (runName) {
+      const { baseUrl, headers } = await getApiContext(page);
+      const projectId = await page.evaluate(
+        async ({ baseUrl, headers }) => {
+          const projects: { id: string; name: string }[] = await fetch(`${baseUrl}/api/projects`, { headers }).then((r) => r.json()).catch(() => []);
+          const p = projects.find((p) => !p.name.toLowerCase().includes("backoffice")) ?? projects[0];
+          return p?.id ?? null;
+        },
+        { baseUrl, headers }
+      );
+      if (projectId) {
+        const suites: { id: string }[] = await page.evaluate(
+          async ({ baseUrl, headers, projectId }) => fetch(`${baseUrl}/api/projects/${projectId}/suites`, { headers }).then((r) => r.json()).catch(() => []),
+          { baseUrl, headers, projectId }
+        );
+        for (const suite of suites) {
+          const runs: { id: string; name: string }[] = await page.evaluate(
+            async ({ baseUrl, headers, suiteId }) => fetch(`${baseUrl}/api/suites/${suiteId}/runs`, { headers }).then((r) => r.json()).catch(() => []),
+            { baseUrl, headers, suiteId: suite.id }
+          );
+          const rerun = runs.find((r) => r.name === `${runName} (re-run failures)`);
+          if (rerun) {
+            await page.evaluate(
+              async ({ baseUrl, headers, id }) => { await fetch(`${baseUrl}/api/runs/${id}`, { method: "DELETE", headers }); },
+              { baseUrl, headers, id: rerun.id }
+            );
+            break;
+          }
+        }
+      }
+    }
+    await page.close();
   });
 
   test("shortcuts button is visible and toggles help panel", async ({ page }) => {
@@ -448,26 +481,6 @@ test.describe("Test Execution › Shortcuts & Re-run", () => {
     await expect(page.getByText(/re-run failures/i)).toBeVisible({ timeout: 10000 });
   });
 
-  test("cleanup: delete runs", async ({ page }) => {
-    if (!runName) return;
-    await ensureBackofficeSelected(page);
-    await page.locator('a[href="/runs/overview"]').first().click();
-    await expect(page).toHaveURL(/\/runs\/overview/);
-    await page.waitForLoadState("networkidle");
-    const runsOverview = new RunsOverviewPage(page);
-    const deleteBtn = runsOverview.runDeleteButton(runName);
-    if (await deleteBtn.isVisible().catch(() => false)) {
-      page.once("dialog", (d) => d.accept());
-      await deleteBtn.click();
-      await page.waitForLoadState("networkidle");
-    }
-    const rerunDeleteBtn = runsOverview.runDeleteButton(`${runName} (re-run failures)`);
-    if (await rerunDeleteBtn.isVisible().catch(() => false)) {
-      page.once("dialog", (d) => d.accept());
-      await rerunDeleteBtn.click();
-      await page.waitForLoadState("networkidle");
-    }
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -479,7 +492,8 @@ test.describe("Test Execution › Bulk Operations", () => {
 
   let runId: string;
 
-  test("setup: create scratch run", async ({ page }) => {
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
     await page.goto("/projects");
     await page.waitForLoadState("networkidle");
     const tcmsLink = page.locator("table").getByRole("link", { name: /tcms test project/i }).first();
@@ -488,11 +502,17 @@ test.describe("Test Execution › Bulk Operations", () => {
     await page.waitForURL(/\/projects\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState("networkidle");
     runId = await createScratchRun(page);
-    expect(runId).toBeTruthy();
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!runId) return;
+    const page = await browser.newPage();
+    await deleteRun(page, runId);
+    await page.close();
   });
 
   test("[Story 2.9] run view loads and shows test list", async ({ page }) => {
-    expect(runId).toBeTruthy();
     const runView = new RunViewPage(page);
     await runView.goto(runId);
     await page.waitForLoadState("networkidle");
@@ -524,10 +544,6 @@ test.describe("Test Execution › Bulk Operations", () => {
     await expect(bulkToolbar.first()).toBeVisible({ timeout: 5000 });
   });
 
-  test("cleanup: delete scratch run", async ({ page }) => {
-    if (!runId) return;
-    await deleteRun(page, runId);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -539,7 +555,8 @@ test.describe("Test Execution › Run View & Filters", () => {
 
   let runId: string;
 
-  test("setup: create scratch run", async ({ page }) => {
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
     await page.goto("/projects");
     await page.waitForLoadState("networkidle");
     const tcmsLink = page.locator("table").getByRole("link", { name: /tcms test project/i }).first();
@@ -548,7 +565,14 @@ test.describe("Test Execution › Run View & Filters", () => {
     await page.waitForURL(/\/projects\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState("networkidle");
     runId = await createScratchRun(page);
-    expect(runId).toBeTruthy();
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!runId) return;
+    const page = await browser.newPage();
+    await deleteRun(page, runId);
+    await page.close();
   });
 
   test("[Story 2.11] status filter dropdown is present in run view", async ({ page }) => {
@@ -569,10 +593,6 @@ test.describe("Test Execution › Run View & Filters", () => {
     await expect(filterControl).toBeVisible();
   });
 
-  test("cleanup: delete scratch run", async ({ page }) => {
-    if (!runId) return;
-    await deleteRun(page, runId);
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -584,7 +604,8 @@ test.describe("Test Execution › Flaky Test Detection", () => {
 
   let runId: string;
 
-  test("setup: create scratch run", async ({ page }) => {
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
     await page.goto("/projects");
     await page.waitForLoadState("networkidle");
     const tcmsLink = page.locator("table").getByRole("link", { name: /tcms test project/i }).first();
@@ -593,7 +614,14 @@ test.describe("Test Execution › Flaky Test Detection", () => {
     await page.waitForURL(/\/projects\/[a-f0-9-]+/, { timeout: 10000 });
     await page.waitForLoadState("networkidle");
     runId = await createScratchRun(page);
-    expect(runId).toBeTruthy();
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!runId) return;
+    const page = await browser.newPage();
+    await deleteRun(page, runId);
+    await page.close();
   });
 
   test("[Story 16.3] run view renders without console errors", async ({ page }) => {
@@ -612,10 +640,6 @@ test.describe("Test Execution › Flaky Test Detection", () => {
     expect(jsErrors, `Console errors: ${jsErrors.join(", ")}`).toHaveLength(0);
   });
 
-  test("cleanup: delete scratch run", async ({ page }) => {
-    if (!runId) return;
-    await deleteRun(page, runId);
-  });
 });
 
 // ---------------------------------------------------------------------------

@@ -412,6 +412,32 @@ test.describe("Test Design › Case Approval", () => {
 
   test.describe.configure({ mode: "serial" });
 
+  test.afterAll(async ({ browser }) => {
+    // Safety net: ensure case is reverted to draft even if cleanup test was skipped
+    if (!caseUrl) return;
+    const page = await browser.newPage();
+    await page.goto(caseUrl);
+    await page.waitForLoadState("networkidle");
+    // Revoke approval if still approved
+    const revokeBtn = page.getByRole("button", { name: /revoke approval/i });
+    if (await revokeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await revokeBtn.click();
+      await page.waitForLoadState("networkidle");
+    }
+    // Set status back to draft
+    const statusSelect = page
+      .locator("select")
+      .filter({ has: page.locator("option", { hasText: /draft/i }) })
+      .first();
+    if (await statusSelect.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await statusSelect.selectOption("draft");
+      const saveBtn = page.getByRole("button", { name: /save/i });
+      if (await saveBtn.isVisible().catch(() => false)) await saveBtn.click();
+      await page.waitForLoadState("networkidle");
+    }
+    await page.close();
+  });
+
   test("setup: navigate to a case editor", async ({ page }) => {
     caseUrl = await navigateToFirstCase(page);
     expect(caseUrl).toBeTruthy();

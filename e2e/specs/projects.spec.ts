@@ -7,6 +7,22 @@ import { Sidebar } from "../pages/Sidebar";
 // ---------------------------------------------------------------------------
 
 test.describe("Projects & Members › Projects", () => {
+  // Track projects created by tests in this block for cleanup
+  const createdProjectNames: string[] = [];
+
+  test.afterAll(async ({ browser }) => {
+    if (!createdProjectNames.length) return;
+    const page = await browser.newPage();
+    const projectsPage = new ProjectsPage(page);
+    for (const name of createdProjectNames) {
+      try {
+        await projectsPage.deleteProjectByName(name);
+      } catch {
+        // Best-effort — project may already be deleted by the test itself
+      }
+    }
+    await page.close();
+  });
   test("shows Projects page after login", async ({ page }) => {
     const projectsPage = new ProjectsPage(page);
     await projectsPage.goto();
@@ -26,10 +42,13 @@ test.describe("Projects & Members › Projects", () => {
     const projectsPage = new ProjectsPage(page);
     await projectsPage.goto();
     const name = `E2E Project ${Date.now()}`;
+    createdProjectNames.push(name);
     await projectsPage.createProject(name);
     await expect(projectsPage.projectsTable).toBeVisible();
     await expect(page.getByRole("link", { name })).toBeVisible();
     await projectsPage.deleteProjectByName(name);
+    // Remove from list once successfully deleted
+    createdProjectNames.splice(createdProjectNames.indexOf(name), 1);
   });
 });
 
