@@ -47,8 +47,9 @@ test.describe("Projects & Members › Projects", () => {
     await expect(projectsPage.projectsTable).toBeVisible();
     await expect(page.getByRole("link", { name })).toBeVisible();
     await projectsPage.deleteProjectByName(name);
-    // Remove from list once successfully deleted
-    createdProjectNames.splice(createdProjectNames.indexOf(name), 1);
+    // Remove from list once successfully deleted (guard against indexOf returning -1)
+    const idx = createdProjectNames.indexOf(name);
+    if (idx !== -1) createdProjectNames.splice(idx, 1);
   });
 });
 

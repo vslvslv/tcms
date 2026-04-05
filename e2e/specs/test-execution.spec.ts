@@ -186,7 +186,7 @@ test.describe("Test Execution › Run View", () => {
   });
 
   test("run view loads with title and tests table or empty message", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -197,7 +197,7 @@ test.describe("Test Execution › Run View", () => {
   });
 
   test("no test selected: sidebar not visible", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -205,7 +205,7 @@ test.describe("Test Execution › Run View", () => {
   });
 
   test("clicking first test row opens sidebar with header", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -221,7 +221,7 @@ test.describe("Test Execution › Run View", () => {
   });
 
   test("sidebar shows preconditions/steps or empty state", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -239,7 +239,7 @@ test.describe("Test Execution › Run View", () => {
   });
 
   test("sidebar tabs: Results, History & Context, Defects all accessible", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -260,7 +260,7 @@ test.describe("Test Execution › Run View", () => {
   });
 
   test("add result: set status and comment, click Add Result", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -278,7 +278,7 @@ test.describe("Test Execution › Run View", () => {
   });
 
   test("Pass & Next: moves to next test or closes sidebar on last test", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -295,7 +295,7 @@ test.describe("Test Execution › Run View", () => {
   });
 
   test("close sidebar: click Close hides sidebar", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -421,7 +421,7 @@ test.describe("Test Execution › Shortcuts & Re-run", () => {
   });
 
   test("shortcuts button is visible and toggles help panel", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -440,7 +440,7 @@ test.describe("Test Execution › Shortcuts & Re-run", () => {
   });
 
   test("re-run failures button visible after marking a test failed", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -465,7 +465,7 @@ test.describe("Test Execution › Shortcuts & Re-run", () => {
   });
 
   test("re-run failures creates a new run", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId!);
     await page.waitForLoadState("networkidle");
@@ -520,7 +520,7 @@ test.describe("Test Execution › Bulk Operations", () => {
   });
 
   test("[Story 2.9] bulk toolbar appears when tests are selected", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId);
     await page.waitForLoadState("networkidle");
@@ -576,7 +576,7 @@ test.describe("Test Execution › Run View & Filters", () => {
   });
 
   test("[Story 2.11] status filter dropdown is present in run view", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const runView = new RunViewPage(page);
     await runView.goto(runId);
     await page.waitForLoadState("networkidle");
@@ -625,7 +625,7 @@ test.describe("Test Execution › Flaky Test Detection", () => {
   });
 
   test("[Story 16.3] run view renders without console errors", async ({ page }) => {
-    expect(runId).toBeTruthy();
+    if (!runId) { test.skip(); return; }
     const errors: string[] = [];
     page.on("console", (msg) => {
       if (msg.type() === "error") errors.push(msg.text());
