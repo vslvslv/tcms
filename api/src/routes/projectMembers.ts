@@ -6,6 +6,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 import { can } from "../lib/permissions.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
 
 const paramsProjectId = z.object({ projectId: z.string().uuid() });
 const paramsId = z.object({ id: z.string().uuid() });
@@ -39,15 +40,17 @@ export default async function projectMemberRoutes(app: FastifyInstance) {
     const parsed = paramsProjectId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
     if (!parsed.success) return replyError(reply, 400, "Invalid projectId", "VALIDATION_ERROR");
     const db = await getDb();
-    const [p] = await db.select().from(projects).where(eq(projects.id, parsed.data.projectId)).limit(1);
-    if (!p) return replyError(reply, 404, "Project not found", "NOT_FOUND");
-    if (!(await can(payload.sub, parsed.data.projectId, "members.manage"))) {
-      return replyError(reply, 403, "Insufficient permissions to manage members", "FORBIDDEN");
+    if (!(await assertProjectAccess(db, parsed.data.projectId, payload.sub))) {
+      return replyError(reply, 404, "Project not found", "NOT_FOUND");
     }
+    const [p] = await db.select({ userId: projects.userId }).from(projects).where(eq(projects.id, parsed.data.projectId)).limit(1);
+    if (!p) return replyError(reply, 404, "Project not found", "NOT_FOUND");
     const members = await db.select().from(projectMembers).where(eq(projectMembers.projectId, parsed.data.projectId));
-    const userIds = [...new Set(members.map((m) => m.userId))];
+    const memberUserIds = new Set(members.map((m) => m.userId));
+    // Always include the project owner even if they don't have a project_members row
+    const allUserIds = [...new Set([p.userId, ...memberUserIds])];
     const roleIds = [...new Set(members.map((m) => m.roleId))];
-    const userList = userIds.length === 0 ? [] : await db.select({ id: users.id, email: users.email, name: users.name }).from(users).where(inArray(users.id, userIds));
+    const userList = allUserIds.length === 0 ? [] : await db.select({ id: users.id, email: users.email, name: users.name }).from(users).where(inArray(users.id, allUserIds));
     const roleList = roleIds.length === 0 ? [] : await db.select().from(roles).where(inArray(roles.id, roleIds));
     const byId = (arr: { id: string }[]) => new Map(arr.map((x) => [x.id, x]));
     const userMap = byId(userList as { id: string }[]);
@@ -60,6 +63,13 @@ export default async function projectMemberRoutes(app: FastifyInstance) {
       user: userMap.get(m.userId),
       role: roleMap.get(m.roleId),
     }));
+    // Add owner as synthetic member if not already in project_members
+    if (!memberUserIds.has(p.userId)) {
+      const ownerUser = userMap.get(p.userId);
+      if (ownerUser) {
+        result.unshift({ id: p.userId, userId: p.userId, projectId: parsed.data.projectId, roleId: "", user: ownerUser, role: undefined });
+      }
+    }
     return reply.send(result);
   });
 
