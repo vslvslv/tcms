@@ -147,6 +147,13 @@ export default function CasesOverview() {
   }, [projectId, statusFilter]);
 
   useEffect(() => {
+    setSelectedCaseIds(new Set());
+    setBulkError("");
+    setBulkSuccess("");
+    setBulkTargetSectionId("");
+  }, [projectId]);
+
+  useEffect(() => {
     if (!projectId) return;
     loadOverview();
   }, [projectId, loadOverview]);

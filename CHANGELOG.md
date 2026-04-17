@@ -2,7 +2,26 @@
 
 All notable changes to TCMS are documented in this file.
 
-## [0.4.0.0] - 2026-04-06
+## [0.4.0.1] - 2026-04-17
+
+### Fixed
+- **Test assignment auth (critical):** Non-owner project members could not assign tests — `assertTestAccess` used an owner-only check. Fixed to use `assertProjectAccess` with a single join query.
+- **Assignee name in filter (critical):** Run view assignee filter showed truncated UUIDs instead of real names. `GET /api/runs/:id` now joins the users table to include `assigneeName` on each test row.
+- **Dead "Assign To" button removed:** The button adjacent to the assignee select in the run test sidebar had no handler. Removed.
+- **Project membership query (high):** `canAccessProject` fetched the first membership globally then compared project IDs in memory — broken for users in multiple projects. Fixed to use a single targeted query.
+- **Test assignment audit trail (high):** `PATCH /api/tests/:id` now writes an audit log entry and dispatches a webhook on every assignment change.
+- **Migration idempotency (high):** `0016_little_valkyrie.sql` ADD COLUMN is now wrapped in a `duplicate_column` guard.
+- **E2E Story 2.10/2.11 fixtures (high):** `beforeAll` blocks now create a scratch run and clean up in `afterAll`, preventing test skips when no open run exists.
+- **Bulk section picker labels (high):** Target section dropdown now shows `Suite / Section` instead of bare section names.
+- **Bulk ops success feedback (high):** Inline success message appears after bulk move/copy/delete completes.
+- **Duplicate button ordering (high):** Row actions reordered to `Edit | Delete | Duplicate` with visual gap before Duplicate to prevent misclicks.
+- **Run view empty state (medium):** Empty state message now correctly reflects active assignee filter.
+- **Filter change bulk deselect (medium):** Changing status or assignee filter now clears the bulk checkbox selection.
+- **Sidebar close on filter change (medium):** Filter changes no longer force-close the test sidebar; sidebar only closes if the selected test is filtered out.
+- **"Assigned To" column always showed "—" (medium):** Run table now shows assignee name when a test is assigned.
+- **Stale bulk state on project change:** Switching projects now resets bulk selection, error, and success state.
+
+
 
 ### Added
 - **Bulk Case Operations in Cases Overview (Story 1.7):** Select multiple cases across all sections in the Cases Overview page. Floating toolbar with Delete / Move-to-section / Copy-to-section actions and a section picker. Confirmation required for bulk delete. Selection highlights selected rows.
