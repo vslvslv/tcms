@@ -301,6 +301,9 @@ export default async function runRoutes(app: FastifyInstance) {
     const datasetRowIds = runTests.map((t) => t.datasetRowId).filter(Boolean) as string[];
     const datasetRowsList = datasetRowIds.length === 0 ? [] : await db.select().from(datasetRows).where(inArray(datasetRows.id, datasetRowIds));
     const datasetRowById = new Map(datasetRowsList.map((r) => [r.id, r.data]));
+    const assigneeIds = [...new Set(runTests.map((t) => t.assigneeId).filter(Boolean) as string[])];
+    const assigneeRows = assigneeIds.length === 0 ? [] : await db.select({ id: users.id, name: users.name }).from(users).where(inArray(users.id, assigneeIds));
+    const assigneeNameById = new Map(assigneeRows.map((u) => [u.id, u.name]));
     const resultRows = await db.select().from(results).where(inArray(results.testId, runTests.map((t) => t.id)));
     const latestByTestId = new Map<string, (typeof resultRows)[0]>();
     for (const r of resultRows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())) {
@@ -327,6 +330,7 @@ export default async function runRoutes(app: FastifyInstance) {
         datasetRowId: t.datasetRowId ?? undefined,
         datasetRow: t.datasetRowId ? datasetRowById.get(t.datasetRowId) ?? undefined : undefined,
         assigneeId: t.assigneeId ?? null,
+        assigneeName: t.assigneeId ? (assigneeNameById.get(t.assigneeId) ?? null) : null,
         latestResult: latest
           ? {
               id: latest.id,

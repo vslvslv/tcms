@@ -10,7 +10,8 @@ export type WebhookEvent =
   | "case.updated"
   | "run.created"
   | "run.completed"
-  | "result.created";
+  | "result.created"
+  | "test.assigned";
 
 function isSlackUrl(url: string): boolean {
   return url.includes("hooks.slack.com/") || url.includes("hooks.slack-gov.com/");

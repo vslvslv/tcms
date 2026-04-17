@@ -85,6 +85,7 @@ export default function CasesOverview() {
   const [bulkTargetSectionId, setBulkTargetSectionId] = useState("");
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkError, setBulkError] = useState("");
+  const [bulkSuccess, setBulkSuccess] = useState("");
 
   const currentProject = projectId ? projects.find((p) => p.id === projectId) : null;
   const currentSummary = projectId ? summaries[projectId] : undefined;
@@ -340,11 +341,21 @@ export default function CasesOverview() {
     }
     setBulkWorking(true);
     setBulkError("");
+    setBulkSuccess("");
     try {
       const body: BulkCasesBody = { action: bulkAction, caseIds: Array.from(selectedCaseIds), ...(needsTarget ? { targetSectionId: bulkTargetSectionId } : {}) };
+      const count = selectedCaseIds.size;
       await api<BulkCasesResult>(`/api/projects/${projectId}/cases/bulk`, { method: "POST", body: JSON.stringify(body) });
       setSelectedCaseIds(new Set());
       setBulkTargetSectionId("");
+      if (bulkAction === "delete") {
+        setBulkSuccess(`${count} case${count !== 1 ? "s" : ""} deleted.`);
+      } else {
+        const targetName = sections.find((s) => s.id === bulkTargetSectionId)?.name;
+        const suiteLabel = suites.find((suite) => suite.id === sections.find((s) => s.id === bulkTargetSectionId)?.suiteId)?.name;
+        const dest = suiteLabel && targetName ? `${suiteLabel} / ${targetName}` : targetName ?? "target section";
+        setBulkSuccess(`${count} case${count !== 1 ? "s" : ""} ${bulkAction === "move" ? "moved" : "copied"} to ${dest}.`);
+      }
       await loadOverview();
     } catch (err) {
       setBulkError(err instanceof Error ? err.message : "Bulk action failed");
@@ -552,19 +563,19 @@ export default function CasesOverview() {
                         <Link to={`/cases/${c.id}/edit`} className="mr-3 text-sm font-medium text-primary hover:underline">Edit</Link>
                         <button
                           type="button"
-                          onClick={() => onDuplicateCase(c)}
+                          onClick={() => onDeleteCase(c)}
                           disabled={saving}
-                          className="mr-3 text-sm font-medium text-muted hover:underline disabled:opacity-50"
+                          className="mr-6 text-sm font-medium text-error hover:underline disabled:opacity-50"
                         >
-                          Duplicate
+                          Delete
                         </button>
                         <button
                           type="button"
-                          onClick={() => onDeleteCase(c)}
+                          onClick={() => onDuplicateCase(c)}
                           disabled={saving}
-                          className="text-sm font-medium text-error hover:underline disabled:opacity-50"
+                          className="text-sm font-medium text-muted hover:underline disabled:opacity-50"
                         >
-                          Delete
+                          Duplicate
                         </button>
                       </td>
                     </tr>
@@ -751,9 +762,12 @@ export default function CasesOverview() {
                   className="rounded-md border border-border bg-surface-raised text-text px-2 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none"
                 >
                   <option value="">Select target section...</option>
-                  {sections.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
+                  {sections.map((s) => {
+                    const suiteName = suites.find((suite) => suite.id === s.suiteId)?.name;
+                    return (
+                      <option key={s.id} value={s.id}>{suiteName ? `${suiteName} / ${s.name}` : s.name}</option>
+                    );
+                  })}
                 </select>
               )}
               <button
@@ -766,13 +780,14 @@ export default function CasesOverview() {
               </button>
               <button
                 type="button"
-                onClick={() => { setSelectedCaseIds(new Set()); setBulkError(""); }}
+                onClick={() => { setSelectedCaseIds(new Set()); setBulkError(""); setBulkSuccess(""); }}
                 disabled={bulkWorking}
                 className="text-sm text-muted hover:underline disabled:opacity-50"
               >
                 Clear selection
               </button>
               {bulkError && <span className="text-sm text-error">{bulkError}</span>}
+              {bulkSuccess && <span className="text-sm text-primary">{bulkSuccess}</span>}
             </div>
           )}
           {overviewLoading ? (

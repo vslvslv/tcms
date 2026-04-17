@@ -229,6 +229,7 @@ export type RunTest = {
   datasetRowId?: string;
   datasetRow?: Record<string, string>;
   assigneeId?: string | null;
+  assigneeName?: string | null;
   latestResult: { id: string; status: string; comment: string | null; elapsedSeconds: number | null; createdAt: string } | null;
 };
 

@@ -887,12 +887,14 @@ test.describe("Test Execution › Test Assignment", () => {
     const backoffice = projects.find((p) => /backoffice/i.test(p.name)) ?? projects[0];
     if (!backoffice) { await page.close(); return; }
     projectId = backoffice.id;
-    const runs: { id: string; isCompleted: boolean }[] = await page.evaluate(
-      async ({ projectId, headers }) => { const r = await fetch(`http://localhost:3001/api/projects/${projectId}/runs`, { headers }); return r.json(); },
-      { projectId, headers }
-    );
-    const openRun = runs.find((r) => !r.isCompleted);
-    if (openRun) { runId = openRun.id; }
+    runId = await createScratchRun(page);
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!runId) return;
+    const page = await browser.newPage();
+    await deleteRun(page, runId);
     await page.close();
   });
 
@@ -944,19 +946,14 @@ test.describe("Test Execution › Run Filter by Assignee", () => {
     await page.waitForLoadState("networkidle");
     const token = await page.evaluate(() => localStorage.getItem("tcms_token"));
     if (!token) { await page.close(); return; }
-    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
-    const projects: { id: string; name: string }[] = await page.evaluate(
-      async ({ headers }) => { const r = await fetch("http://localhost:3001/api/projects", { headers }); return r.json(); },
-      { headers }
-    );
-    const backoffice = projects.find((p) => /backoffice/i.test(p.name)) ?? projects[0];
-    if (!backoffice) { await page.close(); return; }
-    const runs: { id: string; isCompleted: boolean }[] = await page.evaluate(
-      async ({ projectId, headers }) => { const r = await fetch(`http://localhost:3001/api/projects/${projectId}/runs`, { headers }); return r.json(); },
-      { projectId: backoffice.id, headers }
-    );
-    const openRun = runs.find((r) => !r.isCompleted);
-    if (openRun) runId = openRun.id;
+    runId = await createScratchRun(page);
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!runId) return;
+    const page = await browser.newPage();
+    await deleteRun(page, runId);
     await page.close();
   });
 

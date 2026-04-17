@@ -29,7 +29,8 @@ export type AuditAction =
   | "case.bulk_copied"
   | "ai.generated_cases"
   | "result.bulk_updated"
-  | "case.restored";
+  | "case.restored"
+  | "test.assigned";
 
 export async function writeAuditLog(
   db: Awaited<ReturnType<typeof getDb>>,

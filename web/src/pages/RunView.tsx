@@ -303,7 +303,7 @@ export default function RunView() {
         </Select>
         <Select
           value={statusFilter}
-          onChange={(e) => { setSearchParams((p) => { const n = new URLSearchParams(p); if (e.target.value === "all") n.delete("status"); else n.set("status", e.target.value); return n; }); setSelectedTestId(null); setSelectedTestIds(new Set()); }}
+          onChange={(e) => { setSearchParams((p) => { const n = new URLSearchParams(p); if (e.target.value === "all") n.delete("status"); else n.set("status", e.target.value); return n; }); setSelectedTestIds(new Set()); }}
           aria-label="Filter by status"
           className="w-36 text-sm"
         >
@@ -316,14 +316,14 @@ export default function RunView() {
         </Select>
         <Select
           value={assigneeFilter}
-          onChange={(e) => { setSearchParams((p) => { const n = new URLSearchParams(p); if (e.target.value === "all") n.delete("assignee"); else n.set("assignee", e.target.value); return n; }); setSelectedTestId(null); }}
+          onChange={(e) => { setSearchParams((p) => { const n = new URLSearchParams(p); if (e.target.value === "all") n.delete("assignee"); else n.set("assignee", e.target.value); return n; }); setSelectedTestIds(new Set()); }}
           aria-label="Filter by assignee"
           className="w-40 text-sm"
         >
           <option value="all">All assignees</option>
           <option value="unassigned">Unassigned</option>
           {(run?.tests ?? []).reduce<Array<{id: string; label: string}>>((acc, t) => {
-            if (t.assigneeId && !acc.find((a) => a.id === t.assigneeId)) acc.push({ id: t.assigneeId, label: t.assigneeId.slice(0, 8) });
+            if (t.assigneeId && !acc.find((a) => a.id === t.assigneeId)) acc.push({ id: t.assigneeId, label: t.assigneeName ?? t.assigneeId.slice(0, 8) });
             return acc;
           }, []).map((a) => (
             <option key={a.id} value={a.id}>{a.label}</option>
@@ -394,8 +394,8 @@ export default function RunView() {
           <Card className="overflow-hidden p-0">
             {sections.length === 0 ? (
               <p className="p-6 text-muted">
-                {statusFilter !== "all"
-                  ? (<>No {statusFilter} tests in this run. <button type="button" className="text-primary hover:underline" onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("status"); n.delete("assignee"); return n; })}>Clear filter</button></>)
+                {statusFilter !== "all" || assigneeFilter !== "all"
+                  ? (<>No {statusFilter !== "all" ? statusFilter : ""}{statusFilter !== "all" && assigneeFilter !== "all" ? " " : ""}{assigneeFilter !== "all" ? "tests matching this assignee" : "tests with this status"} in this run. <button type="button" className="text-primary hover:underline" onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("status"); n.delete("assignee"); return n; })}>Clear filters</button></>)
                   : "No tests in this run."}
               </p>
             ) : (
@@ -477,7 +477,7 @@ export default function RunView() {
                               )}
                             </TableCell>
                             <TableCell className="text-muted">—</TableCell>
-                            <TableCell className="text-muted">—</TableCell>
+                            <TableCell className="text-muted">{t.assigneeName ?? (t.assigneeId ? t.assigneeId.slice(0, 8) : "—")}</TableCell>
                             <TableCell>
                               <span className={cn("inline-flex rounded px-2 py-0.5 text-xs font-medium", statusBadgeClass(status))}>{status}</span>
                             </TableCell>

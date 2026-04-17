@@ -37,18 +37,12 @@ export async function canAccessProject(projectId: string, userId: string): Promi
   const [p] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
   if (!p) return false;
   if (p.userId === userId) return true;
-  const [member] = await db
-    .select()
-    .from(projectMembers)
-    .where(eq(projectMembers.projectId, projectId))
-    .limit(1);
-  if (!member) return false;
   const [m] = await db
     .select()
     .from(projectMembers)
-    .where(eq(projectMembers.userId, userId))
+    .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)))
     .limit(1);
-  return !!m && m.projectId === projectId;
+  return !!m;
 }
 
 export async function assertProjectAccess(

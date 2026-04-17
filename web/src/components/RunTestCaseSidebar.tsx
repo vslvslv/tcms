@@ -485,9 +485,6 @@ export function RunTestCaseSidebar({
               <option value="skipped">Skip & Next</option>
             </select>
           </div>
-          <Button type="button" variant="secondary" className="text-muted">
-            Assign To
-          </Button>
           <div className="flex items-center gap-1.5 ml-auto">
             <label className="text-xs text-muted">Assignee</label>
             <select
