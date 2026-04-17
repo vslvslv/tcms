@@ -338,7 +338,7 @@ export default function CasesOverview() {
   function handleDuplicateCase(c: TestCase) {
     setSaving(true);
     api<TestCase>(`/api/cases/${c.id}/duplicate`, { method: "POST" })
-      .then(() => loadOverview())
+      .then(() => { loadOverview(); loadSummary(); })
       .catch((err) => setOverviewError(err instanceof Error ? err.message : "Failed to duplicate case"))
       .finally(() => setSaving(false));
   }
