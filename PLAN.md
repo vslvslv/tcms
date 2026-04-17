@@ -73,12 +73,12 @@ Status filter already exists in `RunView.tsx` (client-side, `statusFilter` state
 
 ## Success Criteria
 
-- [ ] User can select multiple cases across sections in CasesOverview and delete/move/copy them
-- [ ] User can duplicate a case from the case row (copy appears immediately below the original)
-- [ ] User can assign a run test to a team member from the sidebar
-- [ ] Run view filter works by status AND assignee, state reflected in URL
-- [ ] All stories covered by E2E tests in `test-design.spec.ts` and `test-execution.spec.ts`
-- [ ] No regression in existing bulk/filter tests
+- [x] User can select multiple cases across sections in CasesOverview and delete/move/copy them
+- [x] User can duplicate a case from the case row (copy appears immediately below the original)
+- [x] User can assign a run test to a team member from the sidebar
+- [x] Run view filter works by status AND assignee, state reflected in URL
+- [x] All stories covered by E2E tests in `test-design.spec.ts` and `test-execution.spec.ts`
+- [ ] No regression in existing bulk/filter tests (pending e2e run)
 
 ---
 
