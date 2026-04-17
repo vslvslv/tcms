@@ -302,6 +302,7 @@ export const tests = pgTable("tests", {
     .notNull()
     .references(() => testCases.id, { onDelete: "cascade" }),
   datasetRowId: uuid("dataset_row_id").references(() => datasetRows.id, { onDelete: "set null" }),
+  assigneeId: uuid("assignee_id").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { api, type Project, type Suite, type Section, type TestCase, type CaseSummary, type Priority, type CaseType } from "../../api";
+import { api, type Project, type Suite, type Section, type TestCase, type CaseSummary, type Priority, type CaseType, type BulkAction, type BulkCasesBody, type BulkCasesResult } from "../../api";
 import { useProject } from "../../ProjectContext";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -78,6 +78,13 @@ export default function CasesOverview() {
   const [saving, setSaving] = useState(false);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [editingSectionName, setEditingSectionName] = useState("");
+
+  // Bulk selection state (Story 1.7)
+  const [selectedCaseIds, setSelectedCaseIds] = useState<Set<string>>(() => new Set());
+  const [bulkAction, setBulkAction] = useState<BulkAction>("move");
+  const [bulkTargetSectionId, setBulkTargetSectionId] = useState("");
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkError, setBulkError] = useState("");
 
   const currentProject = projectId ? projects.find((p) => p.id === projectId) : null;
   const currentSummary = projectId ? summaries[projectId] : undefined;
@@ -313,6 +320,39 @@ export default function CasesOverview() {
       .finally(() => setSaving(false));
   }
 
+  function handleDuplicateCase(c: TestCase) {
+    setSaving(true);
+    api<TestCase>(`/api/cases/${c.id}/duplicate`, { method: "POST" })
+      .then(() => loadOverview())
+      .catch((err) => setOverviewError(err instanceof Error ? err.message : "Failed to duplicate case"))
+      .finally(() => setSaving(false));
+  }
+
+  async function handleBulkSubmit() {
+    if (selectedCaseIds.size === 0) return;
+    if (bulkAction === "delete") {
+      if (!window.confirm(`Delete ${selectedCaseIds.size} case(s)? This cannot be undone.`)) return;
+    }
+    const needsTarget = bulkAction === "move" || bulkAction === "copy";
+    if (needsTarget && !bulkTargetSectionId) {
+      setBulkError("Select a target section.");
+      return;
+    }
+    setBulkWorking(true);
+    setBulkError("");
+    try {
+      const body: BulkCasesBody = { action: bulkAction, caseIds: Array.from(selectedCaseIds), ...(needsTarget ? { targetSectionId: bulkTargetSectionId } : {}) };
+      await api<BulkCasesResult>(`/api/projects/${projectId}/cases/bulk`, { method: "POST", body: JSON.stringify(body) });
+      setSelectedCaseIds(new Set());
+      setBulkTargetSectionId("");
+      await loadOverview();
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : "Bulk action failed");
+    } finally {
+      setBulkWorking(false);
+    }
+  }
+
   if (loading) return <LoadingSpinner />;
   if (error) return <p className="text-error">{error}</p>;
 
@@ -398,12 +438,18 @@ export default function CasesOverview() {
     caseDisplayIdsMap,
     onDeleteSection,
     onDeleteCase,
+    onDuplicateCase,
+    selectedCaseIds,
+    onToggleCaseSelect,
   }: {
     section: SectionWithChildren;
     depth: number;
     caseDisplayIdsMap: Map<string, string>;
     onDeleteSection: (s: SectionWithChildren) => void;
     onDeleteCase: (c: TestCase) => void;
+    onDuplicateCase: (c: TestCase) => void;
+    selectedCaseIds: Set<string>;
+    onToggleCaseSelect: (id: string) => void;
   }) {
     const isExpanded = isSectionExpanded(section.id);
     const sectionCases = sortCasesList(casesBySection.get(section.id) ?? []);
@@ -471,6 +517,7 @@ export default function CasesOverview() {
                 <thead>
                   <tr className="border-b border-border bg-surface-raised/40">
                     <th className="w-14 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted">ID</th>
+                    <th className="w-8 px-2 py-2.5" aria-label="Select" />
                     <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted">Title</th>
                     <th className="w-24 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-muted">Status</th>
                     <th className="w-32 px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wider text-muted">Actions</th>
@@ -478,7 +525,16 @@ export default function CasesOverview() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {sectionCases.map((c) => (
-                    <tr key={c.id} className="transition-colors hover:bg-surface-raised/60">
+                    <tr key={c.id} className={`transition-colors hover:bg-surface-raised/60 ${selectedCaseIds.has(c.id) ? "bg-primary/5" : ""}`}>
+                      <td className="px-2 py-2.5">
+                        <input
+                          type="checkbox"
+                          checked={selectedCaseIds.has(c.id)}
+                          onChange={() => onToggleCaseSelect(c.id)}
+                          aria-label={`Select ${c.title || "case"}`}
+                          className="h-4 w-4 rounded border-border accent-primary"
+                        />
+                      </td>
                       <td className="px-4 py-2.5 font-mono text-xs text-muted">{caseDisplayIdsMap.get(c.id) ?? "—"}</td>
                       <td className="px-4 py-2.5">
                         <Link to={`/cases/${c.id}/edit`} className="font-medium text-primary no-underline hover:underline">{c.title || "(Untitled)"}</Link>
@@ -494,6 +550,14 @@ export default function CasesOverview() {
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <Link to={`/cases/${c.id}/edit`} className="mr-3 text-sm font-medium text-primary hover:underline">Edit</Link>
+                        <button
+                          type="button"
+                          onClick={() => onDuplicateCase(c)}
+                          disabled={saving}
+                          className="mr-3 text-sm font-medium text-muted hover:underline disabled:opacity-50"
+                        >
+                          Duplicate
+                        </button>
                         <button
                           type="button"
                           onClick={() => onDeleteCase(c)}
@@ -534,7 +598,7 @@ export default function CasesOverview() {
               )}
             </div>
             {section.children.map((ch) => (
-              <SectionBlock key={ch.id} section={ch} depth={depth + 1} caseDisplayIdsMap={caseDisplayIdsMap} onDeleteSection={onDeleteSection} onDeleteCase={onDeleteCase} />
+              <SectionBlock key={ch.id} section={ch} depth={depth + 1} caseDisplayIdsMap={caseDisplayIdsMap} onDeleteSection={onDeleteSection} onDeleteCase={onDeleteCase} onDuplicateCase={onDuplicateCase} selectedCaseIds={selectedCaseIds} onToggleCaseSelect={onToggleCaseSelect} />
             ))}
           </>
         )}
@@ -667,6 +731,50 @@ export default function CasesOverview() {
               {overviewError}
             </div>
           )}
+
+          {selectedCaseIds.size > 0 && (
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+              <span className="text-sm font-medium text-text">{selectedCaseIds.size} selected</span>
+              <select
+                value={bulkAction}
+                onChange={(e) => setBulkAction(e.target.value as BulkAction)}
+                className="rounded-md border border-border bg-surface-raised text-text px-2 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none"
+              >
+                <option value="move">Move to section</option>
+                <option value="copy">Copy to section</option>
+                <option value="delete">Delete</option>
+              </select>
+              {(bulkAction === "move" || bulkAction === "copy") && (
+                <select
+                  value={bulkTargetSectionId}
+                  onChange={(e) => setBulkTargetSectionId(e.target.value)}
+                  className="rounded-md border border-border bg-surface-raised text-text px-2 py-1.5 text-sm shadow-sm focus:border-primary focus:outline-none"
+                >
+                  <option value="">Select target section...</option>
+                  {sections.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                type="button"
+                onClick={handleBulkSubmit}
+                disabled={bulkWorking}
+                className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-primary-hover disabled:opacity-50"
+              >
+                {bulkWorking ? "Working..." : "Apply"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSelectedCaseIds(new Set()); setBulkError(""); }}
+                disabled={bulkWorking}
+                className="text-sm text-muted hover:underline disabled:opacity-50"
+              >
+                Clear selection
+              </button>
+              {bulkError && <span className="text-sm text-error">{bulkError}</span>}
+            </div>
+          )}
           {overviewLoading ? (
             <LoadingSpinner />
           ) : suites.length === 0 ? (
@@ -722,6 +830,9 @@ export default function CasesOverview() {
                     caseDisplayIdsMap={caseDisplayIds}
                     onDeleteSection={handleDeleteSection}
                     onDeleteCase={handleDeleteCase}
+                    onDuplicateCase={handleDuplicateCase}
+                    selectedCaseIds={selectedCaseIds}
+                    onToggleCaseSelect={(id) => setSelectedCaseIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
                   />
                 ))
               )}
@@ -760,6 +871,9 @@ export default function CasesOverview() {
                           caseDisplayIdsMap={caseDisplayIds}
                           onDeleteSection={handleDeleteSection}
                           onDeleteCase={handleDeleteCase}
+                          onDuplicateCase={handleDuplicateCase}
+                          selectedCaseIds={selectedCaseIds}
+                          onToggleCaseSelect={(id) => setSelectedCaseIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
                         />
                       ))
                     )}

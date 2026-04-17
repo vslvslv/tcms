@@ -26,6 +26,7 @@ export default function SectionCases() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [bulkWorking, setBulkWorking] = useState(false);
   const [bulkSuccess, setBulkSuccess] = useState("");
+  const [duplicating, setDuplicating] = useState(false);
 
   useEffect(() => {
     if (!sectionId) return;
@@ -104,6 +105,19 @@ export default function SectionCases() {
       setError(err instanceof Error ? err.message : "Bulk action failed");
     } finally {
       setBulkWorking(false);
+    }
+  }
+
+  async function handleDuplicate(c: TestCase) {
+    setDuplicating(true);
+    try {
+      await api<TestCase>(`/api/cases/${c.id}/duplicate`, { method: "POST" });
+      const refreshed = await api<(TestCase & { steps?: unknown[]; status?: string })[]>(`/api/sections/${sectionId}/cases`);
+      setCases(refreshed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to duplicate case");
+    } finally {
+      setDuplicating(false);
     }
   }
 
@@ -295,6 +309,14 @@ export default function SectionCases() {
                 </td>
                 <td className="px-3 py-2 text-right">
                   <Link to={`/cases/${c.id}/edit`} className="text-primary text-xs hover:underline">Edit</Link>
+                  <button
+                    type="button"
+                    onClick={() => handleDuplicate(c)}
+                    disabled={duplicating}
+                    className="ml-3 text-xs text-muted hover:underline disabled:opacity-50"
+                  >
+                    Duplicate
+                  </button>
                 </td>
               </tr>
             ))}

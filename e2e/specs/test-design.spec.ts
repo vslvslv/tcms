@@ -813,3 +813,193 @@ test.describe("Test Design › Case Search & Filtering", () => {
     await expect(page.locator("body")).not.toContainText(/internal server error/i);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Test Design › Case Duplication  (Sprint E — Story 1.8)
+// ---------------------------------------------------------------------------
+
+test.describe("Test Design › Case Duplication", () => {
+  test.describe.configure({ mode: "serial" });
+
+  let projectId: string;
+  let sectionId: string;
+  let createdCaseId: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.goto("/projects");
+    await page.waitForLoadState("networkidle");
+    const { headers } = await (async () => {
+      const token = await page.evaluate(() => localStorage.getItem("tcms_token"));
+      return { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } };
+    })();
+    const projects: { id: string; name: string }[] = await page.evaluate(
+      async ({ headers }) => { const r = await fetch("http://localhost:3001/api/projects", { headers }); return r.json(); },
+      { headers }
+    );
+    const backoffice = projects.find((p) => /backoffice/i.test(p.name)) ?? projects[0];
+    if (!backoffice) { await page.close(); return; }
+    projectId = backoffice.id;
+    const suites: { id: string }[] = await page.evaluate(
+      async ({ projectId, headers }) => { const r = await fetch(`http://localhost:3001/api/projects/${projectId}/suites`, { headers }); return r.json(); },
+      { projectId, headers }
+    );
+    if (!suites[0]) { await page.close(); return; }
+    const sects: { id: string; name: string }[] = await page.evaluate(
+      async ({ suiteId, headers }) => { const r = await fetch(`http://localhost:3001/api/suites/${suiteId}/sections`, { headers }); return r.json(); },
+      { suiteId: suites[0].id, headers }
+    );
+    if (!sects[0]) { await page.close(); return; }
+    sectionId = sects[0].id;
+    const created: { id: string } = await page.evaluate(
+      async ({ sectionId, headers }) => { const r = await fetch(`http://localhost:3001/api/sections/${sectionId}/cases`, { method: "POST", headers, body: JSON.stringify({ title: "Sprint E Duplicate Test Case", steps: [] }) }); return r.json(); },
+      { sectionId, headers }
+    );
+    createdCaseId = created.id;
+    await page.close();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    if (!createdCaseId) return;
+    const page = await browser.newPage();
+    await page.goto("/projects");
+    await page.waitForLoadState("networkidle");
+    const token = await page.evaluate(() => localStorage.getItem("tcms_token"));
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    await page.evaluate(
+      async ({ id, headers }) => { await fetch(`http://localhost:3001/api/cases/${id}`, { method: "DELETE", headers }); },
+      { id: createdCaseId, headers }
+    );
+    await page.close();
+  });
+
+  test("[Story 1.8] Duplicate button appears in CasesOverview row", async ({ page }) => {
+    if (!projectId) { test.skip(true, "Setup failed — no project found"); return; }
+    await page.goto("/cases/overview");
+    await page.waitForLoadState("networkidle");
+    // Select the project from the overview table
+    const projectBtn = page.locator("table").getByRole("button").filter({ hasText: /backoffice/i }).first();
+    if (await projectBtn.isVisible({ timeout: 5000 }).catch(() => false)) await projectBtn.click();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    const dupeBtn = page.getByRole("button", { name: /duplicate/i }).first();
+    await expect(dupeBtn).toBeVisible({ timeout: 8000 });
+  });
+
+  test("[Story 1.8] Duplicate creates a copy in CasesOverview", async ({ page }) => {
+    if (!projectId) { test.skip(true, "Setup failed — no project found"); return; }
+    await page.goto("/cases/overview");
+    await page.waitForLoadState("networkidle");
+    // Select the project from the overview table
+    const projectBtn = page.locator("table").getByRole("button").filter({ hasText: /backoffice/i }).first();
+    if (await projectBtn.isVisible({ timeout: 5000 }).catch(() => false)) await projectBtn.click();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    // Find the row for our test case and click Duplicate
+    const caseRow = page.locator("tr").filter({ hasText: "Sprint E Duplicate Test Case" }).first();
+    const dupeBtn = caseRow.getByRole("button", { name: /duplicate/i });
+    if (!(await dupeBtn.isVisible().catch(() => false))) {
+      test.skip(true, "Case row not found in overview");
+      return;
+    }
+    await dupeBtn.click();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1000);
+    // Should now see "(Copy)" version
+    const copyRows = page.getByText(/Sprint E Duplicate Test Case.*Copy/i).first();
+    await expect(copyRows).toBeVisible({ timeout: 8000 });
+  });
+
+  test("[Story 1.8] Duplicate button appears in SectionCases row", async ({ page }) => {
+    if (!sectionId) { test.skip(true, "Setup failed — no section found"); return; }
+    await page.goto(`/sections/${sectionId}/cases`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1000);
+    const dupeBtn = page.getByRole("button", { name: /duplicate/i }).first();
+    await expect(dupeBtn).toBeVisible({ timeout: 8000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test Design › Bulk Case Operations  (Sprint E — Story 1.7)
+// ---------------------------------------------------------------------------
+
+test.describe("Test Design › Bulk Case Operations", () => {
+  test.describe.configure({ mode: "serial" });
+
+  let projectId: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.goto("/projects");
+    await page.waitForLoadState("networkidle");
+    const token = await page.evaluate(() => localStorage.getItem("tcms_token"));
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const projects: { id: string; name: string }[] = await page.evaluate(
+      async ({ headers }) => { const r = await fetch("http://localhost:3001/api/projects", { headers }); return r.json(); },
+      { headers }
+    );
+    const backoffice = projects.find((p) => /backoffice/i.test(p.name)) ?? projects[0];
+    projectId = backoffice?.id ?? "";
+    await page.close();
+  });
+
+  /** Navigate to cases overview and select the backoffice project */
+  async function gotoOverview(page: import("@playwright/test").Page) {
+    await page.goto("/cases/overview");
+    await page.waitForLoadState("networkidle");
+    const projectBtn = page.locator("table").getByRole("button").filter({ hasText: /backoffice/i }).first();
+    if (await projectBtn.isVisible({ timeout: 5000 }).catch(() => false)) await projectBtn.click();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+  }
+
+  test("[Story 1.7] Checkboxes appear on cases in CasesOverview", async ({ page }) => {
+    if (!projectId) { test.skip(true, "Setup failed — no project found"); return; }
+    await gotoOverview(page);
+    const checkbox = page.locator('input[type="checkbox"]').first();
+    await expect(checkbox).toBeVisible({ timeout: 8000 });
+  });
+
+  test("[Story 1.7] Bulk toolbar appears when cases are selected", async ({ page }) => {
+    if (!projectId) { test.skip(true, "Setup failed — no project found"); return; }
+    await gotoOverview(page);
+    const firstCheckbox = page.locator('input[type="checkbox"]').first();
+    if (!(await firstCheckbox.isVisible().catch(() => false))) {
+      test.skip(true, "No checkboxes visible — no cases loaded");
+      return;
+    }
+    await firstCheckbox.check();
+    // Bulk toolbar with "selected" count should appear
+    await expect(page.getByText(/1 selected/i)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("button", { name: /apply/i })).toBeVisible({ timeout: 3000 });
+  });
+
+  test("[Story 1.7] Clear selection button clears the bulk toolbar", async ({ page }) => {
+    if (!projectId) { test.skip(true, "Setup failed — no project found"); return; }
+    await gotoOverview(page);
+    const firstCheckbox = page.locator('input[type="checkbox"]').first();
+    if (!(await firstCheckbox.isVisible().catch(() => false))) {
+      test.skip(true, "No checkboxes visible — no cases loaded");
+      return;
+    }
+    await firstCheckbox.check();
+    await expect(page.getByText(/1 selected/i)).toBeVisible({ timeout: 5000 });
+    await page.getByRole("button", { name: /clear selection/i }).click();
+    await expect(page.getByText(/1 selected/i)).not.toBeVisible({ timeout: 3000 });
+  });
+
+  test("[Story 1.7] Bulk action selector shows delete/move/copy options", async ({ page }) => {
+    if (!projectId) { test.skip(true, "Setup failed — no project found"); return; }
+    await gotoOverview(page);
+    const firstCheckbox = page.locator('input[type="checkbox"]').first();
+    if (!(await firstCheckbox.isVisible().catch(() => false))) {
+      test.skip(true, "No checkboxes visible — no cases loaded");
+      return;
+    }
+    await firstCheckbox.check();
+    await expect(page.getByText(/1 selected/i)).toBeVisible({ timeout: 5000 });
+    const actionSelect = page.locator("select").filter({ hasText: /delete|move|copy/i }).first();
+    await expect(actionSelect).toBeVisible({ timeout: 3000 });
+  });
+});

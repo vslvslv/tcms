@@ -8,6 +8,7 @@ import {
   type TestResult,
   type IssueLink,
   type CaseVersion,
+  type ProjectMember,
 } from "../api";
 import { Button } from "./ui/Button";
 
@@ -49,6 +50,7 @@ function statusDotClass(s: string): string {
 export type RunTestCaseSidebarProps = {
   test: RunTest;
   runId: string;
+  projectId: string;
   /** Flat list of tests in display order (for Pass & Next) */
   allTestsInOrder: RunTest[];
   onClose: () => void;
@@ -60,6 +62,7 @@ type TabKey = "results" | "history" | "defects";
 export function RunTestCaseSidebar({
   test,
   runId: _runId, // eslint-disable-line @typescript-eslint/no-unused-vars
+  projectId,
   allTestsInOrder,
   onClose,
   onResultSubmitted,
@@ -79,6 +82,9 @@ export function RunTestCaseSidebar({
   const [newIssueTitle, setNewIssueTitle] = useState("");
   const [caseVersions, setCaseVersions] = useState<CaseVersion[]>([]);
   const [caseVersionsLoading, setCaseVersionsLoading] = useState(false);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [assigneeId, setAssigneeId] = useState<string | null>(test.assigneeId ?? null);
+  const [assigneeWorking, setAssigneeWorking] = useState(false);
 
   const selectedResultId = test.latestResult?.id ?? null;
 
@@ -124,7 +130,14 @@ export function RunTestCaseSidebar({
     setResultStatus(test.latestResult?.status ?? "passed");
     setResultComment(test.latestResult?.comment ?? "");
     setResultElapsed(test.latestResult?.elapsedSeconds != null ? String(test.latestResult.elapsedSeconds) : "");
-  }, [test.id, test.latestResult]);
+    setAssigneeId(test.assigneeId ?? null);
+  }, [test.id, test.latestResult, test.assigneeId]);
+
+  useEffect(() => {
+    api<ProjectMember[]>(`/api/projects/${projectId}/members`)
+      .then(setMembers)
+      .catch(() => setMembers([]));
+  }, [projectId]);
 
   useEffect(() => {
     if (!selectedResultId) {
@@ -135,6 +148,21 @@ export function RunTestCaseSidebar({
       .then(setResultIssueLinks)
       .catch(() => setResultIssueLinks([]));
   }, [selectedResultId]);
+
+  async function handleAssigneeChange(newAssigneeId: string | null) {
+    setAssigneeWorking(true);
+    try {
+      await api(`/api/tests/${test.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ assigneeId: newAssigneeId }),
+      });
+      setAssigneeId(newAssigneeId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to assign");
+    } finally {
+      setAssigneeWorking(false);
+    }
+  }
 
   async function submitResult(statusOverride?: string, andSelectNext?: boolean) {
     setError("");
@@ -460,6 +488,23 @@ export function RunTestCaseSidebar({
           <Button type="button" variant="secondary" className="text-muted">
             Assign To
           </Button>
+          <div className="flex items-center gap-1.5 ml-auto">
+            <label className="text-xs text-muted">Assignee</label>
+            <select
+              value={assigneeId ?? ""}
+              onChange={(e) => handleAssigneeChange(e.target.value || null)}
+              disabled={assigneeWorking || members.length === 0}
+              aria-label="Assign test to member"
+              className="rounded-lg border border-border bg-surface-raised text-text px-2 py-1.5 text-xs focus:border-primary focus:outline-none disabled:opacity-50"
+            >
+              <option value="">Unassigned</option>
+              {members.map((m) => (
+                <option key={m.userId} value={m.userId}>
+                  {m.user?.name ?? m.userId.slice(0, 8)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
     </div>

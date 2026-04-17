@@ -326,6 +326,7 @@ export default async function runRoutes(app: FastifyInstance) {
         sectionName: caseInfo?.sectionName ?? null,
         datasetRowId: t.datasetRowId ?? undefined,
         datasetRow: t.datasetRowId ? datasetRowById.get(t.datasetRowId) ?? undefined : undefined,
+        assigneeId: t.assigneeId ?? null,
         latestResult: latest
           ? {
               id: latest.id,

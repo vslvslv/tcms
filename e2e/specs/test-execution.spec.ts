@@ -862,3 +862,154 @@ test.describe("Test Execution › Run Detail Tabs", () => {
     await expect(page).toHaveURL(/\/defects/);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Test Execution › Test Assignment  (Sprint E — Story 2.10)
+// ---------------------------------------------------------------------------
+
+test.describe("Test Execution › Test Assignment", () => {
+  test.describe.configure({ mode: "serial" });
+
+  let runId: string;
+  let projectId: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.goto("/projects");
+    await page.waitForLoadState("networkidle");
+    const token = await page.evaluate(() => localStorage.getItem("tcms_token"));
+    if (!token) { await page.close(); return; }
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const projects: { id: string; name: string }[] = await page.evaluate(
+      async ({ headers }) => { const r = await fetch("http://localhost:3001/api/projects", { headers }); return r.json(); },
+      { headers }
+    );
+    const backoffice = projects.find((p) => /backoffice/i.test(p.name)) ?? projects[0];
+    if (!backoffice) { await page.close(); return; }
+    projectId = backoffice.id;
+    const runs: { id: string; isCompleted: boolean }[] = await page.evaluate(
+      async ({ projectId, headers }) => { const r = await fetch(`http://localhost:3001/api/projects/${projectId}/runs`, { headers }); return r.json(); },
+      { projectId, headers }
+    );
+    const openRun = runs.find((r) => !r.isCompleted);
+    if (openRun) { runId = openRun.id; }
+    await page.close();
+  });
+
+  test("[Story 2.10] Assignee dropdown visible in RunTestCaseSidebar", async ({ page }) => {
+    if (!runId) { test.skip(true, "No open run available"); return; }
+    await page.goto(`/runs/${runId}`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    const firstRow = page.locator("table tbody tr").first();
+    if (!(await firstRow.isVisible().catch(() => false))) {
+      test.skip(true, "No test rows visible in run view");
+      return;
+    }
+    await firstRow.click();
+    // Sidebar should open
+    await expect(page.getByRole("combobox", { name: /assign test to member/i }).or(page.locator("select[aria-label='Assign test to member']"))).toBeVisible({ timeout: 8000 });
+  });
+
+  test("[Story 2.10] Assignee dropdown shows Unassigned option", async ({ page }) => {
+    if (!runId) { test.skip(true, "No open run available"); return; }
+    await page.goto(`/runs/${runId}`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    const firstRow = page.locator("table tbody tr").first();
+    if (!(await firstRow.isVisible().catch(() => false))) {
+      test.skip(true, "No test rows visible");
+      return;
+    }
+    await firstRow.click();
+    const assigneeSelect = page.locator("select[aria-label='Assign test to member']");
+    await expect(assigneeSelect).toBeVisible({ timeout: 8000 });
+    const unassignedOpt = assigneeSelect.locator("option[value='']");
+    await expect(unassignedOpt).toBeAttached();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Test Execution › Run Filter by Assignee  (Sprint E — Story 2.11)
+// ---------------------------------------------------------------------------
+
+test.describe("Test Execution › Run Filter by Assignee", () => {
+  test.describe.configure({ mode: "serial" });
+
+  let runId: string;
+
+  test.beforeAll(async ({ browser }) => {
+    const page = await browser.newPage();
+    await page.goto("/projects");
+    await page.waitForLoadState("networkidle");
+    const token = await page.evaluate(() => localStorage.getItem("tcms_token"));
+    if (!token) { await page.close(); return; }
+    const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+    const projects: { id: string; name: string }[] = await page.evaluate(
+      async ({ headers }) => { const r = await fetch("http://localhost:3001/api/projects", { headers }); return r.json(); },
+      { headers }
+    );
+    const backoffice = projects.find((p) => /backoffice/i.test(p.name)) ?? projects[0];
+    if (!backoffice) { await page.close(); return; }
+    const runs: { id: string; isCompleted: boolean }[] = await page.evaluate(
+      async ({ projectId, headers }) => { const r = await fetch(`http://localhost:3001/api/projects/${projectId}/runs`, { headers }); return r.json(); },
+      { projectId: backoffice.id, headers }
+    );
+    const openRun = runs.find((r) => !r.isCompleted);
+    if (openRun) runId = openRun.id;
+    await page.close();
+  });
+
+  test("[Story 2.11] Assignee filter dropdown visible in run view", async ({ page }) => {
+    if (!runId) { test.skip(true, "No open run available"); return; }
+    await page.goto(`/runs/${runId}`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    const filterSelect = page.getByRole("combobox", { name: /filter by assignee/i }).or(page.locator("select[aria-label='Filter by assignee']"));
+    await expect(filterSelect).toBeVisible({ timeout: 8000 });
+  });
+
+  test("[Story 2.11] Status filter state reflected in URL", async ({ page }) => {
+    if (!runId) { test.skip(true, "No open run available"); return; }
+    await page.goto(`/runs/${runId}`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1500);
+    const statusSelect = page.getByRole("combobox", { name: /filter by status/i }).or(page.locator("select[aria-label='Filter by status']"));
+    if (!(await statusSelect.isVisible().catch(() => false))) {
+      test.skip(true, "Status filter not visible");
+      return;
+    }
+    await statusSelect.selectOption("passed");
+    await page.waitForTimeout(500);
+    await expect(page).toHaveURL(/status=passed/);
+  });
+
+  test("[Story 2.11] Navigating to URL with status param restores filter", async ({ page }) => {
+    if (!runId) { test.skip(true, "No open run available"); return; }
+    await page.goto(`/runs/${runId}?status=failed`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1000);
+    const statusSelect = page.getByRole("combobox", { name: /filter by status/i }).or(page.locator("select[aria-label='Filter by status']"));
+    if (!(await statusSelect.isVisible().catch(() => false))) {
+      test.skip(true, "Status filter not visible");
+      return;
+    }
+    const selectedValue = await statusSelect.inputValue();
+    expect(selectedValue).toBe("failed");
+  });
+
+  test("[Story 2.11] Assignee filter URL param persists on navigation", async ({ page }) => {
+    if (!runId) { test.skip(true, "No open run available"); return; }
+    await page.goto(`/runs/${runId}?status=all&assignee=unassigned`);
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1000);
+    await expect(page).toHaveURL(/assignee=unassigned/);
+    const assigneeSelect = page.locator("select[aria-label='Filter by assignee']");
+    if (!(await assigneeSelect.isVisible().catch(() => false))) {
+      test.skip(true, "Assignee filter not visible");
+      return;
+    }
+    const selectedValue = await assigneeSelect.inputValue();
+    expect(selectedValue).toBe("unassigned");
+  });
+});

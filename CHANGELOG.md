@@ -2,6 +2,22 @@
 
 All notable changes to TCMS are documented in this file.
 
+## [0.4.0.0] - 2026-04-06
+
+### Added
+- **Bulk Case Operations in Cases Overview (Story 1.7):** Select multiple cases across all sections in the Cases Overview page. Floating toolbar with Delete / Move-to-section / Copy-to-section actions and a section picker. Confirmation required for bulk delete. Selection highlights selected rows.
+- **Case Duplication (Story 1.8):** "Duplicate" button in case row context in both `CasesOverview` and `SectionCases`. Duplicate copies the case with all steps and lands in the same section with "(Copy)" suffix. Uses existing `POST /api/cases/:id/duplicate` endpoint.
+- **Test Assignment in Run (Story 2.10):** Assign individual run tests to team members from the `RunTestCaseSidebar`. Assignee dropdown loads project members via `GET /api/projects/:id/members` and patches the test via new `PATCH /api/tests/:id`. Persists across page reload.
+- **Run Filter by Assignee + URL State (Story 2.11):** Extended run view filter to include an assignee dropdown alongside the existing status filter. Both filters are stored in URL query params (`?status=X&assignee=Y`) for shareable links. Navigating to a URL with filter params restores the filter state.
+- **`PATCH /api/tests/:id` endpoint:** New `api/src/routes/tests.ts` handles test metadata updates, starting with `assigneeId`. Registered in `index.ts` alongside `resultRoutes`.
+- **`assignee_id` migration (0016):** Adds nullable `assignee_id uuid FK → users` column to the `tests` table. On-delete: set null.
+
+### Changed
+- `GET /api/runs/:id` response now includes `assigneeId` on each test row (null if unassigned).
+- `RunTest` TypeScript type in `web/src/api.ts` now includes `assigneeId?: string | null`.
+- `RunTestCaseSidebar` accepts new required `projectId` prop (used to load members for assignee dropdown).
+- Status filter in `RunView` now uses `useSearchParams` instead of local state.
+
 ## [0.3.0.1] - 2026-04-05
 
 ### Fixed

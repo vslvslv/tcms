@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api, type Run, type RunTest, type FlakyTest, type BulkStatusResult, type AuditLogEntry, type IssueLink } from "../api";
 import { useProject } from "../ProjectContext";
 import { FlakyBadge } from "../components/FlakyBadge";
@@ -57,6 +57,7 @@ export default function RunView() {
   const location = useLocation();
   const navigate = useNavigate();
   const { projectId } = useProject();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tab = runId ? getRunTab(location.pathname) : "tests";
   const [run, setRun] = useState<Run | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +66,8 @@ export default function RunView() {
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
   const [sortBy, setSortBy] = useState<string>("section");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const statusFilter = searchParams.get("status") ?? "all";
+  const assigneeFilter = searchParams.get("assignee") ?? "all";
   const [flakyMap, setFlakyMap] = useState<Map<string, number>>(new Map());
   const [selectedTestIds, setSelectedTestIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<string>("passed");
@@ -97,12 +99,12 @@ export default function RunView() {
   }, [run?.projectId, projectId]);
 
   const testsForSections = run?.tests ?? [];
-  const filteredTests = useMemo(
-    () => statusFilter === "all"
-      ? testsForSections
-      : testsForSections.filter((t) => (t.latestResult?.status ?? "untested") === statusFilter),
-    [testsForSections, statusFilter]
-  );
+  const filteredTests = useMemo(() => {
+    let list = testsForSections;
+    if (statusFilter !== "all") list = list.filter((t) => (t.latestResult?.status ?? "untested") === statusFilter);
+    if (assigneeFilter !== "all") list = list.filter((t) => (t.assigneeId ?? null) === (assigneeFilter === "unassigned" ? null : assigneeFilter));
+    return list;
+  }, [testsForSections, statusFilter, assigneeFilter]);
   const sections = useMemo(() => groupTestsBySection(filteredTests), [filteredTests]);
   /** Flat list in display order (for Pass & Next in sidebar) */
   const allTestsInOrder = useMemo(
@@ -301,7 +303,7 @@ export default function RunView() {
         </Select>
         <Select
           value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setSelectedTestId(null); setSelectedTestIds(new Set()); }}
+          onChange={(e) => { setSearchParams((p) => { const n = new URLSearchParams(p); if (e.target.value === "all") n.delete("status"); else n.set("status", e.target.value); return n; }); setSelectedTestId(null); setSelectedTestIds(new Set()); }}
           aria-label="Filter by status"
           className="w-36 text-sm"
         >
@@ -311,6 +313,21 @@ export default function RunView() {
           <option value="blocked">Blocked</option>
           <option value="skipped">Skipped</option>
           <option value="untested">Untested</option>
+        </Select>
+        <Select
+          value={assigneeFilter}
+          onChange={(e) => { setSearchParams((p) => { const n = new URLSearchParams(p); if (e.target.value === "all") n.delete("assignee"); else n.set("assignee", e.target.value); return n; }); setSelectedTestId(null); }}
+          aria-label="Filter by assignee"
+          className="w-40 text-sm"
+        >
+          <option value="all">All assignees</option>
+          <option value="unassigned">Unassigned</option>
+          {(run?.tests ?? []).reduce<Array<{id: string; label: string}>>((acc, t) => {
+            if (t.assigneeId && !acc.find((a) => a.id === t.assigneeId)) acc.push({ id: t.assigneeId, label: t.assigneeId.slice(0, 8) });
+            return acc;
+          }, []).map((a) => (
+            <option key={a.id} value={a.id}>{a.label}</option>
+          ))}
         </Select>
         <label className="flex cursor-pointer items-center gap-2 rounded border border-border bg-surface px-3 py-1.5 text-sm hover:bg-surface-raised">
           <span>+ Add Results</span>
@@ -378,7 +395,7 @@ export default function RunView() {
             {sections.length === 0 ? (
               <p className="p-6 text-muted">
                 {statusFilter !== "all"
-                  ? (<>No {statusFilter} tests in this run. <button type="button" className="text-primary hover:underline" onClick={() => setStatusFilter("all")}>Clear filter</button></>)
+                  ? (<>No {statusFilter} tests in this run. <button type="button" className="text-primary hover:underline" onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("status"); n.delete("assignee"); return n; })}>Clear filter</button></>)
                   : "No tests in this run."}
               </p>
             ) : (
@@ -482,6 +499,7 @@ export default function RunView() {
             <RunTestCaseSidebar
               test={selectedTest}
               runId={runId}
+              projectId={run.projectId ?? projectId ?? ""}
               allTestsInOrder={allTestsInOrder}
               onClose={() => setSelectedTestId(null)}
               onResultSubmitted={handleResultSubmitted}

@@ -35,6 +35,7 @@ import adminRoutes from "./routes/admin.js";
 import tokenRoutes from "./routes/tokens.js";
 import notificationRoutes from "./routes/notifications.js";
 import oauthRoutes from "./routes/oauth.js";
+import testRoutes from "./routes/tests.js";
 import aiRoutes from "./routes/ai.js";
 
 const app = Fastify({ logger: true });
@@ -77,6 +78,7 @@ await app.register(sectionRoutes);
 await app.register(caseRoutes);
 await app.register(runRoutes);
 await app.register(resultRoutes);
+await app.register(testRoutes);
 await app.register(milestoneRoutes);
 await app.register(planRoutes);
 await app.register(caseTypeRoutes);

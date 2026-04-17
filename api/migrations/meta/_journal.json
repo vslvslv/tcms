@@ -113,6 +113,13 @@
       "when": 1775166262790,
       "tag": "0015_free_the_hunter",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1775452142101,
+      "tag": "0016_little_valkyrie",
+      "breakpoints": true
     }
   ]
 }

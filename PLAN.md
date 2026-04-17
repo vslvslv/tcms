@@ -1,206 +1,263 @@
-<!-- /autoplan restore point: /c/Users/C5414063/.gstack/projects/vslvslv-tcms/development-autoplan-restore-20260404-235616.md -->
-# Sprint D Plan
+<!-- /autoplan restore point: /c/Users/C5414063/.gstack/projects/vslvslv-tcms/development-autoplan-restore-20260405-082848.md -->
+# Sprint E Plan
 
-Generated: 2026-04-04 | Branch: development | Commit: 8b359a9
+Generated: 2026-04-05 | Branch: development | Commit: 83e9a13
 Repo: vslvslv/tcms
 
 ## Context
 
-Sprint C shipped v0.2.0.0: version restore (5.6), AI from CI failures (14.4), transaction correctness (5.3/cases.ts). Current health score: 78/100. Post-sprint QA audit surfaced 5 deferred issues (ISSUE-002 through ISSUE-006) across run tab stubs, milestone management, report discovery, project settings, and navigation.
+Sprint D shipped v0.3.0.0: run tabs (Activity/Progress/Defects), Needs Attention page, milestone inline edit/delete, multi-suite cases overview, project settings redesign, sidebar navigation restructure. v0.3.0.1 added e2e cleanup hooks and adversarial fixes. Current status: `development` branch ahead of `main` by 3 commits (test infrastructure only).
 
-TCMS backlog: 138 stories, 76 done (55%), 9 partial, 53 missing. Epics 18-22 added in Sprint C gap audit — 17 stories newly tracked. Sprint D target: bring health score from 78 → 90+.
+Sprint E focuses on **test management completeness**: bulk case operations available project-wide, case duplication in context, test assignment within runs, and run view filtering by assignee.
 
-## Sprint D Scope
+---
 
-### Task 1 — Run Tab Stubs (Epic 18, Stories 18.1-18.3)
+## Sprint E Scope
 
-**18.1 Run Activity tab** — replace stub at `RunView.tsx:218` with project audit log filtered to this run
-- **Pre-coding:** Add `entityId` UUID filter to `audit.ts` audit route: `if (q.entityId && isUUID(q.entityId)) conditions.push(eq(auditLog.entityId, q.entityId))`
-- Call `GET /api/projects/:projectId/audit-log?entityType=run&entityId=<runId>` (NOTE: URL is `/api/projects/:projectId/audit-log` — not `/api/audit`)
-- Render in a timeline list (timestamp, action, actor)
-- **Empty state:** "No activity recorded for this run yet." + `Activity` icon
-- Existing: `AuditLogEntry` type in `web/src/api.ts`; route at `api/src/routes/audit.ts:15`
+### Story 1.7 — Bulk Operations on Cases (cross-section)
+Bulk select + delete/move/copy across any cases visible in `CasesOverview.tsx`.
+The API already exists: `POST /api/projects/:projectId/cases/bulk` (action: delete|move|copy, caseIds[], targetSectionId).
+`SectionCases.tsx` already has a working bulk UI — but it only works within one section at a time.
+**Work:** Add checkbox selection, toolbar with action picker + target section picker, and submit flow to `CasesOverview.tsx`.
 
-**18.2 Run Progress tab** — replace stub at `RunView.tsx:226` with pass-rate trend chart
-- Query results grouped by date from existing `results` table (joined via `tests.runId`)
-- No new API needed: derive pass-rate per day from existing `GET /api/runs/:id` run object (it includes all results)
-- Render with Recharts `LineChart` (already used in `Reports.tsx`)
-- **Chart spec:** Y-axis = pass percentage (0-100%); X-axis = date; tooltip shows Passed/Failed/Total for that day; single line (pass rate). If < 2 data points: show "Not enough data yet" empty state instead of chart.
-- **Empty state:** "No results recorded yet. Results will appear as tests are executed." + `TrendingUp` icon
+### Story 1.8 — Case Duplication
+Duplicate a test case (+ all its steps) with one click. API already exists: `POST /api/cases/:id/duplicate`.
+**Work:** Add "Duplicate" button to the case row context menu in `CasesOverview.tsx` and in `SectionCases.tsx`.
 
-**18.3 Run Defects tab** — replace stub at `RunView.tsx:230` with defect links list
-- Query: all `issueLinks` where `entityType = "result"` and result's `testId` belongs to this run
-- New endpoint: `GET /api/runs/:id/defects` — join `issueLinks → results → tests` where `tests.runId = :id`; cap at 250 results (consistent with other list endpoints)
-- Render as link list (url, title), matching sidebar defect tab style at `RunTestCaseSidebar.tsx:376`
-- **Empty state:** "No defects linked to this run." + `Bug` icon
-- Effort: S (~15 min CC each)
+### Story 2.10 — Assign Tests to Specific Users Within a Run
+Allow a user to assign individual `tests` (case-in-run rows) to team members. Shows in run view with assignee avatar/name.
+**Work:** DB migration (add `assigneeId uuid FK → users`), API PATCH endpoint (`PATCH /api/tests/:id` with `{ assigneeId }`), `GET /api/projects/:projectId/members` already exists for member list, UI assignment dropdown in `RunTestCaseSidebar.tsx`.
 
-### Task 2 — Milestone Management Completeness (Epic 20, Stories 20.1-20.3)
+### Story 2.11 — Filter Tests in Run View (by status + assignee)
+Status filter already exists in `RunView.tsx` (client-side, `statusFilter` state). Extend it to also filter by assignee.
+**Work:** Add assignee filter dropdown (client-side, same pattern as status filter), persist filter state in URL query params so links are shareable.
 
-**20.1 Milestone edit UI** — add edit icon + inline form to `ProjectDetail.tsx:248-257` milestone list
-- API: `PATCH /api/milestones/:id` already exists in `api/src/routes/milestones.ts`
-- UI: pencil icon → inline edit form (name, description, due date) → Save/Cancel
-- Follow existing pattern from `CasesOverview.tsx` section inline edit
+---
 
-**20.2 Milestone delete UI** — add delete button to milestone row
-- API: `DELETE /api/milestones/:id` already exists
-- Confirm before delete (window.confirm pattern, consistent with section/case delete)
+## What Already Exists
 
-**20.3 Milestone description field** — add description input to create form at `ProjectDetail.tsx:235-246`
-- Schema `milestones.description` column already exists (varchar)
-- Add `<textarea>` to create form; pass in PATCH payload
-- Effort: XS (~10 min CC)
+| Sub-problem | Existing code |
+|-------------|--------------|
+| Bulk case API | `api/src/routes/cases.ts:682` — `POST /api/projects/:id/cases/bulk` |
+| Duplicate case API | `api/src/routes/cases.ts:603` — `POST /api/cases/:id/duplicate` |
+| Bulk UI (per-section) | `web/src/pages/SectionCases.tsx:22-106` — full checkbox + action + submit |
+| Status filter in RunView | `web/src/pages/RunView.tsx:68-106` — `statusFilter` state + `filteredTests` memo |
+| Bulk status update | `web/src/pages/RunView.tsx:159-175` — `applyBulkStatus()` |
+| Project members list | `GET /api/projects/:id/members` — returns members with userId |
+| Tests table | `api/src/db/schema.ts:296` — has `id`, `runId`, `testCaseId`, no `assigneeId` |
+| RunTestCaseSidebar | `web/src/components/RunTestCaseSidebar.tsx` — per-test result recording sidebar |
 
-### Task 3 — Project Settings Redesign (Epic 21, Stories 21.1-21.5)
+---
 
-`ProjectSettings.tsx` is 713 lines of raw HTML with `style={{}}` inline CSS, hardcoded colors (`#c00`, `#666`, `#eee`), and no design system components. It is the most visually inconsistent page in the product.
+## NOT in Scope
 
-**21.1 Tab navigation** — split into 5 tabs: General | Members | Case Config | Integrations | Danger
-- **Default active tab: General** (project name, description — universal convention for settings pages; Members is second tab)
-- General: project name, description
-- Members: member list with role management (currently buried at line ~685)
-- Case Config: case types, priorities, config groups, custom fields, case templates, datasets
-- Integrations: webhooks, requirements coverage, shared steps
-- Danger: delete project (typed-confirmation modal — not `window.confirm`), audit log (auto-load)
-- Implement with stateful `activeTab` + tab bar using `Button` or tab nav component
+- Story 1.10 (drag-and-drop reorder) — needs dnd library, deferred
+- Story 2.13 (execution timer) — no pressing user need, deferred
+- Sprint D carry-forwards (Todo.tsx N+1, sidebar stale project name) — addressing in a follow-on micro-fix
 
-**21.2 Design system tokens** — replace all `style={{}}` with Card/Button/Input components and token classes
-- Remove all hardcoded color values (`#c00` → `text-error`, `#666` → `text-muted`, `#eee` → `border-border`)
-- Use `Card`, `Button`, `Input`, `Select` from `web/src/components/ui/`
-
-**21.3 Members second** — Members is second tab (General is default per universal convention)
-
-**21.4 Auto-load audit log** — remove click-to-load; fetch on tab activation instead
-- Audit log at `ProjectSettings.tsx:511` is behind manual "Load audit log" button
-- Move fetch to `useEffect` triggered by `activeTab === "danger"`
-
-**21.5 Delete actions for list items** — add delete button for case types, priorities, config groups
-- Verify API routes: `DELETE /api/projects/:id/case-types/:typeId`, `DELETE /api/projects/:id/priorities/:id`
-- Effort: M (~45 min CC)
-
-### Task 4 — Global Navigation Re-organisation (Epic 22, Stories 22.1-22.4)
-
-`Layout.tsx:72-240` is a flat nav list with no visual grouping between project-scoped and workspace content.
-
-**22.1 Section grouping** — add "Project" and "Workspace" section headers to sidebar
-- Project section: Overview, To Do, Cases (sub-menu), Runs (sub-menu), Milestones
-- Workspace section: Dashboard, Reports, Admin
-- Implement with small section label (`<span className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted/60">`)
-
-**22.2 Active project in sidebar** — show project name below logo/brand in sidebar
-- Read from `ProjectContext`; display as truncated badge below the brand mark
-- When no project selected: badge area collapses (zero height); no "Select a project" placeholder in sidebar — that lives in the page content area
-
-**22.3 Milestone list in sidebar** — show milestone links under Milestones section
-- Fetch `GET /api/projects/:id/milestones` when expanded; cache result in component state after first fetch (no re-fetch on collapse/expand)
-- Render as sub-links matching `subLinkClass` pattern
-
-**22.4 Report Builder nav link** — add "Report Builder" sub-link under Reports
-- Route `/reports/builder` exists (`App.tsx:67`), linked from Reports.tsx already
-- Add sub-link in sidebar matching the pattern of Cases sub-links
-
-**22.5 Wire To Do nav item** (depends on 19.1)
-- After 19.1 is built, remove `cursor-not-allowed` and `aria-disabled` from `Layout.tsx:83-86`
-- Effort: M (~40 min CC)
-
-### Task 5 — To Do Page (Epic 19, Story 19.1)
-
-"To Do" sidebar item has been disabled since the initial design. No route exists.
-
-**Scope correction (CEO step 0E):** `tests.assignedUserId` does NOT exist in schema (Story 2.10 was deferred). Original scope of "tests assigned to current user" is impossible without schema changes.
-
-**Revised scope — cases awaiting action (no schema change needed):**
-- Route: `/todo` → new `web/src/pages/Todo.tsx`
-- Page name: **"Needs Attention"** (not "To Do" — avoids assignment semantics that don't exist yet; sidebar label stays "To Do" for nav continuity)
-- Section 1: "Cases to review" — cases with `status = "ready"` in projects where current user has `cases.approve` permission. Query: `GET /api/projects/:id/cases?status=ready` per project.
-- Section 2: "Open test runs" — runs with `isCompleted = false` where current user is a project member. Query: `GET /api/projects/:id/runs?is_completed=false` (NOTE: param is `is_completed`, not `completed`)
-- **Performance:** cap fan-out concurrency to 5 projects at a time (use `p-limit(5)` or `Promise.all` with slice batching) — avoid firing 100 parallel requests for users in many projects
-- **Loading state:** per-section skeleton (2 rows placeholder) while fetching; no full-page spinner
-- **Empty state:** "You're all caught up." + `CheckCircle` icon (shown when both sections return empty)
-- No new API endpoint needed — compose from existing endpoints
-- Wire sidebar in 22.5 after page exists
-- Effort: M (~25 min CC)
-
-## Scope Decisions
-
-| # | Item | Decision | Reason |
-|---|------|----------|--------|
-| 1 | Run tab stubs (18.1-18.3) | INCLUDE | Zero-functional pages visible in nav; QA ISSUE-005 |
-| 2 | Milestone management (20.1-20.3) | INCLUDE | API done, UI gap; ISSUE-004 |
-| 3 | Project Settings redesign (21.1-21.5) | INCLUDE | Worst design-system regression; ISSUE-003 |
-| 4 | Navigation re-org (22.1-22.4) | INCLUDE | Discovery gaps (ReportBuilder, milestones); ISSUE-006 |
-| 5 | To Do page (19.1) | INCLUDE | Nav item visible but disabled; 19.1 is prerequisite for 22.5 |
-| 6 | Report builder enhancements (6.8-6.9) | DEFER Sprint E | No user demand signal yet; focus on structural issues |
-| 7 | Score history chart (15.3) | DEFER Sprint E | Nice-to-have; low impact vs Epic 21/22 |
-| 8 | Email notifications (Epic 11) | DEFER Sprint E | SMTP adoption < 20%; wrong persona for solo contractor |
-| 9 | 2.10 Test assignment | DEFER Sprint E | Blocker S1 (members/assignable endpoint) unresolved |
-| 10 | Global search (12.1) | DEFER Sprint E | Post-AI features validate the angle |
+---
 
 ## Implementation Order
 
-1. Run tab stubs (18.1-18.3) — smallest, unblock ISSUE-005
-2. Milestone management (20.1-20.3) — XS/S, completes API gap
-3. To Do page (19.1) — prerequisite for 22.5
-4. Navigation re-org (22.1-22.5) — depends on 19.1 for wire-up
-5. Project Settings redesign (21.1-21.5) — largest, last (safe to iterate)
+1. **Migration** — add `assignee_id uuid` (nullable FK → users) to `tests` table via drizzle-kit generate + migrate
+2. **API** — new `api/src/routes/tests.ts` with `PATCH /api/tests/:id { assigneeId }`. Register in `index.ts` alongside `results.ts`. **Also update `GET /api/runs/:id` response** to include `assigneeId` on each test row + add `assigneeId?: string` to `RunTest` type in `web/src/api.ts`. All three changes land together so Story 2.11's client-side filter has data to read.
+3. **Story 1.8** — Duplicate button in `CasesOverview.tsx` row context menu + `SectionCases.tsx` row context menu (API already exists: `POST /api/cases/:id/duplicate`)
+4. **Story 1.7** — Bulk selection state (`selectedIds: Set<string>`, `bulkAction`, `bulkTargetSection`) + toolbar + row checkboxes in `CasesOverview.tsx`. Use flat top-level state (not nested) to avoid re-render bugs given existing ~20 state declarations.
+5. **Story 2.10** — Assignee dropdown in `RunTestCaseSidebar.tsx` (load members via `GET /api/projects/:id/members`, patch on change via `PATCH /api/tests/:id`)
+6. **Story 2.11** — Assignee filter dropdown in `RunView.tsx`, extend `filteredTests` memo. URL param shape: `?status=X&assignee=Y` via `useSearchParams`.
 
-## Total Estimated Effort
+### Known Tech Debt (not blocking this sprint)
+- Bulk copy issues 3N DB round-trips for N cases (one INSERT per case inside transaction). Acceptable at typical volumes; revisit if users hit the 500-case ceiling.
 
-~2-2.5 hours CC. Human equivalent: 1.5 days.
-
-## Dependencies
-
-- **18.1 (BLOCKER):** Add `entityId` UUID filter to `GET /api/projects/:projectId/audit-log` in `audit.ts` before coding the Activity tab
-- 18.3: New endpoint `GET /api/runs/:id/defects` — join `issueLinks → results → tests`; cap 250 rows
-- 20.1-20.2: `PATCH /DELETE /api/milestones/:id` exist in `milestones.ts`
-- 21.5: Delete routes at `DELETE /api/case-types/:id` and `DELETE /api/priorities/:id` (verified: `caseTypes.ts:92`, `priorities.ts:92`)
-- 22.3: Milestone fetch on sidebar expand — use `GET /api/projects/:id/milestones` (already called in `ProjectDetail.tsx`)
-- 22.5: Depends on 19.1 (To Do page must exist before enabling nav link)
+---
 
 ## Success Criteria
 
-- Run Activity tab shows project audit log filtered to run entity
-- Run Progress tab shows pass-rate trend by day (Recharts LineChart)
-- Run Defects tab shows all issue links for tests in this run
-- Milestones in ProjectDetail have edit + delete + description field
-- ProjectSettings uses tabbed layout with 5 tabs, zero `style={{}}` inline CSS, design tokens throughout
-- Sidebar has "Project" and "Workspace" section headers; shows active project name; Report Builder linked
-- `/todo` route renders; sidebar To Do link is enabled
-- Health score target: 90+
+- [ ] User can select multiple cases across sections in CasesOverview and delete/move/copy them
+- [ ] User can duplicate a case from the case row (copy appears immediately below the original)
+- [ ] User can assign a run test to a team member from the sidebar
+- [ ] Run view filter works by status AND assignee, state reflected in URL
+- [ ] All stories covered by E2E tests in `test-design.spec.ts` and `test-execution.spec.ts`
+- [ ] No regression in existing bulk/filter tests
+
+---
+
+## Dependencies
+
+- Drizzle Kit available for migration generation
+- Project members API returns userId (confirmed: `projectMembers` join on `users`)
+- `PATCH /api/tests/:id` must land before any Story 2.10/2.11 UI work (no existing endpoint)
+- `GET /api/runs/:id` response + `RunTest` TypeScript type must include `assigneeId` before Story 2.11 filter can work
+
+---
+
+## /autoplan Review — 2026-04-17
+
+### Context
+Post-implementation review. All 4 stories are substantially implemented in the `development` branch. Review ran 3 phases (CEO + Design + Eng), each with a Claude subagent for independent analysis. Codex unavailable (not installed) — single-model mode `[subagent-only]`.
+
+### CEO DUAL VOICES — CONSENSUS TABLE [subagent-only]
+```
+═══════════════════════════════════════════════════════════════
+  Dimension                           Claude  Codex  Consensus
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Premises valid?                   YES     N/A    [subagent-only]
+  2. Right problem to solve?           YES*    N/A    [subagent-only]
+  3. Scope calibration correct?        PARTIAL N/A    [subagent-only]
+  4. Alternatives sufficiently explored?NO     N/A    [subagent-only]
+  5. Competitive/market risks covered? NO      N/A    [subagent-only]
+  6. 6-month trajectory sound?         NO*     N/A    [subagent-only]
+═══════════════════════════════════════════════════════════════
+* Assignment model solves secondary workflow; primary (pre-run bulk assign) is missing.
+* Auth defect in production is the 6-month regret scenario.
+```
+
+### DESIGN LITMUS SCORECARD [subagent-only]
+```
+═══════════════════════════════════════════════════════════════
+  Dimension                           Claude  Codex  Score
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Information hierarchy              6/10   N/A    6/10
+  2. Missing states                     5/10   N/A    5/10
+  3. User journey arc                   5/10   N/A    5/10
+  4. Specificity of UI decisions        4/10   N/A    4/10
+  5. Edge case handling                 4/10   N/A    4/10
+  6. Accessibility                      6/10   N/A    6/10
+  7. Trust / polish                     4/10   N/A    4/10
+═══════════════════════════════════════════════════════════════
+Overall design completeness: 5/10 — ships, but noticeably rough.
+```
+
+### ENG DUAL VOICES — CONSENSUS TABLE [subagent-only]
+```
+═══════════════════════════════════════════════════════════════
+  Dimension                           Claude  Codex  Consensus
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Architecture sound?               NO      N/A    [subagent-only]
+  2. Test coverage sufficient?         NO      N/A    [subagent-only]
+  3. Performance risks addressed?      PARTIAL N/A    [subagent-only]
+  4. Security threats covered?         NO      N/A    [subagent-only]
+  5. Error paths handled?              PARTIAL N/A    [subagent-only]
+  6. Deployment risk manageable?       YES     N/A    [subagent-only]
+═══════════════════════════════════════════════════════════════
+```
+
+---
+
+## CRITICAL BUGS FOUND (fix before merge)
+
+### BUG 1 — Auth: `assertTestAccess` blocks all project members (only owner can assign)
+**File:** [api/src/routes/tests.ts:21](api/src/routes/tests.ts#L21)
+**Problem:** `return !!p && p.userId === userId` — owner-only check. All non-owner team members get 404 on `PATCH /api/tests/:id`.
+**Fix:** Replace with `return assertProjectAccess(db, s.projectId, userId)` — same pattern as `runs.ts:50`.
+**Impact:** Test assignment feature non-functional for every non-owner user in a team.
+
+### BUG 2 — UI: Assignee filter shows UUID slices, not names
+**File:** [web/src/pages/RunView.tsx:326](web/src/pages/RunView.tsx#L326)
+**Problem:** `label: t.assigneeId.slice(0, 8)` — truncated UUID shown as option text. `RunTest` type has no `assigneeName`.
+**Fix:** Add `assigneeName?: string` to `RunTest` type + join `users` in `GET /api/runs/:id` response builder (runs.ts). Use in both filter and sidebar footer.
+**Impact:** Filter is operationally useless; users see `"a3f8c1d0"` not a real name.
+
+### BUG 3 — UI: Dead "Assign To" button with no onClick handler
+**File:** [web/src/components/RunTestCaseSidebar.tsx:488](web/src/components/RunTestCaseSidebar.tsx#L488)
+**Problem:** `<Button type="button" variant="secondary">Assign To</Button>` — no onClick, no handler. Sits adjacent to the real working assignee select.
+**Fix:** Remove the button entirely. The `<label>Assignee</label>` + `<select>` is sufficient.
+**Impact:** First thing users click does nothing. Makes assignment look broken.
+
+---
+
+## HIGH BUGS (fix before merge — functional)
+
+### BUG 4 — API: `assigneeId` not validated against project membership
+**File:** [api/src/routes/tests.ts:38](api/src/routes/tests.ts#L38)
+**Fix:** Verify the target user is a project member before accepting the assignment.
+
+### BUG 5 — E2E: Test assignment tests skip when no open run exists (no fixture creation)
+**File:** [e2e/specs/test-execution.spec.ts:870](e2e/specs/test-execution.spec.ts#L870)
+**Problem:** Tests skip when all runs are completed. No `createScratchRun` in `beforeAll`.
+**Fix:** Follow the same pattern as all other Sprint E test groups — create a run in `beforeAll`, delete in `afterAll`.
+
+### BUG 6 — API: `canAccessProject` in `projectAccess.ts` has broken multi-project membership query
+**File:** [api/src/lib/projectAccess.ts:36](api/src/lib/projectAccess.ts#L36)
+**Problem:** `db.select().from(projectMembers).where(eq(projectMembers.userId, userId))` fetches user's first membership globally, then checks `m.projectId === projectId` — wrong if user is in multiple projects.
+**Fix:** Use `and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId))` in a single query.
+
+### BUG 7 — UI: Bulk ops target section picker shows flat names with no suite/hierarchy context
+**File:** [web/src/pages/cases/CasesOverview.tsx:748](web/src/pages/cases/CasesOverview.tsx#L748)
+**Fix:** Prefix section name with suite name: `Suite / Section`.
+
+### BUG 8 — UI: No success confirmation after bulk move/copy completes
+**File:** [web/src/pages/cases/CasesOverview.tsx:344](web/src/pages/cases/CasesOverview.tsx#L344)
+**Fix:** Show inline success message using existing `bulkError` slot (e.g., "12 cases moved to Authentication").
+
+### BUG 9 — UI: Duplicate button visually adjacent to Delete with identical styling
+**File:** [web/src/pages/cases/CasesOverview.tsx:555](web/src/pages/cases/CasesOverview.tsx#L555)
+**Fix:** Reorder row actions to: Edit | Delete | (gap) | Duplicate, or move Duplicate to secondary menu.
+
+### BUG 10 — API: No audit log or webhook on test assignment
+**File:** [api/src/routes/tests.ts:43](api/src/routes/tests.ts#L43)
+**Fix:** Add `writeAuditLog(db, userId, "test.assigned", "test", updated.id, projectId)` + `dispatchWebhooks`.
+
+---
+
+## MEDIUM ISSUES (fix before merge — polish)
+
+- Empty state message wrong when assignee filter active ([RunView.tsx:396](web/src/pages/RunView.tsx#L396))
+- Assignee filter change doesn't clear bulk checkbox selection set ([RunView.tsx:319](web/src/pages/RunView.tsx#L319))
+- Filter change closes open sidebar; should only close if selected test is filtered out ([RunView.tsx:319](web/src/pages/RunView.tsx#L319))
+- No loading/error state for members fetch failure in sidebar ([RunTestCaseSidebar.tsx:137](web/src/components/RunTestCaseSidebar.tsx#L137))
+- Migration `ADD COLUMN` has no idempotency guard (0016_little_valkyrie.sql:1)
+- N+1 auth queries in `assertTestAccess` — collapse to a single join ([tests.ts:13](api/src/routes/tests.ts#L13))
+- Run table "Assigned To" column always shows "—" even after assignment ([RunView.tsx:479](web/src/pages/RunView.tsx#L479))
+
+---
+
+## NOT IN SCOPE (deferred to TODOS.md)
+- Select All across sections UX — medium improvement, not blocking
+- Bulk assignment at run creation time (pre-run distribution) — see User Challenge below
+- `runId` prop dead code in `RunTestCaseSidebar` — low cleanup item
+
+---
+
+## What Already Exists (mapped)
+| Sub-problem | Code |
+|---|---|
+| assertProjectAccess (correct pattern) | `api/src/lib/projectAccess.ts` |
+| assertRunAccess (model for fix) | `api/src/routes/runs.ts:53` |
+| writeAuditLog | `api/src/lib/auditLog.ts` |
+| dispatchWebhooks | `api/src/lib/webhooks.ts` |
+| createScratchRun e2e helper | `e2e/specs/test-execution.spec.ts` |
+| bulkError slot in CasesOverview | `web/src/pages/cases/CasesOverview.tsx:87` |
+
+---
+
+## Decision Audit Trail
+
+| # | Phase | Decision | Classification | Principle | Rationale | Rejected |
+|---|-------|----------|----------------|-----------|-----------|---------|
+| 1 | CEO | Fix auth bug in tests.ts | Mechanical | P1+P4 | Critical functional defect; 2-line fix | No |
+| 2 | CEO | Fix UUID label in filter | Mechanical | P1 | Feature unusable without real names | No |
+| 3 | CEO | Remove dead "Assign To" button | Mechanical | P5 | Dead code is noise; remove it | No |
+| 4 | CEO | Defer "Select All" UX | Taste | P3 | Useful but not blocking; deferred to TODOS | Implement now |
+| 5 | Design | Fix empty state message for assignee filter | Mechanical | P5 | Wrong message misleads users | No |
+| 6 | Design | Fix filter change closing sidebar | Mechanical | P5 | Only close if test is filtered out | No |
+| 7 | Design | Fix bulk target section picker labels | Mechanical | P5 | Flat names ambiguous in multi-suite projects | No |
+| 8 | Design | Fix no success feedback on bulk ops | Mechanical | P1 | Silent success is bad UX; use existing bulkError slot | No |
+| 9 | Eng | Fix canAccessProject multi-project bug | Mechanical | P1 | Pre-existing defect in code path required by our fix | No |
+| 10 | Eng | Add audit log + webhook on assignment | Mechanical | P2 | Standard pattern; every other mutation has it | No |
+| 11 | Eng | Fix migration idempotency | Mechanical | P3 | Simple guard, prevents failed-deploy ops problem | No |
+| 12 | Eng | Fix E2E fixture creation for Story 2.10/2.11 | Mechanical | P1 | Tests that always skip provide zero coverage | No |
+| 13 | Eng | Optimize assertTestAccess to single join | Mechanical | P5 | 4 sequential queries → 1 join; in blast radius | No |
 
 ---
 
 ## GSTACK REVIEW REPORT
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 0 | — | — |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
+| Review | Phase | Status | Findings | Critical | High |
+|--------|-------|--------|----------|---------|------|
+| CEO Review | Phase 1 | issues_open | 10 | 2 | 5 |
+| Design Review | Phase 2 | issues_open | 20 | 2 | 8 |
+| Eng Review | Phase 3 | issues_open | 13 | 2 | 5 |
+| Cross-phase | All | user_challenge | 1 | — | — |
 
-**VERDICT:** NO REVIEWS YET — running full /autoplan pipeline below.
-
-<!-- AUTONOMOUS DECISION LOG -->
-## Decision Audit Trail
-
-| # | Phase | Decision | Classification | Principle | Rationale | Rejected |
-|---|-------|----------|----------------|-----------|-----------|----------|
-| 1 | CEO | Include all Epics 18-22 | Mechanical | P1 (completeness) | All 5 deferred QA issues must close | Option C (partial) |
-| 2 | CEO | Defer email to Sprint E | Mechanical | P3 (pragmatic) | Low SMTP adoption, wrong persona | Add email to Sprint D |
-| 3 | CEO | Proceed with Sprint D despite maintenance nature | Mechanical | P6 (bias toward action) | Hygiene sprint valid before next AI feature sprint | Block for competitive reason |
-| 4 | CEO | 19.1 rename to "Needs Attention" | TASTE DECISION | P5 (explicit) | "To Do" implies assignment semantics that don't exist | Keep "To Do" name |
-| 5 | CEO | Retain 21.2-21.5 (full settings redesign) | TASTE DECISION | P1 (completeness) | Subagent recommends cutting 21.2-21.5; completeness says boil the lake | Cut 21.2-21.5 |
-| 6 | Design | Run tab empty states — add specs to plan | Mechanical | P1 (completeness) | Cannot ship stub replacements without empty states | Defer to implementer |
-| 7 | Design | Progress chart — add axis/tooltip spec | Mechanical | P5 (explicit) | Implementer makes 4 silent product decisions without spec | Leave unspecified |
-| 8 | Design | To Do loading + empty states — add to plan | Mechanical | P1 (completeness) | Most common state unspecified | Defer to implementer |
-| 9 | Design | Settings default tab: General (not Members) | Mechanical | P5 (explicit) | Universal settings page convention; designer finding F4 | Members-first |
-| 10 | Design | Project delete: typed-confirmation modal | Mechanical | P1 (completeness) | Highest-severity destructive action; window.confirm is a regression | window.confirm |
-| 11 | Design | Sidebar no-project: collapse badge area | Mechanical | P5 (explicit) | Defines the missing state explicitly | Show placeholder |
-| 12 | Eng | Add entityId filter to audit route (BLOCKER) | Mechanical | P1 (completeness) | 18.1 will show wrong data without it | Code around missing filter |
-| 13 | Eng | Fix audit URL in plan (BLOCKER) | Mechanical | P5 (explicit) | Frontend would 404 on wrong URL | Leave incorrect |
-| 14 | Eng | Fix To Do query param: is_completed not completed | Mechanical | P5 (explicit) | Wrong param silently returns all runs unfiltered | Leave incorrect |
-| 15 | Eng | Cap defects endpoint at 250 rows | Mechanical | P3 (pragmatic) | Consistent with all other list endpoints | Unlimited |
-| 16 | Eng | Add p-limit(5) concurrency cap to To Do fan-out | Mechanical | P1 (completeness) | N+1 at 50 projects = 100 requests | Accept risk |
-| 17 | Eng | Progress chart timezone: accept limitation | TASTE DECISION | P3 (pragmatic) | UTC bucketing adds complexity; document the limitation | Fix with UTC grouping |
-| 18 | Eng | Cache milestone sidebar fetch in component state | Mechanical | P3 (pragmatic) | Repeated collapse/expand fires repeated GETs | No cache |
+**VERDICT:** NEEDS FIXES — 3 critical bugs (auth, UUID display, dead button) must be resolved before merge. 13 auto-decided fixes in the audit trail above. 1 user challenge outstanding (see gate below).
