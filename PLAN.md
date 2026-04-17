@@ -1,4 +1,4 @@
-<!-- /autoplan restore point: /c/Users/C5414063/.gstack/projects/vslvslv-tcms/development-autoplan-restore-20260417-170527.md -->
+<!-- /autoplan restore point: /c/Users/C5414063/.gstack/projects/vslvslv-tcms/development-autoplan-restore-20260417-182008.md -->
 # Sprint F Plan
 
 Generated: 2026-04-17 | Branch: development | Commit: ea1f5a0
@@ -227,10 +227,28 @@ All 7 findings are mechanical; see HIGH BUGS section below.
 | 9 | Eng | Include projectId in search response | Mechanical | P5 | Required for correct client routing | No |
 | 10 | Eng | Defer flakiness scope fix (analytics.ts) | Mechanical | P3 | Out of Sprint F blast radius | Sprint G |
 | 11 | Eng | Defer test audit fields (createdBy) | Mechanical | P3 | Low impact, not blocking | Sprint G |
+| 12 | Eng (re-run) | Auth + project access on snapshot endpoint | Mechanical | P1 | Security: jwtVerify + assertProjectAccess required, same as all other routes | Skip |
+| 13 | Eng (re-run) | Search pagination + DB index | Mechanical | P1+P3 | ILIKE full-table scan at 10x users is a performance cliff | No pagination |
+| 14 | CEO (re-run) | Guided onboarding (Quick Start modal) — keep deferred | Mechanical | P5 | Separate story; deferred in Decision 3; new session subagent agrees it's a separate concern | Sprint F |
+| 15 | CEO (re-run) | Add competitor-moat feature to Sprint G planning | Mechanical | P6 | Search + recent items are table stakes; Sprint G should include a differentiating execution feature | Ignore |
+
+---
+
+### ISSUE 11 — Auth guard on score-snapshot endpoint (NEW — re-run 2026-04-17)
+**File:** [api/src/routes/milestones.ts](api/src/routes/milestones.ts)
+**Problem:** `POST /api/milestones/:id/score-snapshot` must call `await request.jwtVerify()` and `assertProjectAccess(request, milestone.projectId)`. The plan doesn't specify this — easy to forget since snapshot is also triggered internally from results.ts.
+**Fix:** Standard auth guard: `await request.jwtVerify(); const ms = await db.select()...; assertProjectAccess(request, ms.projectId);` — same pattern as all other milestone routes.
+
+### ISSUE 12 — Search needs DB index + pagination (NEW — re-run 2026-04-17)
+**File:** [api/src/routes/search.ts](api/src/routes/search.ts) (new file)
+**Problem:** ILIKE search over `testCases.title` and `runs.name` without an index does a full-table scan. With 500+ cases per project and multiple projects, response time will exceed 200ms at 10x users.
+**Fix:** Add `CREATE INDEX CONCURRENTLY idx_cases_title_trgm ON test_cases USING gin(title gin_trgm_ops)` (requires `pg_trgm` extension) OR simply limit to `LIMIT 10` with `ORDER BY relevance` and document the constraint. Use trigram extension if pg_trgm is available; otherwise accept ILIKE with the 10-result cap.
 
 ---
 
 ## GSTACK REVIEW REPORT
+
+### Run 1 — 2026-04-17 (commit ea1f5a0)
 
 | Review | Phase | Status | Findings | Critical | High |
 |--------|-------|--------|----------|---------|------|
@@ -239,4 +257,57 @@ All 7 findings are mechanical; see HIGH BUGS section below.
 | Eng Review | Phase 3 | issues_open | 10 (2 are plan clarifications) | 0 | 3 |
 | Cross-phase | All | clean | 0 | — | — |
 
-**VERDICT:** NEEDS SPEC PRECISION — No blocking bugs (Sprint F is new work, not buggy existing code). 10 HIGH issues are implementation spec details that must be addressed during development. All are mechanical — one right answer each. No taste decisions remaining. BACKLOG.md should be updated before Sprint G to reflect actual completion state.
+### Run 2 — 2026-04-17 (commit cfcadff) [subagent-only]
+
+```
+═══════════════════════════════════════════════════════════════
+  CEO DUAL VOICES — CONSENSUS TABLE [subagent-only]
+  Dimension                           Claude  Codex  Consensus
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Premises valid?                   YES*    N/A    [subagent-only]
+  2. Right problem to solve?           PARTIAL N/A    [subagent-only]
+  3. Scope calibration correct?        YES     N/A    [subagent-only]
+  4. Alternatives sufficiently explored?YES    N/A    [subagent-only]
+  5. Competitive/market risks covered? NO      N/A    [subagent-only]
+  6. 6-month trajectory sound?         YES*    N/A    [subagent-only]
+═══════════════════════════════════════════════════════════════
+* Subagent flagged onboarding reframe (already deferred Decision 3) and
+  competitor risk (table-stakes features). Both auto-decided: keep deferral,
+  add Sprint G note. New finding: auth on snapshot endpoint (ISSUE 11).
+```
+
+```
+═══════════════════════════════════════════════════════════════
+  DESIGN LITMUS SCORECARD [subagent-only]
+  Dimension                           Claude  Codex  Score
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Information hierarchy              5/10   N/A    5/10
+  2. Missing states                     6/10   N/A    6/10
+  3. User journey arc                   6/10   N/A    6/10
+  4. Specificity of UI decisions        6/10   N/A    6/10
+  5. Edge case handling                 5/10   N/A    5/10
+  6. Accessibility                      7/10   N/A    7/10
+  7. Trust / polish                     6/10   N/A    6/10
+═══════════════════════════════════════════════════════════════
+All existing 10 HIGH ISSUES confirmed valid. Design subagent added spec for
+search zero-result copy: "No cases or runs match '[query]'. Search looks in
+titles and descriptions across all your projects."
+```
+
+```
+═══════════════════════════════════════════════════════════════
+  ENG DUAL VOICES — CONSENSUS TABLE [subagent-only]
+  Dimension                           Claude  Codex  Consensus
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Architecture sound?               YES     N/A    [subagent-only]
+  2. Test coverage sufficient?         NO      N/A    [subagent-only]
+  3. Performance risks addressed?      NO*     N/A    [subagent-only]
+  4. Security threats covered?         NO*     N/A    [subagent-only]
+  5. Error paths handled?              PARTIAL N/A    [subagent-only]
+  6. Deployment risk manageable?       YES     N/A    [subagent-only]
+═══════════════════════════════════════════════════════════════
+* Performance: ILIKE full-table scan not addressed — ISSUE 12 added.
+* Security: snapshot endpoint missing explicit auth guard — ISSUE 11 added.
+```
+
+**VERDICT (Run 2):** 12 HIGH ISSUES total (10 from Run 1 + 2 new: auth on snapshot, search pagination/index). All mechanical. No blocking bugs. Plan ready for implementation. ISSUES 1, 2, 7, 11 are the kill-switch items — if any of these four are missed during implementation, the sprint ships with either a broken chart, a security hole, or both.
