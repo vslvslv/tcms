@@ -122,6 +122,13 @@ export default function CasesOverview() {
       .finally(() => setSummaryLoading(false));
   }, [projectId, currentProject]);
 
+  const loadSummary = useCallback(() => {
+    if (!projectId) return;
+    api<CaseSummary>(`/api/projects/${projectId}/cases/summary`)
+      .then((s) => setSummaries((prev) => ({ ...prev, [projectId]: s })))
+      .catch(() => {});
+  }, [projectId]);
+
   const loadOverview = useCallback(() => {
     if (!projectId) return;
     setOverviewLoading(true);
@@ -313,7 +320,7 @@ export default function CasesOverview() {
     if (!window.confirm(message)) return;
     setSaving(true);
     api(`/api/sections/${section.id}`, { method: "DELETE" })
-      .then(() => loadOverview())
+      .then(() => { loadOverview(); loadSummary(); })
       .catch((err) => setOverviewError(err instanceof Error ? err.message : "Failed to delete section"))
       .finally(() => setSaving(false));
   }
@@ -323,7 +330,7 @@ export default function CasesOverview() {
     if (!window.confirm(`Delete test case "${title}"?`)) return;
     setSaving(true);
     api(`/api/cases/${c.id}`, { method: "DELETE" })
-      .then(() => loadOverview())
+      .then(() => { loadOverview(); loadSummary(); })
       .catch((err) => setOverviewError(err instanceof Error ? err.message : "Failed to delete case"))
       .finally(() => setSaving(false));
   }
@@ -364,6 +371,7 @@ export default function CasesOverview() {
         setBulkSuccess(`${count} case${count !== 1 ? "s" : ""} ${bulkAction === "move" ? "moved" : "copied"} to ${dest}.`);
       }
       await loadOverview();
+      loadSummary();
     } catch (err) {
       setBulkError(err instanceof Error ? err.message : "Bulk action failed");
     } finally {

@@ -111,8 +111,15 @@ export default function RunView() {
     () => sections.flatMap((s) => s.tests),
     [sections]
   );
-  const selectedTest = selectedTestId ? allTestsInOrder.find((t) => t.id === selectedTestId) : null;
+  const selectedTest = selectedTestId ? (testsForSections.find((t) => t.id === selectedTestId) ?? null) : null;
   const [showShortcutHelp, setShowShortcutHelp] = useState(false);
+
+  // Close sidebar only when the selected test is filtered out (not on every filter change)
+  useEffect(() => {
+    if (selectedTestId && filteredTests.length > 0 && !filteredTests.find((t) => t.id === selectedTestId)) {
+      setSelectedTestId(null);
+    }
+  }, [filteredTests, selectedTestId]);
 
   // Keyboard shortcuts: j/k navigate, p/f/b/s set status, n next untested, ? help
   const setStatusViaShortcut = useCallback(async (testId: string, status: string) => {
