@@ -201,14 +201,14 @@ All 7 findings are mechanical; see HIGH BUGS section below.
 **Problem:** 2+ data points threshold doesn't cover "exactly 1" state explicitly.
 **Fix:** Show "Recorded 1 snapshot. Chart appears after next test run." when `data.length === 1`.
 
-### ISSUE 10 — Per-page empty state CTAs must be specified
+### ISSUE 10 — Per-page empty state CTAs must be specified (Run 1) — EXPANDED in Run 3
 **Pages:** SuiteView.tsx, Dashboard.tsx, ProjectDetail.tsx, RunView.tsx
 **Problem:** Plan says "add EmptyState" but doesn't specify CTA text or href per page.
-**Fix:** 
+**Fix (expanded):**
 - `SuiteView.tsx` (no sections): "Add your first section" → focus section input
-- `Dashboard.tsx` (no projects): "Create your first project" → `/projects/new`
+- `Dashboard.tsx` — ALL 4 cards need specs (see ISSUE 15 below)
 - `ProjectDetail.tsx` (no runs): "Create a run" → `/runs/new?projectId=...`
-- `RunView.tsx` (no tests): "Add test cases to run" → create run flow
+- `RunView.tsx` (no tests, no filter active): "Add test cases to run" → create run flow; **if filter active, CTA must be hidden** — "Clear filters" link is the correct affordance (already present at RunView.tsx:405)
 
 ---
 
@@ -231,6 +231,26 @@ All 7 findings are mechanical; see HIGH BUGS section below.
 | 13 | Eng (re-run) | Search pagination + DB index | Mechanical | P1+P3 | ILIKE full-table scan at 10x users is a performance cliff | No pagination |
 | 14 | CEO (re-run) | Guided onboarding (Quick Start modal) — keep deferred | Mechanical | P5 | Separate story; deferred in Decision 3; new session subagent agrees it's a separate concern | Sprint F |
 | 15 | CEO (re-run) | Add competitor-moat feature to Sprint G planning | Mechanical | P6 | Search + recent items are table stakes; Sprint G should include a differentiating execution feature | Ignore |
+| 16 | CEO (Run 3) | Add primary persona statement to plan | Mechanical | P5 | Explicit beats assumed — QA engineers + team leads named | Omit |
+| 17 | CEO (Run 3) | Add "why we win" paragraph | Mechanical | P5 | Competitive differentiation must be stated | Omit |
+| 18 | CEO (Run 3) | Add localStorage scope statement | Mechanical | P5 | Cross-device sync is an explicit non-goal, must be documented | Omit |
+| 19 | CEO (Run 3) | Add guided onboarding reasoning to Decision 3 | Mechanical | P5 | CTAs per page > single modal — reason documented | Omit |
+| 20 | CEO (Run 3) | Keep Story 15.3 — 16 milestones in prod DB | Taste | P6 | Subagent said low leverage; DB check shows milestones actively used | Defer 15.3 |
+| 21 | CEO (Run 3) | Add first-run walkthrough to success criteria | Taste | P6 | Premise validation is good practice; walkthrough confirms empty-state coverage | Skip |
+| 22 | Design (Run 3) | EmptyState: add variant prop (not reorder all sites) | Mechanical | P5 | Backward-compat: existing 7+ sites unaffected; onboarding pages use variant="cta" | Reorder all |
+| 23 | Design (Run 3) | GlobalSearchBar = Cmd+K modal overlay | Mechanical | P5 | Closes on Esc, backdrop, keyboard nav = modal pattern; inline input doesn't match behavior | Inline header |
+| 24 | Design (Run 3) | Dashboard: all 4 cards need empty state CTAs | Mechanical | P1 | 4 bare `<p>` confirmed at lines 200/235/260/288 | Projects-only |
+| 25 | Design (Run 3) | RunView CTA conditional on filter state | Mechanical | P5 | CTA only when no active filters; existing "Clear filters" link handles filtered empty | Unconditional |
+| 26 | Design (Run 3) | useRecentItems mounts in Layout.tsx via useLocation | Mechanical | P5 | React Router v7 has no nav events; useLocation in router tree is only correct approach | Event listener |
+| 27 | Design (Run 3) | Recent items store full URL path | Mechanical | P5 | ID reconstruction requires context unavailable in sidebar | Store IDs only |
+| 28 | Eng (Run 3) | Score = passRate formula | Mechanical | P5 | Only scalar available; matches ReadinessScore component | Composite score |
+| 29 | Eng (Run 3) | Snapshot cooldown: 1-minute guard | Mechanical | P3 | 500 concurrent snapshots = 2,500 queries; guard is 1 line | No guard |
+| 30 | Eng (Run 3) | useRecentItems: filter to entity URLs only | Mechanical | P1 | Without filter, list records /dashboard, /projects/new etc. | Record all routes |
+| 31 | Eng (Run 3) | Add GET /api/milestones/:id/scores endpoint | Mechanical | P5 | Chart has no read path without it | Omit |
+| 32 | Eng (Run 3) | milestoneScores in schema.ts first | Mechanical | P5 | Drizzle requires schema before migration generation | Handwrite SQL |
+| 33 | Eng (Run 3) | Dedup recent items by URL | Mechanical | P5 | Strict Mode double-render adds duplicates | No dedup |
+| 34 | Eng (Run 3) | Defer search rate-limit to Sprint G | Mechanical | P3 | fastify-rate-limit not installed; LIMIT 10 sufficient mitigation | Install now |
+| 35 | Eng (Run 3) | Whitespace query: .trim().min(1) server+client | Mechanical | P5 | ILIKE % % matches everything; spec both layers | Server only |
 
 ---
 
@@ -246,7 +266,113 @@ All 7 findings are mechanical; see HIGH BUGS section below.
 
 ---
 
+### ISSUE 13 — EmptyState component: add `variant` prop to avoid breaking 7+ existing usages (NEW — Run 3)
+**File:** [web/src/components/ui/EmptyState.tsx](web/src/components/ui/EmptyState.tsx)
+**Problem:** ISSUE 4 restructures render order (CTA-before-message) for onboarding contexts. But the current component is used in 7+ call sites for filter/search empty states where message-first is correct ("No cases match your filters"). A direct reorder breaks those usages.
+**Fix:** Add `variant?: "default" | "cta"` prop. `"default"` (backward compat) = message then action. `"cta"` = optional icon then action then message. The 4 new onboarding pages use `variant="cta"`. Existing pages stay on `"default"`. Also add `icon?: ReactNode` as an optional prop consumed only in `"cta"` variant. Suggested icons: PlusCircle (SuiteView), FolderOpen (Dashboard/ProjectDetail), PlayCircle (RunView) from Lucide.
+
+### ISSUE 14 — GlobalSearchBar is a Cmd+K modal overlay, not an inline header input (NEW — Run 3)
+**File:** [web/src/components/GlobalSearchBar.tsx](web/src/components/GlobalSearchBar.tsx) (new file)
+**Problem:** Plan says "search bar in the header/sidebar" — ambiguous. Cmd+K semantics + "closes on Esc/outside click" + keyboard navigation in results all describe a floating modal palette, not an inline input.
+**Fix:** GlobalSearchBar renders as: a small search icon button in the header nav (always visible). `Cmd/Ctrl+K` OR clicking the icon opens a centered modal overlay (`fixed inset-0 z-50 flex items-start justify-center pt-[15vh]`) with a backdrop and a search input + results list. Close on Esc or backdrop click. Same `<Modal>` primitive used elsewhere in the codebase (web/src/components/ui/Modal.tsx). No persistent input in the header.
+
+### ISSUE 15 — Dashboard: all 4 card empty states need specs (NEW — Run 3)
+**File:** [web/src/pages/Dashboard.tsx](web/src/pages/Dashboard.tsx)
+**Problem:** Dashboard has 4 bare `<p className="text-muted">` empty states (line 200, 235, 260, 288). ISSUE 10 only specified the projects card.
+**Fix:** Replace all 4 with `<EmptyState variant="cta">`:
+- Projects (line 200): icon=FolderOpen, action="Create your first project" → `/projects/new`, message="No projects yet."
+- Milestones (line 235): icon=Flag, action="Add a milestone" → active project's settings (or `/projects` to select first), message="No upcoming milestones."
+- Test Plans (line 260): icon=ClipboardList, action="Create a plan" → omit if no project context, message="No test plans yet."
+- Recent Runs (line 288): icon=PlayCircle, action="Create a run" → `/runs/new` (or omit if no project context), message="No recent runs."
+
+### ISSUE 16 — useRecentItems hook: mount in Layout.tsx using useLocation (NEW — Run 3)
+**File:** [web/src/hooks/useRecentItems.ts](web/src/hooks/useRecentItems.ts) (new file) + [web/src/components/Layout.tsx](web/src/components/Layout.tsx)
+**Problem:** React Router v7 has no subscription event for navigation. A standalone hook cannot watch route changes. The hook must be consumed inside the router tree.
+**Fix:** `useRecentItems` is a hook that uses `useLocation().pathname` in a `useEffect` to detect navigation. It is called **in Layout.tsx** (already the top-level router-tree component). It writes to `localStorage` key `tcms-recent:v1`. Each item stores `{ id, type: "case"|"run", title, projectName, url: pathname, visitedAt: ISOString }`. Max 10 items, newest first. Hook also exports the stored list for the sidebar.
+
+### ISSUE 17 — Recent items: store full URL path, not just ID (NEW — Run 3)
+**File:** [web/src/hooks/useRecentItems.ts](web/src/hooks/useRecentItems.ts) (new file)
+**Problem:** If only `id` is stored, reconstructing the navigation URL requires knowing suiteId, sectionId, etc. — context that may not be available in the sidebar. 
+**Fix:** Store `url: window.location.pathname` at write time. Navigation from sidebar is `navigate(item.url)`. No URL reconstruction needed.
+
+### ISSUE 18 — Score snapshot: fire-and-forget + reuse existing run lookup (NEW — Run 3)
+**File:** [api/src/routes/results.ts](api/src/routes/results.ts) (existing)
+**Problem:** Snapshot trigger requires knowing `run.milestoneId`. The results route must look up run → milestoneId. This must be fire-and-forget (snapshot failure must not block result write).
+**Fix:** In `POST /api/results`, after fetching the run for ownership verification (already needed), check `if (run.milestoneId)` then call the snapshot logic directly (not via HTTP — reuse the DB insert logic inline or extract to a shared function). Wrap in `try/catch` that only logs on failure. Result write commits regardless of snapshot outcome.
+
+### ISSUE 19 — Global search error state (NEW — Run 3)
+**File:** [web/src/components/GlobalSearchBar.tsx](web/src/components/GlobalSearchBar.tsx) (new file)
+**Problem:** Network error or 401 on `GET /api/search` shows blank results, indistinguishable from zero results. User with expired token thinks search is empty.
+**Fix:** Track `searchError` state separately from `searchResults`. If fetch throws, render "Search unavailable. Try again." in `text-error` class. Differentiate from zero results ("No cases or runs match '[query]'. Search looks in titles across all your projects.").
+
+### ISSUE 20 — Project context after global search navigation (NEW — Run 3)
+**File:** [web/src/components/GlobalSearchBar.tsx](web/src/components/GlobalSearchBar.tsx) (new file)
+**Problem:** Clicking a search result navigates to a case or run page. If the user's active project in `ProjectContext` doesn't match the result's project, sidebar nav shows the wrong project.
+**Fix:** Before calling `navigate(url)`, call `setProjectId(result.projectId)` from `ProjectContext`. Same pattern as the project switcher in the sidebar.
+
+---
+
+### ISSUE 21 — milestoneScores table must be defined in schema.ts before migration (NEW — Run 3 Eng)
+**File:** [api/src/db/schema.ts](api/src/db/schema.ts)
+**Problem:** `milestoneScores` not present in schema.ts — Drizzle Kit cannot generate migration without it. Implementing the snapshot endpoint without the schema definition first will block or force manually-written SQL (forbidden by CLAUDE.md).
+**Fix:** Add to `api/src/db/schema.ts`:
+```ts
+export const milestoneScores = pgTable("milestone_scores", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  milestoneId: uuid("milestone_id").notNull().references(() => milestones.id, { onDelete: "cascade" }),
+  score: integer("score").notNull(),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+});
+```
+Then `npx drizzle-kit generate`. This is the **first implementation step** before any other Story 15.3 work.
+
+### ISSUE 22 — Score formula: `score = passRate` (0–100 integer) (NEW — Run 3 Eng)
+**File:** [api/src/routes/analytics.ts](api/src/routes/analytics.ts) (snapshot logic), [api/src/routes/milestones.ts](api/src/routes/milestones.ts) (new endpoint)
+**Problem:** The readiness endpoint returns 7 fields, not a single `score`. The snapshot must store a scalar. Undefined formula = chart data meaningless across sprints.
+**Fix:** `score = readinessData.passRate ?? 0`. Y-axis label: "Pass rate (%)". This matches the `ReadinessScore` component which already uses `passRate` as the primary metric.
+
+### ISSUE 23 — Snapshot stampede: 1-minute cooldown guard (NEW — Run 3 Eng)
+**File:** [api/src/routes/results.ts](api/src/routes/results.ts) (snapshot trigger)
+**Problem:** A run with 500 test cases (seed data has 500+) triggers 500 concurrent snapshot writes, each requiring 5 readiness queries. 2,500 extra queries per bulk execution.
+**Fix:** Before inserting, check: `SELECT 1 FROM milestone_scores WHERE milestone_id = $1 AND recorded_at > now() - interval '1 minute' LIMIT 1`. If row exists, skip insert. One guard query per result write vs. 5 readiness queries per snapshot.
+
+### ISSUE 24 — useRecentItems must filter to entity URLs only (NEW — Run 3 Eng)
+**File:** [web/src/hooks/useRecentItems.ts](web/src/hooks/useRecentItems.ts) (new file)
+**Problem:** Without filtering, every `useLocation` pathname change (including `/dashboard`, `/projects/new`, `/reports`) gets recorded as a "recent item." The list will be full of navigation pages, not cases and runs.
+**Fix:** Guard in the `useEffect`: `if (!/\/(cases|runs|milestones)\/[a-f0-9-]{36}/.test(pathname)) return;`. Only record paths matching case, run, or milestone entity routes.
+
+### ISSUE 25 — GET /api/milestones/:id/scores endpoint must be specified (NEW — Run 3 Eng)
+**File:** [api/src/routes/milestones.ts](api/src/routes/milestones.ts) (existing file)
+**Problem:** The snapshot POST is specified, but the chart needs a GET endpoint to read history. Without this, `MilestoneProgress.tsx` has no data source for the chart.
+**Fix:** Add `GET /api/milestones/:id/scores` → `SELECT id, score, recorded_at FROM milestone_scores WHERE milestone_id = $1 ORDER BY recorded_at ASC`. Returns `{ recordedAt: string; score: number }[]`. Auth: same `jwtVerify + assertProjectAccess` as all milestone routes. Add to `MilestoneProgress.tsx`: fetch this endpoint alongside existing progress fetch; pass to `LineChart`.
+
+### ISSUE 26 — Recent items section must be in Workspace section, outside {projectId && ...} (NEW — Run 3 Eng)
+**File:** [web/src/components/Layout.tsx](web/src/components/Layout.tsx) (existing file)
+**Problem:** The sidebar's `{projectId && (...)}` block (line 94) hides content when no project is selected. Recent items must be visible regardless of project context — the whole point is jumping back to items in any project.
+**Fix:** Place the Recent items section in the Workspace section (after line 242), NOT inside the `{projectId && (...)}` block. Render with the same `sectionLabel` class. Hidden entirely when `recentItems.length === 0`.
+
+### ISSUE 27 — Recent items dedup by URL (Strict Mode double-render guard) (NEW — Run 3 Eng)
+**File:** [web/src/hooks/useRecentItems.ts](web/src/hooks/useRecentItems.ts) (new file)
+**Problem:** React 18 Strict Mode double-invokes effects. Without dedup, each page navigation adds two identical entries.
+**Fix:** Before pushing: `if (current[0]?.url === pathname) return;`. Skip insert if top item already matches current URL.
+
+---
+
 ## GSTACK REVIEW REPORT
+
+### Run 3 — 2026-04-17 (commit 8ce4768) [subagent-only] — APPROVED
+
+| Review | Phase | Status | Findings | New ISSUES |
+|--------|-------|--------|----------|-----------|
+| CEO Review | Phase 1 | clean | 7 (all addressed) | 0 |
+| Design Review | Phase 2 | issues_open | 12 (2 critical, 6 high, 4 medium) | 8 (ISSUES 13–20) |
+| Eng Review | Phase 3 | issues_open | 17 (all mechanical) | 7 (ISSUES 21–27) |
+| Cross-phase themes | All | 3 themes | spec ambiguity, auth pattern, chart 2-endpoint | — |
+
+**Kill-switch items:** ISSUES 1, 2, 7, 11 (prior runs) + ISSUES 21, 24, 25 (Run 3).
+**VERDICT:** APPROVED. 27 total ISSUES, all implementation specs. No blocking bugs.
+
+---
 
 ### Run 1 — 2026-04-17 (commit ea1f5a0)
 
@@ -311,3 +437,153 @@ titles and descriptions across all your projects."
 ```
 
 **VERDICT (Run 2):** 12 HIGH ISSUES total (10 from Run 1 + 2 new: auth on snapshot, search pagination/index). All mechanical. No blocking bugs. Plan ready for implementation. ISSUES 1, 2, 7, 11 are the kill-switch items — if any of these four are missed during implementation, the sprint ships with either a broken chart, a security hole, or both.
+
+---
+
+### Run 3 — 2026-04-17 (commit 8ce4768) [subagent-only]
+
+**Delta from Run 2:** 2 QA fixes (ISSUE-003: members endpoint owner injection; ISSUE-001: stats refresh after duplicate). Neither touches Sprint F target files. Plan scope unchanged.
+
+**Primary Sprint F persona:** QA engineers who already use the product and need faster navigation (recent items, search) + team leads who need readiness visibility (score history). New-user activation is a secondary benefit via empty state CTAs.
+
+**Sprint G differentiating feature candidate (Decision 15):** AI-assisted test generation (ANTHROPIC_API_KEY already in env, Haiku endpoints already built) extended to run-level coverage recommendations — "based on your changed files, these cases are uncovered." General-purpose tools (Notion, Linear) cannot replicate this.
+
+**Why we win vs. general-purpose tools:** Dedicated execution analytics that no Notion table or GitHub Project can match — flaky test detection (flakinessScore), milestone readiness scoring with trend history, assignee tracking per test, run-level pass-rate charts. Sprint F solidifies the navigation layer; Sprint G turns the analytics depth into the acquisition hook.
+
+**Recent items scope (explicit):** localStorage-only, max 10. Cross-device sync is out of scope for Sprint F. If demand is observed, a `userActivity` table + `GET /api/users/me/recent` endpoint can be added with minimal schema change in Sprint G.
+
+**Guided onboarding (Decision 3 reasoning):** Quick Start modal was evaluated and deferred. Reason: empty-state CTAs deliver the same activation signal per page at zero modal-fatigue cost. A modal fires once; a CTA fires every time a user lands on a blank page. The implementation cost difference is also ~3x (modal = state, dismissal, animation, tutorial content; CTAs = 4 JSX edits).
+
+**CEO DUAL VOICES — CONSENSUS TABLE (Run 3) [subagent-only]:**
+```
+═══════════════════════════════════════════════════════════════
+  Dimension                           Claude  Codex  Consensus
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Premises valid?                   YES     N/A    [subagent-only]
+  2. Right problem to solve?           YES*    N/A    [subagent-only]
+  3. Scope calibration correct?        YES     N/A    [subagent-only]
+  4. Alternatives sufficiently explored?YES*   N/A    [subagent-only]
+  5. Competitive/market risks covered? YES*    N/A    [subagent-only] (addressed above)
+  6. 6-month trajectory sound?         YES     N/A    [subagent-only]
+═══════════════════════════════════════════════════════════════
+* Subagent raised persona clarification (mechanical, addressed), localStorage scope
+  (mechanical, addressed), guided onboarding reasoning (mechanical, addressed).
+  Finding 3 (score history low leverage) invalidated — 16 milestones in prod DB,
+  feature has active users. Finding 6 (competitive risk) addressed with "why we win"
+  paragraph above.
+```
+
+**VERDICT (Run 3):** 0 new HIGH ISSUES. All 7 CEO subagent findings auto-decided (mechanical or taste). Plan text updated with persona statement, Sprint G candidate, localStorage scope, "why we win" paragraph, and Decision 3 reasoning. Prior 12 HIGH ISSUES unchanged — all still valid kill-switch items. CEO phase: clean.
+
+**Phase 2 transition.** Design subagent: 12 findings, 2 CRITICAL, 6 HIGH, 4 MEDIUM. All mechanical. 8 new ISSUES added (13–20). Design consensus:
+
+**DESIGN LITMUS SCORECARD (Run 3) [subagent-only]:**
+```
+═══════════════════════════════════════════════════════════════
+  Dimension                           Claude  Codex  Score
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Information hierarchy (kill-switch buried)  4/10  N/A   4/10
+  2. Missing states (error states unspecified)   4/10  N/A   4/10
+  3. User journey arc                            6/10  N/A   6/10
+  4. Specificity of UI decisions                 5/10  N/A   5/10
+  5. Edge case handling                          5/10  N/A   5/10
+  6. Accessibility                               7/10  N/A   7/10
+  7. Trust / polish                              6/10  N/A   6/10
+═══════════════════════════════════════════════════════════════
+Scores improve with new ISSUES 13-20 applied. Key gaps: EmptyState API
+(ISSUE 13), GlobalSearchBar modal spec (ISSUE 14), Dashboard 4-zone
+coverage (ISSUE 15), useRecentItems mounting (ISSUE 16), fire-and-forget
+snapshot (ISSUE 18). All mechanical.
+```
+
+**VERDICT (Phase 2):** 8 new HIGH/CRITICAL design issues (ISSUES 13-20). All mechanical auto-decisions (Decisions 22-27). 0 taste decisions. 0 user challenges. Design phase: issues_open (8 new, all implementation specs — no blocking bugs, all fixable during coding).
+
+**Phase 3 transition.** Engineering subagent: 17 findings (3 Critical/High-pre-existing, 8 High, 6 Medium). 7 new ISSUES added (21–27). Architecture diagram:
+
+```
+Sprint F — Architecture Dependency Graph
+
+NEW FILES:
+  api/src/routes/search.ts  ──── GET /api/search?q=
+      │  requires: users→projects (owned) + projectMembers (member)
+      │  ILIKE: testCases.title, runs.name
+      │  returns: {id,type,title,projectId,suiteId}
+      │  auth: jwtVerify + project-scope filter [ISSUES 2,8,9,12]
+
+  api/src/db/milestoneScores (schema.ts first!) ← ISSUE 21
+      │  columns: id, milestoneId FK(cascade), score int, recordedAt
+      ├─ write: POST /api/milestones/:id/score-snapshot [ISSUES 1,11,22,23]
+      │    trigger: POST /api/results → r.milestoneId? → snapshot (fire-and-forget)
+      │    cooldown: skip if snapshot in last 1 min [ISSUE 23]
+      └─ read:  GET  /api/milestones/:id/scores [ISSUE 25]
+
+  web/src/hooks/useRecentItems.ts
+      │  useLocation (React Router) in Layout.tsx
+      │  filter: /\/(cases|runs|milestones)\/[uuid]/ [ISSUE 24]
+      │  store: {id,type,title,projectName,url,visitedAt} in localStorage:tcms-recent:v1
+      │  dedup: skip if top item.url === pathname [ISSUE 27]
+      └─ max 10, hidden when empty
+
+  web/src/components/GlobalSearchBar.tsx
+      │  trigger: header icon + Cmd/Ctrl+K [ISSUE 6,14]
+      │  modal overlay: fixed inset-0, backdrop, Modal primitive
+      │  fetch: GET /api/search?q= (debounced 250ms)
+      │  on result click: setProjectId(result.projectId) → navigate(url) [ISSUE 20]
+      └─ states: loading, results, zero-results, error [ISSUES 5,19]
+
+MODIFIED FILES:
+  api/src/routes/results.ts
+      └─ after run fetch: if(r.milestoneId) → snapshot (uses already-fetched run row)
+         NOTE: assertTestAccess still owner-only [ARCH-1 — pre-existing bug, do not propagate]
+
+  web/src/components/ui/EmptyState.tsx
+      └─ add variant="default"|"cta" prop + optional icon prop [ISSUE 13]
+         "default": message → action (backward compat)
+         "cta":     icon → action → message (onboarding pages)
+
+  web/src/pages/Dashboard.tsx
+      └─ 4 cards: Projects, Milestones, TestPlans, RecentRuns — all → EmptyState variant="cta" [ISSUE 15]
+
+  web/src/pages/MilestoneProgress.tsx
+      └─ fetch GET /api/milestones/:id/scores alongside existing progress
+         LineChart: Y="Pass rate (%)", X="Date", tooltip="Score: {n} · {date}" [ISSUES 9,22,25]
+
+  web/src/components/Layout.tsx
+      └─ useRecentItems hook (entity-url filter, dedup)
+         Recent sidebar section AFTER line 242 (Workspace section, outside projectId block) [ISSUE 26]
+```
+
+**ENG DUAL VOICES — CONSENSUS TABLE (Run 3) [subagent-only]:**
+```
+═══════════════════════════════════════════════════════════════
+  Dimension                           Claude  Codex  Consensus
+  ──────────────────────────────────── ─────── ─────── ─────────
+  1. Architecture sound?               YES*    N/A    [subagent-only]
+  2. Test coverage sufficient?         NO      N/A    [subagent-only]
+  3. Performance risks addressed?      NO*     N/A    [subagent-only]
+  4. Security threats covered?         NO*     N/A    [subagent-only]
+  5. Error paths handled?              PARTIAL N/A    [subagent-only]
+  6. Deployment risk manageable?       YES     N/A    [subagent-only]
+═══════════════════════════════════════════════════════════════
+* Architecture: sound with 7 conditions added (ISSUES 21-27).
+* Performance: snapshot stampede (ISSUE 23), entity-URL filter (ISSUE 24).
+* Security: assertTestAccess pre-existing bug; search cross-project auth (ISSUE 2) still kill-switch.
+  Rate-limit deferred to Sprint G (fastify-rate-limit not installed).
+```
+
+**New kill-switch items (Run 3):** ISSUES 21 (schema before migration), 24 (entity URL filter — without it, recent items is broken from day one), 25 (GET scores endpoint — without it, chart has no data source), plus existing ISSUES 1, 2, 7, 11.
+
+**Test plan artifact:** `~/.gstack/projects/vslvslv-tcms/development-test-plan-20260417-193332.md`
+
+**VERDICT (Phase 3):** 7 new HIGH issues (ISSUES 21–27). All mechanical. Total: 27 ISSUES across 3 runs. 0 blocking bugs. Plan ready for implementation with all issues resolved. Kill-switch items: ISSUES 1, 2, 7, 11, 21, 24, 25.
+
+---
+
+### Cross-Phase Themes (Run 3)
+
+**Theme 1: Specification ambiguity compounds across phases.** CEO found undocumented scope (localStorage, persona). Design found implementation ambiguities (EmptyState API, GlobalSearchBar modal). Eng found missing schema and endpoint. All three phases independently flagged that the plan described *what* but not *how* — each layer had to add specificity. This is the expected compression artifact of a plan written at story granularity. All resolved.
+
+**Theme 2: Security boundaries on new endpoints.** Issues 2 (search project scope), 11 (snapshot auth), and ARCH-1 (assertTestAccess) all appeared across phases. The pattern: any new endpoint that crosses project boundaries or fires on mutations needs an explicit auth audit before implementation.
+
+**Theme 3: The chart needs two endpoints.** Both Design (HIDDEN-5) and Eng independently flagged that the score chart requires a GET read endpoint in addition to the POST snapshot. Neither prior run caught this. High-confidence signal.
+
