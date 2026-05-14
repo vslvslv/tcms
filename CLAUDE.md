@@ -141,6 +141,17 @@ The TCMS design system lives in `web/src/index.css` (tokens), `web/src/component
 
 Controlled by `data-theme` attribute on `<html>`. `ThemeContext` manages it and persists to `localStorage("tcms-theme")`.
 
+### Design direction (DESIGN.md)
+
+The aesthetic direction, typography choices, color rationale, spacing decisions, and decision log are in **`DESIGN.md`** at the repo root. Always read it before making visual or UI decisions. Key constraints:
+- **Dark-first default** — `#141418` background, `#1E1E24` surface
+- **Teal accent** `#4E9B8F` — not blue, not purple; the entire QA tool category uses blue
+- **Instrument Serif (italic)** for suite/milestone names in the tree nav only — not for general UI
+- **JetBrains Mono** for test IDs, step numbers, metric counts
+- **Amber `#E8A045` is reserved for Blocked status ONLY** — do not use it for branding or decoration
+- **Status colors at the cell level** — page chrome stays monochrome; tables do the signaling
+- In QA mode, flag any code that uses hardcoded colors or fonts that contradict DESIGN.md
+
 ### Testing infrastructure
 
 - Visual regression: `npm run test:visual` / `npm run test:visual:update` — Playwright config at `playwright.visual.config.ts`, specs in `web/tests/visual/`
