@@ -5,22 +5,7 @@ import { useProject } from "../../ProjectContext";
 import { Card } from "../../components/ui/Card";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { PageTitle } from "../../components/ui/PageTitle";
-
-type SectionNode = Section & { children: SectionNode[] };
-
-function buildSectionTree(sections: Section[]): SectionNode[] {
-  const byParent = new Map<string | null, Section[]>();
-  for (const s of sections) {
-    const key = s.parentId ?? "root";
-    if (!byParent.has(key)) byParent.set(key, []);
-    byParent.get(key)!.push(s);
-  }
-  function children(parentId: string | null): SectionNode[] {
-    const list = byParent.get(parentId ?? "root") ?? [];
-    return list.map((s) => ({ ...s, children: children(s.id) }));
-  }
-  return children(null);
-}
+import { buildSectionTree, type SectionNode } from "../../lib/sectionTree";
 
 export default function CasesDetails() {
   const { projectId: contextProjectId } = useProject();
@@ -110,7 +95,7 @@ export default function CasesDetails() {
             const tree = buildSectionTree(sections);
             return (
               <Card key={suite.id}>
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{suite.name}</h2>
+                <h2 className="mb-3 text-sm italic text-muted" style={{ fontFamily: 'var(--font-serif)' }}>{suite.name}</h2>
                 <SectionList tree={tree} />
               </Card>
             );
