@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { api, type FlakyTest } from "../api";
 import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
 
@@ -197,8 +198,15 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <p className="text-muted">No projects.</p>
-          )}
+            <EmptyState
+              variant="cta"
+              message="No projects yet."
+              action={
+                <Link to="/projects" className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-hover no-underline">
+                  Create your first project
+                </Link>
+              }
+            />
           {data.projects.length > 8 && (
             <p className="mt-3 border-t border-border pt-3">
               <Link to="/projects" className="text-sm text-primary hover:underline">
@@ -231,11 +239,9 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <div className="py-4 text-center">
-              <p className="text-muted">No milestones yet.</p>
-              <p className="mt-1 text-xs text-muted">Milestones help track progress toward release dates.</p>
-            </div>
-          )}
+            <EmptyState
+              message="No milestones yet. Milestones help track progress toward release dates."
+            />
           {data.milestones.length > 6 && (
             <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
               +{data.milestones.length - 6} more
@@ -256,11 +262,9 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <div className="py-4 text-center">
-              <p className="text-muted">No test plans yet.</p>
-              <p className="mt-1 text-xs text-muted">Test plans group multiple test runs for organized execution.</p>
-            </div>
-          )}
+            <EmptyState
+              message="No test plans yet. Test plans group multiple test runs for organized execution."
+            />
           {data.plans.length > 6 && (
             <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
               +{data.plans.length - 6} more
@@ -284,11 +288,15 @@ export default function Dashboard() {
               ))}
             </ul>
           ) : (
-            <div className="py-4 text-center">
-              <p className="text-muted">No runs yet.</p>
-              <p className="mt-1 text-xs text-muted">Create a test run to start executing test cases.</p>
-            </div>
-          )}
+            <EmptyState
+              variant="cta"
+              message="Create a test run to start executing test cases."
+              action={
+                <Link to="/cases/overview" className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-hover no-underline">
+                  Create a run
+                </Link>
+              }
+            />
           {data.recentRuns.length > 6 && (
             <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
               +{data.recentRuns.length - 6} more

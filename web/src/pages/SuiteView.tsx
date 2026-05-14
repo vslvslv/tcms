@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api, type Suite, type Section, type AiFailureResult } from "../api";
+import { EmptyState } from "../components/ui/EmptyState";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { Modal } from "../components/ui/Modal";
 import { Button } from "../components/ui/Button";
@@ -310,7 +311,7 @@ export default function SuiteView() {
         {tree.map((s) => (
           <SectionNode key={s.id} section={s} depth={0} />
         ))}
-        {tree.length === 0 && !newSectionName && <p className="text-muted">No sections. Add one above.</p>}
+        {tree.length === 0 && !newSectionName && <EmptyState message="No sections yet. Add one above." />}
       </div>
 
       {/* AI Generation Modal */}

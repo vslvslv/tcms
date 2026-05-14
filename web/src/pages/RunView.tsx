@@ -6,6 +6,7 @@ import { FlakyBadge } from "../components/FlakyBadge";
 import { RunTestCaseSidebar } from "../components/RunTestCaseSidebar";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { EmptyState } from "../components/ui/EmptyState";
 import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 import { PageTitle } from "../components/ui/PageTitle";
 import { Select } from "../components/ui/Select";
@@ -400,11 +401,32 @@ export default function RunView() {
         <div className={cn("min-w-0 flex-1", selectedTest && "md:max-w-[calc(100%-380px)] lg:max-w-[calc(100%-420px)]")}>
           <Card className="overflow-hidden p-0">
             {sections.length === 0 ? (
-              <p className="p-6 text-muted">
-                {statusFilter !== "all" || assigneeFilter !== "all"
-                  ? (<>No {statusFilter !== "all" ? statusFilter : ""}{statusFilter !== "all" && assigneeFilter !== "all" ? " " : ""}{assigneeFilter !== "all" ? "tests matching this assignee" : "tests with this status"} in this run. <button type="button" className="text-primary hover:underline" onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("status"); n.delete("assignee"); return n; })}>Clear filters</button></>)
-                  : "No tests in this run."}
-              </p>
+              statusFilter !== "all" || assigneeFilter !== "all" ? (
+                <EmptyState
+                  message={`No ${statusFilter !== "all" ? statusFilter + " " : ""}tests${assigneeFilter !== "all" ? " matching this assignee" : " with this status"} in this run.`}
+                  action={
+                    <button
+                      type="button"
+                      className="text-sm text-primary hover:underline"
+                      onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete("status"); n.delete("assignee"); return n; })}
+                    >
+                      Clear filters
+                    </button>
+                  }
+                  className="m-4"
+                />
+              ) : (
+                <EmptyState
+                  variant="cta"
+                  message="Add test cases to this run to start executing them."
+                  action={
+                    <a href="/cases/overview" className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-primary-hover no-underline">
+                      Add test cases to this run
+                    </a>
+                  }
+                  className="m-4"
+                />
+              )
             ) : (
               sections.map(({ sectionName, tests: sectionTests }) => (
                 <div key={sectionName} className="border-b border-border last:border-b-0">
