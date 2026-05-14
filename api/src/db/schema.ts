@@ -475,3 +475,15 @@ export const notificationPreferences = pgTable("notification_preferences", {
   enabled: boolean("enabled").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => [uniqueIndex("notification_prefs_user_event_idx").on(t.userId, t.event)]);
+
+// Milestone score history — one row per snapshot (Story 15.3)
+export const milestoneScores = pgTable("milestone_scores", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  milestoneId: uuid("milestone_id")
+    .notNull()
+    .references(() => milestones.id, { onDelete: "cascade" }),
+  score: integer("score").notNull(),
+  passRate: integer("pass_rate").notNull(),
+  totalTests: integer("total_tests").notNull(),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+});

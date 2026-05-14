@@ -1,8 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import { getDb } from "../db/index.js";
-import { milestones, runs, results, tests } from "../db/schema.js";
-import { eq, inArray } from "drizzle-orm";
+import { milestones, milestoneScores, runs, results, tests } from "../db/schema.js";
+import { eq, inArray, asc } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
 import { writeAuditLog } from "../lib/auditLog.js";
@@ -154,5 +154,30 @@ export default async function milestoneRoutes(app: FastifyInstance) {
     await db.delete(milestones).where(eq(milestones.id, parsed.data.id));
     await writeAuditLog(db, payload.sub, "milestone.deleted", "milestone", parsed.data.id, existing.projectId);
     return reply.status(204).send();
+  });
+
+  app.get("/api/milestones/:id/scores", async (req: FastifyRequest, reply: FastifyReply) => {
+    const payload = req.user as { sub: string } | undefined;
+    if (!payload) return replyError(reply, 401, "Unauthorized", "UNAUTHORIZED");
+    const parsed = paramsId.safeParse((req as FastifyRequest<{ Params: unknown }>).params);
+    if (!parsed.success) return replyError(reply, 400, "Invalid id", "VALIDATION_ERROR");
+    const db = await getDb();
+    const [m] = await db.select().from(milestones).where(eq(milestones.id, parsed.data.id)).limit(1);
+    if (!m) return replyError(reply, 404, "Milestone not found", "NOT_FOUND");
+    if (!(await assertProjectAccess(db, m.projectId, payload.sub))) {
+      return replyError(reply, 404, "Milestone not found", "NOT_FOUND");
+    }
+    const scores = await db
+      .select({
+        id: milestoneScores.id,
+        score: milestoneScores.score,
+        passRate: milestoneScores.passRate,
+        totalTests: milestoneScores.totalTests,
+        recordedAt: milestoneScores.recordedAt,
+      })
+      .from(milestoneScores)
+      .where(eq(milestoneScores.milestoneId, parsed.data.id))
+      .orderBy(asc(milestoneScores.recordedAt));
+    return reply.send(scores);
   });
 }

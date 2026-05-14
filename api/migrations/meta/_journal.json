@@ -120,6 +120,13 @@
       "when": 1775452142101,
       "tag": "0016_little_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1778780664472,
+      "tag": "0017_true_pretty_boy",
+      "breakpoints": true
     }
   ]
 }

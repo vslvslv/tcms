@@ -7,6 +7,7 @@ import { replyError } from "../lib/errors.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 import { dispatchWebhooks } from "../lib/webhooks.js";
 import { assertProjectAccess } from "../lib/projectAccess.js";
+import { triggerMilestoneSnapshot } from "../lib/milestoneScores.js";
 
 const paramsTestId = z.object({ id: z.string().uuid() });
 const paramsResultId = z.object({ id: z.string().uuid() });
@@ -116,6 +117,9 @@ export default async function resultRoutes(app: FastifyInstance) {
         timestamp: new Date().toISOString(),
       }).catch(() => {});
     }
+    if (r?.milestoneId) {
+      triggerMilestoneSnapshot(r.milestoneId).catch(() => {});
+    }
     return reply.status(201).send(result);
   });
 
@@ -144,6 +148,9 @@ export default async function resultRoutes(app: FastifyInstance) {
     const [r] = t ? await db.select().from(runs).where(eq(runs.id, t.runId)).limit(1) : [null];
     const [s] = r ? await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1) : [null];
     await writeAuditLog(db, payload.sub, "result.updated", "result", paramsResult.data.id, s?.projectId ?? null);
+    if (r?.milestoneId) {
+      triggerMilestoneSnapshot(r.milestoneId).catch(() => {});
+    }
     return reply.send(updated);
   });
 }

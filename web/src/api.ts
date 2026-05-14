@@ -182,6 +182,14 @@ export type MilestoneReadiness = {
   blocked?: number;
 };
 
+export type MilestoneScoreEntry = {
+  id: string;
+  score: number;
+  passRate: number;
+  totalTests: number;
+  recordedAt: string;
+};
+
 export type ReportResult = {
   id: string;
   status: string;
