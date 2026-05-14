@@ -6,6 +6,7 @@ import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { LoadingSpinner } from "../../components/ui/LoadingSpinner";
 import { buildSectionTree, type SectionNode } from "../../lib/sectionTree";
+import { pushRecentItem } from "../../hooks/useRecentItems";
 
 /** Build case ID -> display ID (C1, C2, …) in tree order */
 function buildCaseDisplayIds(
@@ -846,8 +847,8 @@ export default function CasesOverview() {
                       aria-label={`Case: ${c.title}`}
                       className={`border-b border-border cursor-pointer transition-colors ${isDetailOpen ? "bg-primary/5" : isSelected ? "bg-primary/5" : "hover:bg-surface-raised/60"}`}
                       style={{ height: 32 }}
-                      onClick={() => { setSelectedCaseId(c.id); setDetailPanelOpen(true); }}
-                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedCaseId(c.id); setDetailPanelOpen(true); } }}
+                      onClick={() => { setSelectedCaseId(c.id); setDetailPanelOpen(true); pushRecentItem({ url: `/projects/${projectId}/cases/${c.id}`, title: c.title || "(Untitled)", type: "case", projectName: currentProject.name }); }}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedCaseId(c.id); setDetailPanelOpen(true); pushRecentItem({ url: `/projects/${projectId}/cases/${c.id}`, title: c.title || "(Untitled)", type: "case", projectName: currentProject.name }); } }}
                     >
                       <td className="px-2 py-0" onClick={(e) => e.stopPropagation()}>
                         <input

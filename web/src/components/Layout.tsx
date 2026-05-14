@@ -9,6 +9,7 @@ import { api, type Project, type Milestone } from "../api";
 import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Button } from "./ui/Button";
 import { Select } from "./ui/Select";
+import { useRecentItems } from "../hooks/useRecentItems";
 
 const iconSize = 18;
 
@@ -28,6 +29,7 @@ function SidebarNav({
   const path = location.pathname;
   const params = useParams();
   const runId = params.runId ?? null;
+  const recentItems = useRecentItems();
   const isRunsOverview = path === "/runs/overview" || path === "/runs";
   const isRunDetail = runId != null && path.startsWith("/runs/");
   const [expanded, setExpanded] = useState<NavSection | null>(() => {
@@ -270,6 +272,27 @@ function SidebarNav({
           </div>
         )}
       </div>
+
+      {/* Recent items section */}
+      {recentItems.length > 0 && (
+        <>
+          <span className={`${sectionLabel} mt-3`}>Recent</span>
+          {recentItems.slice(0, 5).map((item) => (
+            <Link
+              key={item.url}
+              to={item.url}
+              onClick={onNavigate}
+              className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-muted transition-colors hover:bg-surface-raised hover:text-text no-underline ${path === item.url ? "bg-surface-raised text-text" : ""}`}
+              title={item.projectName ? `${item.title} — ${item.projectName}` : item.title}
+            >
+              <span className="min-w-0 flex-1 truncate">{item.title}</span>
+              {item.projectName && (
+                <span className="shrink-0 truncate text-[10px] text-muted/60">{item.projectName}</span>
+              )}
+            </Link>
+          ))}
+        </>
+      )}
     </nav>
   );
 }
