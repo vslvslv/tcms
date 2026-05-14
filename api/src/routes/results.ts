@@ -6,6 +6,7 @@ import { eq, desc } from "drizzle-orm";
 import { replyError } from "../lib/errors.js";
 import { writeAuditLog } from "../lib/auditLog.js";
 import { dispatchWebhooks } from "../lib/webhooks.js";
+import { assertProjectAccess } from "../lib/projectAccess.js";
 
 const paramsTestId = z.object({ id: z.string().uuid() });
 const paramsResultId = z.object({ id: z.string().uuid() });
@@ -20,15 +21,25 @@ const updateResultBody = z.object({
   elapsedSeconds: z.number().int().min(0).optional(),
 });
 
-async function assertTestAccess(db: Awaited<ReturnType<typeof getDb>>, testId: string, userId: string) {
+/** Resolve the projectId for a test, traversing test → run → suite → project. */
+async function resolveProjectIdForTest(
+  db: Awaited<ReturnType<typeof getDb>>,
+  testId: string
+): Promise<string | null> {
   const [t] = await db.select().from(tests).where(eq(tests.id, testId)).limit(1);
-  if (!t) return false;
+  if (!t) return null;
   const [r] = await db.select().from(runs).where(eq(runs.id, t.runId)).limit(1);
-  if (!r) return false;
+  if (!r) return null;
   const [s] = await db.select().from(suites).where(eq(suites.id, r.suiteId)).limit(1);
-  if (!s) return false;
+  if (!s) return null;
   const [p] = await db.select().from(projects).where(eq(projects.id, s.projectId)).limit(1);
-  return !!p && p.userId === userId;
+  return p?.id ?? null;
+}
+
+async function assertTestAccess(db: Awaited<ReturnType<typeof getDb>>, testId: string, userId: string) {
+  const projectId = await resolveProjectIdForTest(db, testId);
+  if (!projectId) return false;
+  return assertProjectAccess(db, projectId, userId);
 }
 
 async function assertResultAccess(db: Awaited<ReturnType<typeof getDb>>, resultId: string, userId: string) {

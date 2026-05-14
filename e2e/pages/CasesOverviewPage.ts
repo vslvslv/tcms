@@ -1,6 +1,15 @@
-import { type Page } from "@playwright/test";
+import { type Page, type Locator } from "@playwright/test";
 import { BasePage } from "./base";
 
+/**
+ * Page Object for CasesOverview — three-panel master-detail layout (Story X.1).
+ *
+ * DOM structure:
+ *   [data-testid="section-tree"]        — left panel: suite + section tree
+ *   [data-testid="section-node-{id}"]   — individual tree node (role=button)
+ *   [data-testid="case-row-{id}"]       — case table row (role=button)
+ *   [data-testid="detail-panel"]        — right slide-in panel
+ */
 export class CasesOverviewPage extends BasePage {
   static readonly path = "/cases/overview";
 
@@ -15,136 +24,125 @@ export class CasesOverviewPage extends BasePage {
     });
   }
 
-  get pageTitle() {
-    return this.page.getByRole("heading", { name: /test cases/i });
-  }
-
-  get viewAllProjectsButton() {
-    return this.page.getByRole("button", { name: /view all projects/i });
-  }
+  // ── Project-list view (no project selected) ────────────────────────────────
 
   get selectProjectPrompt() {
     return this.page.getByText(/select a project to view and manage test cases/i);
-  }
-
-  get testCasesHeadingWithProject() {
-    return this.page.getByRole("heading", { name: /test cases/i });
   }
 
   get projectsTable() {
     return this.page.getByRole("table");
   }
 
-  get summaryCards() {
-    return this.page.getByText(/total cases|draft|ready|approved/i);
-  }
-
-  get sortSelect() {
-    return this.page.locator("select").filter({ has: this.page.locator('option[value="section"]') });
-  }
-
-  get statusFilterSelect() {
-    return this.page.locator("select").filter({ has: this.page.locator('option[value="draft"]') });
-  }
-
-  get searchInput() {
-    return this.page.getByRole("searchbox", { name: /search cases/i }).or(this.page.getByPlaceholder(/title or prerequisite/i));
-  }
-
-  get collapseExpandAllButton() {
-    return this.page.getByRole("button", { name: /collapse all|expand all/i });
-  }
-
-  get manageSectionsLink() {
-    return this.page.getByRole("link", { name: /manage sections/i });
-  }
-
-  get addSectionButton() {
-    return this.page.getByRole("button", { name: /\+ add section/i });
-  }
-
-  get newSectionNameInput() {
-    return this.page.getByPlaceholder(/new section name/i);
-  }
-
-  get addSectionSubmitButton() {
-    return this.page.locator("form").filter({ has: this.newSectionNameInput }).getByRole("button", { name: /^add$/i });
-  }
-
-  get addSectionCancelButton() {
-    return this.page.locator("form").filter({ has: this.newSectionNameInput }).getByRole("button", { name: /cancel/i });
-  }
-
-  get emptyState() {
-    return this.page.getByText(/no test suite yet|no projects yet/i);
-  }
-
-  /** Select a project from the project table (when no project is selected). */
+  /** Click a project name in the project list to open the three-panel view. */
   async selectProjectInTable(projectName: string) {
     await this.page.getByRole("button", { name: new RegExp(projectName, "i") }).first().click();
   }
 
-  /** Project badge showing current project name. */
-  projectBadge(name?: string) {
-    if (name) return this.page.getByText(name, { exact: false }).filter({ has: this.page.locator("span") }).first();
-    return this.page.locator("span.rounded-md.bg-surface-raised, span.rounded-md.bg-slate-100").first();
+  // ── Left panel: section tree ───────────────────────────────────────────────
+
+  get sectionTree(): Locator {
+    return this.page.getByTestId("section-tree");
   }
 
-  /** Section header row containing the section name (with expand/collapse, edit, delete). */
-  sectionRow(sectionName: string) {
-    return this.page.locator("div.rounded-lg.border").filter({ has: this.page.getByText(sectionName, { exact: true }) }).first();
+  /** Back-to-all-projects button in tree header. */
+  get viewAllProjectsButton(): Locator {
+    return this.page.getByTitle("View all projects");
   }
 
-  /** Full section block (div.mb-5) that contains header and expanded content (Add case, Add subsection). */
-  sectionBlock(sectionName: string) {
-    return this.page.locator("div.mb-5").filter({ has: this.page.getByText(sectionName, { exact: true }) }).first();
+  /** Section tree node by its data-testid (data-testid="section-node-{id}"). */
+  sectionNode(id: string): Locator {
+    return this.page.getByTestId(`section-node-${id}`);
   }
 
-  /** Expand/collapse button for a section (aria-label Expand or Collapse). */
-  sectionExpandCollapseButton(sectionName: string) {
-    return this.sectionRow(sectionName).getByRole("button", { name: /expand|collapse/i }).first();
+  /** Section tree node by visible text. Falls back to text match when id is unknown. */
+  sectionNodeByName(name: string): Locator {
+    return this.sectionTree.getByRole("button", { name: new RegExp(name, "i") }).first();
   }
 
-  /** Delete section button (trash icon). */
-  sectionDeleteButton(sectionName: string) {
-    return this.sectionRow(sectionName).getByRole("button", { name: /delete section/i });
+  /** Click a section in the tree. */
+  async selectSection(id: string) {
+    await this.sectionNode(id).click();
   }
 
-  /** "Add case" link under a section (section must be expanded). */
-  addCaseLinkInSection(sectionName: string) {
-    return this.sectionBlock(sectionName).getByRole("link", { name: /add case/i });
+  // ── Center panel: case table ───────────────────────────────────────────────
+
+  /** Case table row by data-testid (data-testid="case-row-{id}"). */
+  caseRow(id: string): Locator {
+    return this.page.getByTestId(`case-row-${id}`);
   }
 
-  /** "Add subsection" button under a section (section must be expanded). */
-  addSubsectionButtonInSection(sectionName: string) {
-    return this.sectionBlock(sectionName).getByRole("button", { name: /add subsection/i });
+  /** Case table row by visible title text. */
+  caseRowByTitle(title: string): Locator {
+    return this.page.getByRole("button", { name: new RegExp(`Case: ${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i") });
   }
 
-  /** Subsection form input (when "Add subsection" form is visible under a section). */
-  get newSubsectionNameInput() {
-    return this.page.getByPlaceholder("Name");
+  /** Click a case row to open the detail panel. */
+  async openCase(id: string) {
+    await this.caseRow(id).click();
   }
 
-  /** Subsection form input scoped to a section block (use after clicking "Add subsection" in that section). */
-  newSubsectionNameInputInSection(sectionName: string) {
-    return this.sectionBlock(sectionName).getByPlaceholder("Name");
+  get searchInput(): Locator {
+    return this.page.getByPlaceholder(/search test cases/i);
   }
 
-  get addSubsectionSubmitButton() {
-    return this.page.locator("form").filter({ has: this.page.getByPlaceholder("Name") }).getByRole("button", { name: /^add$/i });
+  get priorityFilterSelect(): Locator {
+    return this.page.locator("select").filter({ has: this.page.locator('option[value=""]') }).nth(0);
   }
 
-  /** Edit link for a case by case title (in the cases table). */
-  editCaseLink(caseTitle: string) {
-    return this.page.getByRole("link", { name: new RegExp(caseTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") }).first();
+  get statusFilterSelect(): Locator {
+    return this.page.locator("select").filter({ has: this.page.locator('option[value="draft"]') }).first();
   }
 
-  /** Delete button for a case row by case title. */
-  deleteCaseButton(caseTitle: string) {
-    const escaped = caseTitle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return this.page
-      .getByRole("row")
-      .filter({ has: this.page.getByRole("link", { name: new RegExp(escaped, "i") }) })
-      .getByRole("button", { name: /delete/i });
+  get sortSelect(): Locator {
+    return this.page.locator("select").filter({ has: this.page.locator('option[value="section"]') });
+  }
+
+  get clearFiltersButton(): Locator {
+    return this.page.getByRole("button", { name: /clear filters/i });
+  }
+
+  get emptyState(): Locator {
+    return this.page.getByText(/no test suite yet|no sections|no cases in this section/i);
+  }
+
+  // ── Right panel: case detail ───────────────────────────────────────────────
+
+  get detailPanel(): Locator {
+    return this.page.getByTestId("detail-panel");
+  }
+
+  get detailPanelCloseButton(): Locator {
+    return this.detailPanel.getByRole("button", { name: /close panel/i });
+  }
+
+  async closeDetailPanel() {
+    await this.detailPanelCloseButton.click();
+  }
+
+  /** Check if the detail panel is currently visible (translated into view). */
+  async isDetailPanelOpen(): Promise<boolean> {
+    const cls = await this.detailPanel.getAttribute("class");
+    return cls?.includes("translate-x-0") ?? false;
+  }
+
+  // ── Bulk actions ───────────────────────────────────────────────────────────
+
+  get bulkActionBar(): Locator {
+    return this.page.getByText(/\d+ selected/);
+  }
+
+  selectCaseCheckbox(caseId: string): Locator {
+    return this.caseRow(caseId).getByRole("checkbox");
+  }
+
+  // ── Section management ─────────────────────────────────────────────────────
+
+  addSectionButton(suiteId: string): Locator {
+    return this.sectionTree.getByTestId(`add-section-${suiteId}`);
+  }
+
+  get newSectionNameInput(): Locator {
+    return this.page.getByPlaceholder("Section name").last();
   }
 }
