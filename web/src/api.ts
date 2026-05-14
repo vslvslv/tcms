@@ -190,6 +190,14 @@ export type MilestoneScoreEntry = {
   recordedAt: string;
 };
 
+export type SearchResult = {
+  id: string;
+  type: "case" | "run";
+  title: string;
+  projectId: string;
+  projectName: string;
+};
+
 export type ReportResult = {
   id: string;
   status: string;

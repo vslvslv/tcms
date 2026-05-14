@@ -10,6 +10,7 @@ import { Dropdown, DropdownItem } from "./ui/Dropdown";
 import { Button } from "./ui/Button";
 import { Select } from "./ui/Select";
 import { useRecentItems } from "../hooks/useRecentItems";
+import { GlobalSearchBar } from "./GlobalSearchBar";
 
 const iconSize = 18;
 
@@ -305,6 +306,19 @@ export default function Layout() {
   const location = useLocation();
   const params = useParams();
   const routeProjectId = params.projectId ?? null;
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Global Cmd+K / Ctrl+K shortcut for search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
@@ -478,6 +492,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      {searchOpen && <GlobalSearchBar onClose={() => setSearchOpen(false)} />}
     </div>
   );
 }
