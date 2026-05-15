@@ -73,6 +73,7 @@ function SidebarNav({
 
   // Reset milestone cache when project changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMilestones(null);
   }, [projectId]);
 

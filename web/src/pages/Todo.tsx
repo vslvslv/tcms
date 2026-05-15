@@ -5,7 +5,6 @@ import { api, type Project, type TestCase, type ProjectRun } from "../api";
 import { useAuth } from "../AuthContext";
 import { Card } from "../components/ui/Card";
 import { PageTitle } from "../components/ui/PageTitle";
-import { LoadingSpinner } from "../components/ui/LoadingSpinner";
 
 type CaseWithProject = TestCase & { projectId: string; projectName: string };
 type RunWithProject = ProjectRun & { projectName: string };

@@ -2,6 +2,33 @@
 
 All notable changes to TCMS are documented in this file.
 
+## [0.5.0] - 2026-05-15
+
+### Added
+- **Global Search (Story 12.1):** Cmd/Ctrl+K modal overlay searches test cases and runs across all accessible projects. Debounced input (300ms), min 3 chars, keyboard navigation (arrow keys + Enter), Esc to close. Results show type badge, title, and project name. Routes to the correct case/run URL on select.
+- **Recent Items Sidebar (Story 12.4):** "Recent" section in the sidebar tracks the last 10 visited cases, runs, and milestones. Persisted to localStorage (`tcms-recent-items`), deduplicated by URL, updated on every navigation. Shows title + project name. React 18 Strict Mode safe.
+- **Empty States with CTA (Story 13.6):** All major empty states now show actionable prompts. Dashboard cards (Projects, Milestones, Test Plans, Recent Runs), RunView, SuiteView, and CasesOverview all display context-appropriate empty state messages with call-to-action buttons. `EmptyState` component gains a `variant="cta"` prop.
+- **Milestone Score History Chart (Story 15.3):** Recharts line chart on the Milestone Progress page showing pass rate over time. Data snapshots are written automatically when test results are recorded. Empty state: "Run some tests to see score history." Needs ≥ 2 data points to render the trend line.
+- **Three-Panel CasesOverview (Story X.1):** Full master-detail redesign. Left panel: section tree with expand/collapse. Middle panel: case table with priority badges, status dots, and row selection. Right panel: slide-in detail panel with full case info. Keyboard accessible (Tab + Enter/Space on all interactive elements). Design tokens aligned to `DESIGN.md` (Geist Sans, JetBrains Mono for IDs, teal accent `#4E9B8F`).
+
+### Fixed
+- **Team member test access (kill-switch):** `assertTestAccess` used an owner-only check — non-owner team members got 403 on `POST /api/results`. Fixed to use `assertProjectAccess`, which checks ownership OR membership.
+- **Milestone snapshot null crash (kill-switch):** Snapshot insert now guards against empty runs (`totalTests === 0`) to prevent a NOT NULL constraint violation on `pass_rate`.
+- **CasesOverview detail panel z-index:** Panel now renders above the sidebar at all viewport widths.
+- **`--color-muted2` token missing:** Added to both dark and light theme blocks in `index.css`. Was referenced by `StatusDot` "none" state — rendered as transparent without it.
+- **Recharts width(-1) warnings:** `<ResponsiveContainer>` in `MilestoneProgress` and `RunView` now include `minWidth={1} minHeight={1}`, matching the pattern used in Dashboard, PassRateTrend, ProjectDetail, and Reports.
+- **CasesOverview dead variables:** Removed unreferenced state (`currentSummary`, `summaryLoading`), dead sort helpers (`sortCasesList`, `STATUS_ORDER`, `priorityOrderMap`), and dead collapsed-sections state after the three-panel rewrite.
+- **Dashboard JSX ternary (critical):** Four EmptyState branches in Dashboard cards had malformed ternary structure — app whitescreened on load. Fixed with proper `<>...</>` fragment wrapping.
+- **MilestoneProgress Recharts type cast:** `Tooltip formatter` prop typed as `as any` — standard Recharts workaround for a known library type gap.
+
+### Infrastructure
+- New API endpoint: `GET /api/search?q=` — user-scoped full-text search across test cases and runs.
+- New API endpoint: `GET /api/milestones/:id/scores` — returns score history ordered by `recordedAt`.
+- New API endpoint: `POST /api/milestones/:id/score-snapshot` — manual snapshot trigger.
+- New DB table: `milestone_scores` — stores pass rate snapshots with 1-minute cooldown guard.
+- New snapshot helper: `api/src/lib/milestoneScores.ts` — called from POST and PATCH `/api/results`.
+- Unit test coverage: `useRecentItems` hook (7 tests covering dedup, cap, tracked URL filtering, parse error recovery, React 18 Strict Mode guard).
+
 ## [0.4.0.1] - 2026-04-17
 
 ### Fixed

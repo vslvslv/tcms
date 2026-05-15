@@ -553,10 +553,10 @@ function RunTitle({ runName, badgeId }: { runName: string; badgeId: string }) {
 
 function RunActivityTab({ run, runBadgeId, projectId }: { run: Run; runBadgeId: string; projectId: string }) {
   const [entries, setEntries] = useState<AuditLogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!projectId || !run.id ? false : true);
 
   useEffect(() => {
-    if (!projectId || !run.id) { setLoading(false); return; }
+    if (!projectId || !run.id) return;
     api<AuditLogEntry[]>(`/api/projects/${projectId}/audit-log?entityType=run&entityId=${run.id}&limit=100`)
       .then(setEntries)
       .catch(() => {})

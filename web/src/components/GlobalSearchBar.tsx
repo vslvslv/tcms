@@ -30,13 +30,18 @@ export function GlobalSearchBar({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     const q = debouncedQuery.trim();
-    if (q.length < 3) { setResults([]); return; }
+    if (q.length < 3) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setResults([]);
+      return;
+    }
     api<SearchResult[]>(`/api/search?q=${encodeURIComponent(q)}`)
       .then(setResults)
       .catch(() => setResults([]));
   }, [debouncedQuery]);
 
   // Reset active index when results change
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setActiveIndex(-1); }, [results]);
 
   const select = useCallback((r: SearchResult) => {
