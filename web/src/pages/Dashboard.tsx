@@ -185,18 +185,34 @@ export default function Dashboard() {
         <Card>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Projects</h2>
           {data.projects.length > 0 ? (
-            <ul className="list-none space-y-2 p-0">
-              {data.projects.slice(0, 8).map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-2">
-                  <Link to={`/projects/${p.id}`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
-                    {p.name}
+            <>
+              <ul className="list-none space-y-2 p-0">
+                {data.projects.slice(0, 8).map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-2">
+                    <Link to={`/projects/${p.id}`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
+                      {p.name}
+                    </Link>
+                    <Link to={`/projects/${p.id}/settings`} className="min-h-[44px] flex items-center text-xs text-muted hover:text-text hover:underline">
+                      Settings
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {data.projects.length > 8 && (
+                <p className="mt-3 border-t border-border pt-3">
+                  <Link to="/projects" className="text-sm text-primary hover:underline">
+                    View all projects →
                   </Link>
-                  <Link to={`/projects/${p.id}/settings`} className="min-h-[44px] flex items-center text-xs text-muted hover:text-text hover:underline">
-                    Settings
+                </p>
+              )}
+              {data.projects.length <= 8 && (
+                <p className="mt-3 border-t border-border pt-3">
+                  <Link to="/projects" className="text-sm text-primary hover:underline">
+                    Go to projects →
                   </Link>
-                </li>
-              ))}
-            </ul>
+                </p>
+              )}
+            </>
           ) : (
             <EmptyState
               variant="cta"
@@ -207,86 +223,86 @@ export default function Dashboard() {
                 </Link>
               }
             />
-          {data.projects.length > 8 && (
-            <p className="mt-3 border-t border-border pt-3">
-              <Link to="/projects" className="text-sm text-primary hover:underline">
-                View all projects →
-              </Link>
-            </p>
-          )}
-          {data.projects.length > 0 && data.projects.length <= 8 && (
-            <p className="mt-3 border-t border-border pt-3">
-              <Link to="/projects" className="text-sm text-primary hover:underline">
-                Go to projects →
-              </Link>
-            </p>
           )}
         </Card>
 
         <Card>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Milestones</h2>
           {data.milestones.length > 0 ? (
-            <ul className="list-none space-y-2 p-0">
-              {data.milestones.slice(0, 6).map((m) => (
-                <li key={m.id} className="flex items-center justify-between gap-2">
-                  <Link to={`/milestones/${m.id}/progress`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
-                    {m.name}
-                  </Link>
-                  {m.dueDate && (
-                    <span className="text-xs text-muted">Due {new Date(m.dueDate).toLocaleDateString(undefined, { dateStyle: "short" })}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="list-none space-y-2 p-0">
+                {data.milestones.slice(0, 6).map((m) => (
+                  <li key={m.id} className="flex items-center justify-between gap-2">
+                    <Link to={`/milestones/${m.id}/progress`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
+                      {m.name}
+                    </Link>
+                    {m.dueDate && (
+                      <span className="text-xs text-muted">Due {new Date(m.dueDate).toLocaleDateString(undefined, { dateStyle: "short" })}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              {data.milestones.length > 6 && (
+                <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
+                  +{data.milestones.length - 6} more
+                </p>
+              )}
+            </>
           ) : (
             <EmptyState
               message="No milestones yet. Milestones help track progress toward release dates."
             />
-          {data.milestones.length > 6 && (
-            <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
-              +{data.milestones.length - 6} more
-            </p>
           )}
         </Card>
 
         <Card>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Test plans</h2>
           {data.plans.length > 0 ? (
-            <ul className="list-none space-y-2 p-0">
-              {data.plans.slice(0, 6).map((p) => (
-                <li key={p.id}>
-                  <Link to={`/plans/${p.id}/summary`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
-                    {p.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="list-none space-y-2 p-0">
+                {data.plans.slice(0, 6).map((p) => (
+                  <li key={p.id}>
+                    <Link to={`/plans/${p.id}/summary`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
+                      {p.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {data.plans.length > 6 && (
+                <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
+                  +{data.plans.length - 6} more
+                </p>
+              )}
+            </>
           ) : (
             <EmptyState
               message="No test plans yet. Test plans group multiple test runs for organized execution."
             />
-          {data.plans.length > 6 && (
-            <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
-              +{data.plans.length - 6} more
-            </p>
           )}
         </Card>
 
         <Card>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Recent test runs</h2>
           {data.recentRuns.length > 0 ? (
-            <ul className="list-none space-y-2 p-0">
-              {data.recentRuns.slice(0, 6).map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-2">
-                  <Link to={`/runs/${r.id}`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
-                    {r.name}
-                  </Link>
-                  <span className="text-xs text-muted">
-                    {new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: "short" })}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="list-none space-y-2 p-0">
+                {data.recentRuns.slice(0, 6).map((r) => (
+                  <li key={r.id} className="flex items-center justify-between gap-2">
+                    <Link to={`/runs/${r.id}`} className="min-h-[44px] flex items-center font-medium text-primary hover:underline">
+                      {r.name}
+                    </Link>
+                    <span className="text-xs text-muted">
+                      {new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: "short" })}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {data.recentRuns.length > 6 && (
+                <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
+                  +{data.recentRuns.length - 6} more
+                </p>
+              )}
+            </>
           ) : (
             <EmptyState
               variant="cta"
@@ -297,10 +313,6 @@ export default function Dashboard() {
                 </Link>
               }
             />
-          {data.recentRuns.length > 6 && (
-            <p className="mt-3 border-t border-border pt-3 text-sm text-muted">
-              +{data.recentRuns.length - 6} more
-            </p>
           )}
         </Card>
       </div>
