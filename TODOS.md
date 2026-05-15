@@ -155,3 +155,24 @@ See BACKLOG.md for full list. High-value deferred items:
 - **78/100** — Zero crashes, all core flows functional. Deductions: run tab stubs (-2), Project Settings unstyled (-8), ReportBuilder discovery gap (-3), To Do disabled (-3), minor chart warning fixed this run.
 - Target after Sprint D (Epics 18-22): **90+**
 - Sprint D delivered: ISSUE-003, 004, 005, 006 all resolved.
+
+---
+
+## From /qa Sprint F (2026-05-15)
+
+### Fixed inline
+
+| Issue | Severity | Fix | Commit |
+|-------|----------|-----|--------|
+| ISSUE-001: Dashboard.tsx broken ternary in 4 EmptyState cards (app whitescreened) | Critical | Wrapped true-branch lists in `<>...</>` fragments, closed ternaries properly in all 4 cards | 742d50a |
+| ISSUE-002: CasesOverview TS6133 dead vars + MilestoneProgress Recharts TS2322 type | High | Removed dead vars/functions (STATUS_ORDER, priorityOrderMap, currentSummary, sortCasesList); `as any` cast on tooltip formatter | 09ce9b4 |
+| ISSUE-003: Recharts width(-1) height(-1) warnings in MilestoneProgress + RunView | Medium | Added `minWidth={1} minHeight={1}` to ResponsiveContainer in both files | 2ce5d98 |
+
+### Deferred — no new items
+
+All Sprint F bugs were fixed inline. Pre-existing deferred items from Sprint C/D carry forward unchanged.
+
+### Health Score
+- **Baseline: 42/100** — Dashboard whitescreened (broken ternary), TypeScript build had unused variable errors
+- **Final: 82/100** — All Sprint F features verified: three-panel CasesOverview, global search, recent items, empty states, milestone score history. No new console errors.
+- Target after Sprint G: **90+**
