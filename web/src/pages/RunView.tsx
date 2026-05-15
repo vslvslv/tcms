@@ -661,7 +661,7 @@ function RunProgressTab({ run, runBadgeId }: { run: Run; runBadgeId: string }) {
             <span className="text-sm">Not enough data yet. Run tests on at least 2 different days to see the trend.</span>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={280} minWidth={1} minHeight={1}>
             <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
               <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} />
               <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={44} />

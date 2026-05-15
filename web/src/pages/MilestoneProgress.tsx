@@ -86,7 +86,7 @@ export default function MilestoneProgress() {
               : "Need at least 2 data points to show a trend."}
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={200} minWidth={1} minHeight={1}>
             <LineChart
               data={scores.map((s) => ({
                 date: new Date(s.recordedAt).toLocaleDateString(),
