@@ -98,7 +98,8 @@ export default function MilestoneProgress() {
               <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="var(--color-border)" unit="%" />
               <Tooltip
                 contentStyle={{ background: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 6, fontSize: 12 }}
-                formatter={(value: number) => [`${value}%`, "Pass rate"]}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                formatter={((value: number) => [`${value}%`, "Pass rate"]) as any}
               />
               <Line type="monotone" dataKey="passRate" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
             </LineChart>

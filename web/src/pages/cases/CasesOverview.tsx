@@ -31,8 +31,6 @@ function buildCaseDisplayIds(
 
 type SortOption = "section" | "title-asc" | "title-desc" | "status" | "priority";
 
-const STATUS_ORDER: Record<string, number> = { draft: 0, ready: 1, approved: 2 };
-
 /** StatusDot — 8px circle, cell-level only (DESIGN.md rule) */
 function StatusDot({ status }: { status?: string }) {
   const color =
@@ -79,7 +77,7 @@ export default function CasesOverview() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [summaries, setSummaries] = useState<Record<string, CaseSummary | null>>({});
   const [loading, setLoading] = useState(true);
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [, setSummaryLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [, setProject] = useState<Project | null>(null);
@@ -117,7 +115,6 @@ export default function CasesOverview() {
   const [addSectionSuiteId, setAddSectionSuiteId] = useState<string | null>(null);
 
   const currentProject = projectId ? projects.find((p) => p.id === projectId) : null;
-  const currentSummary = projectId ? summaries[projectId] : undefined;
 
   // Reset panel state when switching projects (ISSUE 49)
   useEffect(() => {
@@ -246,12 +243,6 @@ export default function CasesOverview() {
 
   const treeForMemo = useMemo(() => buildSectionTree(sections), [sections]);
 
-  const priorityOrderMap = useMemo(() => {
-    const m = new Map<string, number>();
-    priorities.forEach((p) => m.set(p.id, p.sortOrder));
-    return m;
-  }, [priorities]);
-
   const sortedTree = useMemo(() => {
     if (sortBy !== "title-asc" && sortBy !== "title-desc") return treeForMemo;
     const sign = sortBy === "title-asc" ? 1 : -1;
@@ -294,21 +285,6 @@ export default function CasesOverview() {
   const selectedCase = selectedCaseId ? cases.find((c) => c.id === selectedCaseId) ?? null : null;
   const selectedSection = selectedSectionId ? sections.find((s) => s.id === selectedSectionId) ?? null : null;
   const selectedSuite = selectedSection ? suites.find((s) => s.id === selectedSection.suiteId) ?? null : null;
-
-  function sortCasesList(list: TestCase[]): TestCase[] {
-    const sorted = [...list];
-    if (sortBy === "section") {
-      sorted.sort((a, b) => a.sortOrder - b.sortOrder);
-    } else if (sortBy === "title-asc" || sortBy === "title-desc") {
-      const sign = sortBy === "title-asc" ? 1 : -1;
-      sorted.sort((a, b) => sign * (a.title || "").localeCompare(b.title || "", undefined, { sensitivity: "base" }));
-    } else if (sortBy === "status") {
-      sorted.sort((a, b) => (STATUS_ORDER[a.status ?? ""] ?? 99) - (STATUS_ORDER[b.status ?? ""] ?? 99) || a.sortOrder - b.sortOrder);
-    } else if (sortBy === "priority") {
-      sorted.sort((a, b) => (priorityOrderMap.get(a.priorityId ?? "") ?? 999) - (priorityOrderMap.get(b.priorityId ?? "") ?? 999) || a.sortOrder - b.sortOrder);
-    }
-    return sorted;
-  }
 
   function totalCaseCount(section: SectionNode): number {
     const direct = (casesBySection.get(section.id) ?? []).length;
